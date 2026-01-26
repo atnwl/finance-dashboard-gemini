@@ -861,7 +861,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
     onSave(formData);
   };
 
-  const aiClass = aiFlash ? "ring-2 ring-purple-500/50 bg-purple-500/10 transition-all duration-1000" : "";
+  const aiClass = aiFlash ? "ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000" : "";
 
   return (
     <form onSubmit={handleSubmit} className="p-6 space-y-4">
