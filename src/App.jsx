@@ -69,13 +69,14 @@ const Select = ({ label, options, ...props }) => (
     <div className="relative">
       <select
         className={cn(
-          "w-full bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none transition-all cursor-pointer",
+          "w-full bg-[#0F1115] border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none transition-all cursor-pointer",
           props.className
         )}
+        style={{ colorScheme: 'dark' }}
         {...props}
       >
         {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option key={opt.value} value={opt.value} className="bg-[#0F1115] text-text">{opt.label}</option>
         ))}
       </select>
       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
