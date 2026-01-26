@@ -54,7 +54,10 @@ const Input = ({ label, ...props }) => (
   <div className="flex flex-col gap-1.5 w-full">
     {label && <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>}
     <input
-      className="bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-600 w-full"
+      className={cn(
+        "bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-600 w-full",
+        props.className
+      )}
       {...props}
     />
   </div>
@@ -65,7 +68,10 @@ const Select = ({ label, options, ...props }) => (
     {label && <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>}
     <div className="relative">
       <select
-        className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none transition-all cursor-pointer"
+        className={cn(
+          "w-full bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none transition-all cursor-pointer",
+          props.className
+        )}
         {...props}
       >
         {options.map(opt => (
@@ -742,6 +748,13 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
     isIncome: false
   });
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiFlash, setAiFlash] = useState(false); // Visual cue for AI actions
+
+  // Helper to flash fields
+  const triggerAiFlash = () => {
+    setAiFlash(true);
+    setTimeout(() => setAiFlash(false), 2000);
+  };
 
   // Intelligence: Auto-fill based on Name with Gemini & Cache
   useEffect(() => {
@@ -757,6 +770,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
       if (cache[lowerName]) {
         console.log("Memory Hit:", lowerName);
         setFormData(prev => ({ ...prev, ...cache[lowerName] }));
+        triggerAiFlash();
         return;
       }
 
@@ -807,6 +821,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
           };
 
           setFormData(prev => ({ ...prev, ...suggestion }));
+          triggerAiFlash();
 
           // 3. Save to Cache
           cache[lowerName] = suggestion;
@@ -846,6 +861,8 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
     onSave(formData);
   };
 
+  const aiClass = aiFlash ? "ring-2 ring-purple-500/50 bg-purple-500/10 transition-all duration-1000" : "";
+
   return (
     <form onSubmit={handleSubmit} className="p-6 space-y-4">
       <div className="grid grid-cols-2 gap-2 bg-background p-1 rounded-xl mb-4">
@@ -876,26 +893,32 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
 
       <div className="grid grid-cols-2 gap-4">
         <Input label="Amount" name="amount" type="number" step="0.01" value={formData.amount} onChange={handleChange} required placeholder="0.00" />
-        <Select label="Frequency" name="frequency" value={formData.frequency} onChange={handleChange} options={[
-          { value: 'one-time', label: 'One-Time' },
-          { value: 'weekly', label: 'Weekly' },
-          { value: 'biweekly', label: 'Bi-Weekly' },
-          { value: 'monthly', label: 'Monthly' },
-          { value: 'annual', label: 'Yearly' },
-        ]} />
+        <Select
+          className={aiClass}
+          label="Frequency" name="frequency" value={formData.frequency} onChange={handleChange} options={[
+            { value: 'one-time', label: 'One-Time' },
+            { value: 'weekly', label: 'Weekly' },
+            { value: 'biweekly', label: 'Bi-Weekly' },
+            { value: 'monthly', label: 'Monthly' },
+            { value: 'annual', label: 'Yearly' },
+          ]} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Select label="Category" name="category" value={formData.category} onChange={handleChange} options={
-          (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
-        } />
+        <Select
+          className={aiClass}
+          label="Category" name="category" value={formData.category} onChange={handleChange} options={
+            (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
+          } />
 
         {!formData.isIncome && (
-          <Select label="Expense Type" name="type" value={formData.type} onChange={handleChange} options={[
-            { value: 'variable', label: 'Variable' },
-            { value: 'bill', label: 'Bill' },
-            { value: 'subscription', label: 'Subscription' },
-          ]} />
+          <Select
+            className={aiClass}
+            label="Expense Type" name="type" value={formData.type} onChange={handleChange} options={[
+              { value: 'variable', label: 'Variable' },
+              { value: 'bill', label: 'Bill' },
+              { value: 'subscription', label: 'Subscription' },
+            ]} />
         )}
       </div>
 
