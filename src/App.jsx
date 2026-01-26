@@ -17,11 +17,15 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-const CATEGORIES = [
-  'Utilities', 'Entertainment', 'Food', 'Transport', 'Health', 'Housing', 'Job', 'Other'
+const INCOME_CATEGORIES = [
+  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Other'
 ];
 
-const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280'];
+const EXPENSE_CATEGORIES = [
+  'Housing', 'Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal', 'Other'
+];
+
+const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
 
 // --- Components ---
 
@@ -278,17 +282,39 @@ export default function App() {
   const [editingItem, setEditingItem] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Persistence
+  // Persistence & Migration (Add IDs if missing)
   useEffect(() => {
-    localStorage.setItem('financeData', JSON.stringify(data));
+    let hasChanges = false;
+    const migrate = (arr) => arr.map(item => {
+      if (!item.id) {
+        hasChanges = true;
+        return { ...item, id: crypto.randomUUID() };
+      }
+      return item;
+    });
+
+    const newIncome = migrate(data.income);
+    const newExpenses = migrate(data.expenses);
+
+    if (hasChanges) {
+      setData({ income: newIncome, expenses: newExpenses });
+    } else {
+      localStorage.setItem('financeData', JSON.stringify(data));
+    }
   }, [data]);
 
   // Derived Data
   const normalizeToMonthly = (amount, frequency) => {
     const amt = parseFloat(amount);
     if (isNaN(amt)) return 0;
-    const map = { weekly: 52 / 12, biweekly: 26 / 12, monthly: 1, annual: 1 / 12 };
-    return amt * (map[frequency] || 1);
+    const map = {
+      'weekly': 52 / 12,
+      'biweekly': 26 / 12,
+      'monthly': 1,
+      'annual': 1 / 12,
+      'one-time': 1 // Assuming one-time expenses count fully against the current month's budget
+    };
+    return amt * (map[frequency] || 0);
   };
 
   const financials = useMemo(() => {
@@ -307,11 +333,12 @@ export default function App() {
   }, [data]);
 
   // Handlers
-  const handleDelete = (type, index) => {
+  const handleDelete = (type, id) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
-    const newData = { ...data };
-    newData[type].splice(index, 1);
-    setData(newData);
+    setData(prev => ({
+      ...prev,
+      [type]: prev[type].filter(item => item.id !== id)
+    }));
   };
 
   const handleSave = (item) => {
@@ -322,10 +349,36 @@ export default function App() {
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
 
+    // Ensure ID
+    if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
+
     if (editingItem) {
-      newData[editingItem.type][editingItem.index] = cleanItem;
+      // Find and update by ID in the correct array
+      // Note: Type might have changed (Expense -> Income), so we need to handle moving
+      const originalType = editingItem.type; // 'income' or 'expenses' (passed from modal open)
+
+      if (originalType === type) {
+        // Same list update
+        newData[type] = newData[type].map(x => x.id === cleanItem.id ? cleanItem : x);
+      } else {
+        // Move logic: remove from old, add to new
+        newData[originalType] = newData[originalType].filter(x => x.id !== cleanItem.id);
+        newData[type].push(cleanItem);
+      }
     } else {
       newData[type].push(cleanItem);
+    }
+
+    // Update Intelligence Cache with User's Truth
+    if (cleanItem.name && cleanItem.name.length >= 3) {
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      cache[cleanItem.name.toLowerCase().trim()] = {
+        category: cleanItem.category,
+        frequency: cleanItem.frequency,
+        isIncome: cleanItem.isIncome,
+        type: cleanItem.type
+      };
+      localStorage.setItem('intelligenceCache', JSON.stringify(cache));
     }
 
     setData(newData);
@@ -338,8 +391,8 @@ export default function App() {
     setIsFormOpen(true);
   };
 
-  const openEditModal = (item, index, type) => {
-    setEditingItem({ ...item, index, type, isIncome: type === 'income' });
+  const openEditModal = (item, type) => {
+    setEditingItem({ ...item, type, isIncome: type === 'income' });
     setIsFormOpen(true);
   };
 
@@ -541,11 +594,11 @@ export default function App() {
                       </td>
                       <td className="py-4 pr-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" className="p-2 h-auto" onClick={() => openEditModal(item, realIndex, item._type)}>
+                          <Button variant="ghost" className="p-2 h-auto" onClick={() => openEditModal(item, item._type)}>
                             <Edit2 size={16} />
                           </Button>
                           <Button variant="ghost" className="p-2 h-auto text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            onClick={() => handleDelete(item._type, realIndex)}>
+                            onClick={() => handleDelete(item._type, item.id)}>
                             <Trash2 size={16} />
                           </Button>
                         </div>
@@ -562,60 +615,65 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-text flex relative">
+    <div className="min-h-screen bg-background text-text flex flex-col relative selection:bg-primary/20">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border p-6 hidden md:flex flex-col">
-        <div className="flex items-center gap-2 mb-10">
-          <div className="bg-primary p-2 rounded-lg">
-            <Wallet className="text-black" size={24} />
-          </div>
-          <span className="text-xl font-bold tracking-tight">FinBoard</span>
-        </div>
-
-        <nav className="space-y-2 flex-1">
-          <NavItem icon={LayoutDashboard} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <NavItem icon={CreditCard} label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
-          <NavItem icon={Activity} label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
-        </nav>
-
-        {/* Removed Upgrade Card */}
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div className="md:hidden font-bold text-xl">FinBoard</div>
-          <div className="relative w-full max-w-md hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={18} />
-            <input
-              placeholder="Search transactions..."
-              className="w-full bg-card border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary"
-            />
+      {/* Top Navigation (Desktop) & Header */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="bg-primary p-1.5 rounded-lg">
+              <Wallet className="text-black" size={20} />
+            </div>
+            <span className="text-lg font-bold tracking-tight hidden sm:block">FinBoard</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Chat Trigger (Mobile has standard button, desktop has it too) */}
-            <button
-              onClick={() => setIsChatOpen(!isChatOpen)}
-              className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-all", isChatOpen ? "bg-primary text-black" : "bg-card text-muted hover:text-text")}
-            >
-              <MessageSquare size={20} />
-              <span className="hidden sm:inline font-medium">Ask AI</span>
-            </button>
+          <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+            <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
+          </nav>
 
+          <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
+            <div className="relative w-full max-w-[200px] hidden sm:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
+              <input
+                placeholder="Search..."
+                className="w-full bg-card/50 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary h-9 transition-all"
+              />
+            </div>
             <button className="p-2 text-muted hover:text-white relative">
               <Bell size={20} />
-              <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-background"></div>
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></div>
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-500 border-2 border-background"></div>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border border-white/10"></div>
           </div>
-        </header>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500">
+
 
         {renderContent()}
 
       </main>
 
-      {/* Chat Window */}
+      {/* Mobile Bottom Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
+        <div className="flex justify-around items-center h-16">
+          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
+          <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+          <button
+            onClick={openAddModal}
+            className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-4 border-4 border-background"
+          >
+            <Plus size={24} />
+          </button>
+          <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+          <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
+        </div>
+      </div>
       <ChatWindow
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
@@ -646,16 +704,31 @@ export default function App() {
 
 // --- Sub-components ---
 
-const NavItem = ({ icon: Icon, label, active, onClick }) => (
+const NavTab = ({ label, active, onClick, icon: Icon }) => (
   <button
     onClick={onClick}
     className={cn(
-      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-      active ? "bg-primary/10 text-primary" : "text-muted hover:text-text hover:bg-white/5"
+      "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+      active
+        ? "bg-white text-black shadow-sm"
+        : "text-muted hover:text-white hover:bg-white/5"
+    )}
+  >
+    {Icon && <Icon size={16} />}
+    {label}
+  </button>
+);
+
+const MobileNavItem = ({ icon: Icon, label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "flex-1 flex flex-col items-center justify-center gap-1 h-full",
+      active ? "text-primary" : "text-muted hover:text-text"
     )}
   >
     <Icon size={20} />
-    {label}
+    <span className="text-[10px] font-medium">{label}</span>
   </button>
 );
 
@@ -664,10 +737,101 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
     name: '',
     amount: '',
     frequency: 'monthly',
-    category: 'Food',
+    category: 'Food', // Default, will change via effect
     type: 'variable',
     isIncome: false
   });
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Intelligence: Auto-fill based on Name with Gemini & Cache
+  useEffect(() => {
+    if (initialData) return; // Don't override if editing
+    if (!formData.name || formData.name.length < 3) return;
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      const lowerName = formData.name.toLowerCase().trim();
+
+      // 1. Check Cache
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      if (cache[lowerName]) {
+        console.log("Memory Hit:", lowerName);
+        setFormData(prev => ({ ...prev, ...cache[lowerName] }));
+        return;
+      }
+
+      // 2. Ask Gemini
+      const apiKey = localStorage.getItem('geminiApiKey');
+      if (!apiKey) return; // Cannot use AI without key
+
+      setIsAiLoading(true);
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = `
+          Classify transaction: "${formData.name}"
+          
+          Context lists:
+          - Income Categories: ${INCOME_CATEGORIES.join(', ')}
+          - Expense Categories: ${EXPENSE_CATEGORIES.join(', ')}
+          
+          Return STRICT JSON only:
+          { 
+            "category": "String (must be one of the lists above)", 
+            "frequency": "String (one-time, weekly, biweekly, monthly, annual)", 
+            "isIncome": boolean, 
+            "type": "String (variable, bill, subscription) - only for expenses" 
+          }
+        `;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          const prediction = JSON.parse(jsonMatch[0]);
+          console.log("Gemini Prediction:", prediction);
+
+          // Validate Category
+          const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+          if (!validCats.includes(prediction.category)) {
+            prediction.category = validCats[0]; // Fallback
+          }
+
+          const suggestion = {
+            category: prediction.category,
+            frequency: prediction.frequency,
+            isIncome: prediction.isIncome,
+            type: prediction.type || 'variable'
+          };
+
+          setFormData(prev => ({ ...prev, ...suggestion }));
+
+          // 3. Save to Cache
+          cache[lowerName] = suggestion;
+          localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+        }
+      } catch (err) {
+        console.error("AI Classification failed", err);
+      } finally {
+        setIsAiLoading(false);
+      }
+    }, 800); // 800ms debounce
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [formData.name, initialData]);
+
+  // Ensure Category validity when type switches
+  useEffect(() => {
+    const validCategories = formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    if (!validCategories.includes(formData.category)) {
+      setFormData(prev => ({ ...prev, category: validCategories[0] }));
+    }
+  }, [formData.isIncome, formData.category]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -701,11 +865,19 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         </button>
       </div>
 
-      <Input label="Name" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Netflix" />
+      <div className="relative">
+        <Input label="Name" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Netflix" autoFocus />
+        {isAiLoading && (
+          <div className="absolute right-3 top-[34px] animate-pulse text-primary">
+            <Bot size={16} />
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Input label="Amount" name="amount" type="number" step="0.01" value={formData.amount} onChange={handleChange} required placeholder="0.00" />
         <Select label="Frequency" name="frequency" value={formData.frequency} onChange={handleChange} options={[
+          { value: 'one-time', label: 'One-Time' },
           { value: 'weekly', label: 'Weekly' },
           { value: 'biweekly', label: 'Bi-Weekly' },
           { value: 'monthly', label: 'Monthly' },
@@ -715,7 +887,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
 
       <div className="grid grid-cols-2 gap-4">
         <Select label="Category" name="category" value={formData.category} onChange={handleChange} options={
-          CATEGORIES.map(c => ({ value: c, label: c }))
+          (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
         } />
 
         {!formData.isIncome && (
