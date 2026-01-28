@@ -32,6 +32,17 @@ const EXPENSE_CATEGORIES = [
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
 
+const isRecurring = (item) => item.frequency !== 'one-time';
+
+const getCategoryIcon = (category) => {
+  const map = {
+    'Housing': '🏠', 'Food': '🍔', 'Transport': '🚗', 'Utilities': '💡',
+    'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
+    'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
+  };
+  return map[category] || '📦';
+};
+
 // --- Components ---
 
 const Card = ({ children, className }) => (
@@ -640,26 +651,54 @@ export default function App() {
                   radius={[4, 4, 0, 0]}
                   barSize={30}
                 >
-                  {financials.yearlyData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill="#4ADE80"
-                      fillOpacity={index === selectedMonth ? 1 : 0.2}
-                    />
-                  ))}
+                  {financials.yearlyData.map((entry, index) => {
+                    const today = new Date();
+                    const currentMonth = today.getMonth();
+                    const currentYear = today.getFullYear();
+
+                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                    const isCurrent = selectedYear === currentYear && index === currentMonth;
+                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+
+                    const isSelected = index === selectedMonth;
+
+                    return (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={isPast ? "#334155" : isCurrent ? "#4ADE80" : "#22c55e"} // Past=Dark, Current=Bright, Future=MutedGreen
+                        stroke={isCurrent ? "#ffffff" : "none"}
+                        strokeWidth={isCurrent ? 2 : 0}
+                        fillOpacity={isFuture ? 0.3 : (isSelected ? 1 : 0.6)}
+                      />
+                    );
+                  })}
                 </Bar>
                 <Bar
                   dataKey="expenses"
                   radius={[4, 4, 0, 0]}
                   barSize={30}
                 >
-                  {financials.yearlyData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill="#3B82F6"
-                      fillOpacity={index === selectedMonth ? 1 : 0.2}
-                    />
-                  ))}
+                  {financials.yearlyData.map((entry, index) => {
+                    const today = new Date();
+                    const currentMonth = today.getMonth();
+                    const currentYear = today.getFullYear();
+
+                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                    const isCurrent = selectedYear === currentYear && index === currentMonth;
+                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+
+                    const isSelected = index === selectedMonth;
+
+                    return (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={isPast ? "#334155" : isCurrent ? "#3B82F6" : "#2563eb"} // Past=Dark, Current=Bright, Future=MutedBlue
+                        stroke={isCurrent ? "#ffffff" : "none"}
+                        strokeWidth={isCurrent ? 2 : 0}
+                        fillOpacity={isFuture ? 0.3 : (isSelected ? 1 : 0.6)}
+                      />
+                    );
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -711,6 +750,53 @@ export default function App() {
     </div>
   );
 
+  // --- Virtual Transactions Helper ---
+  const getMonthlyItems = useMemo(() => {
+    const today = new Date();
+    const currentMonthIndex = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    // Filter One-Time items for this specific month/year
+    const monthFilter = (item) => {
+      if (!item.date) return false;
+      const [y, m] = item.date.split('-').map(Number);
+      return (m - 1) === selectedMonth && y === selectedYear;
+    };
+
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && monthFilter(i)).map(i => ({ ...i, _type: 'income', isVirtual: false }));
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && monthFilter(e)).map(e => ({ ...e, _type: 'expenses', isVirtual: false }));
+
+    // Generate Virtual Recurring Items
+    // For each recurring item, IF it started before or during this month, allow it.
+    // We assume recurring items are active indefinitely for now (simplified).
+    const generateVirtual = (items, type) => items.filter(isRecurring).map(item => {
+      // Create a virtual date for this month
+      // Preserve the day of the month from the original date
+      const originalDate = new Date(item.date);
+      const day = originalDate.getDate();
+      // Handle day overflow (e.g. 31st in Feb) -> simplified to clamp or just use Date auto-correction
+      const virtualDate = new Date(selectedYear, selectedMonth, day);
+
+      return {
+        ...item,
+        date: virtualDate.toISOString().split('T')[0],
+        _type: type,
+        isVirtual: true,
+        id: `virtual-${item.id}-${selectedMonth}-${selectedYear}` // Unique ID for key
+      };
+    });
+
+    const virtualIncome = generateVirtual(data.income, 'income');
+    const virtualExpenses = generateVirtual(data.expenses, 'expenses');
+
+    const allItems = [...oneTimeIncome, ...oneTimeExpenses, ...virtualIncome, ...virtualExpenses];
+
+    // Sort by Date Descending
+    return allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [data, selectedMonth, selectedYear]);
+
+  // --- Render Functions ---
+
   const renderContent = () => {
     if (activeTab === 'dashboard') return renderDashboard();
 
@@ -718,82 +804,85 @@ export default function App() {
     const isSubView = activeTab === 'subscriptions';
     const items = isSubView
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' }))
-      : [...data.income.map(x => ({ ...x, _type: 'income' })), ...data.expenses.map(x => ({ ...x, _type: 'expenses' }))];
+      : getMonthlyItems;
 
-    // Sort by Date Descending
-    items.sort((a, b) => new Date(b.date) - new Date(a.date));
+    // If Sub View, strictly showing list of services (no virtual logic needed usually, but keeping simple)
+    // Actually for Sub View, user checks specific list.
+    // For Main View, we use the Calculated Monthly Items.
+
+    if (items.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted">
+          <div className="bg-card w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+            <Search size={24} opacity={0.5} />
+          </div>
+          <p>No transactions found for this month.</p>
+        </div>
+      );
+    }
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Card>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold">{isSubView ? 'Subscriptions' : 'All Transactions'}</h2>
-            <Button onClick={openAddModal} variant="primary">
-              <Plus size={18} className="mr-2" /> Add New
-            </Button>
-          </div>
-
+        <Card className="p-0 overflow-hidden border-border/50">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-border text-muted text-sm">
-                  <th className="pb-4 pl-4 font-medium">Name</th>
-                  <th className="pb-4 font-medium">Date</th>
-                  <th className="pb-4 font-medium">Category</th>
-                  <th className="pb-4 font-medium">Amount</th>
-                  <th className="pb-4 font-medium">Frequency</th>
-                  <th className="pb-4 font-medium">Monthly</th>
-                  <th className="pb-4 pr-4 font-medium text-right">Actions</th>
+            <table className="w-full">
+              <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
+                <tr>
+                  <th className="px-6 py-4 text-left">Transaction</th>
+                  <th className="px-6 py-4 text-left">Date</th>
+                  <th className="px-6 py-4 text-left">Category</th>
+                  <th className="px-6 py-4 text-right">Amount</th>
+                  <th className="px-6 py-4 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-12 text-muted">
-                      No items found. Add your first transaction!
+              <tbody className="divide-y divide-white/5">
+                {items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={cn(
+                      "group transition-colors hover:bg-white/5",
+                      item.isVirtual && "opacity-50 italic" // Virtual Style
+                    )}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
+                          item._type === 'income' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                        )}>
+                          {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-text">{item.name} {item.isVirtual && <span className="text-[10px] ml-1 border border-border px-1 rounded">Est</span>}</p>
+                          <p className="text-xs text-muted capitalize">{item.type || 'Income'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-400">
+                      {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-emerald-400" : "text-text")}>
+                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {!item.isVirtual && (
+                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(item._type, item.id)} className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
-                ) : items.map((item, i) => {
-                  const realIndex = item._type === 'income'
-                    ? data.income.indexOf(item)
-                    : data.expenses.indexOf(item);
-
-                  return (
-                    <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors group">
-                      <td className="py-4 pl-4 font-medium text-white flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center bg-opacity-20",
-                          item._type === 'income' ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
-                        )}>
-                          {item._type === 'income' ? <TrendingUp size={18} /> : <CreditCard size={18} />}
-                        </div>
-                        {item.name}
-                      </td>
-                      <td className="py-4 text-sm text-muted">{item.date}</td>
-                      <td className="py-4 text-sm text-muted">
-                        <span className="px-2 py-1 rounded-md bg-white/5 border border-white/5">
-                          {item.category}
-                        </span>
-                      </td>
-                      <td className="py-4 font-bold text-white">${parseFloat(item.amount).toFixed(2)}</td>
-                      <td className="py-4 text-sm text-gray-400 capitalize">{item.frequency}</td>
-                      <td className="py-4 text-sm text-gray-400 font-mono">
-                        ~${normalizeToMonthly(item.amount, item.frequency).toFixed(0)}/mo
-                      </td>
-                      <td className="py-4 pr-4 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" className="p-2 h-auto" onClick={() => openEditModal(item, item._type)}>
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" className="p-2 h-auto text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                            onClick={() => handleDelete(item._type, item.id)}>
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                ))}
               </tbody>
             </table>
           </div>
