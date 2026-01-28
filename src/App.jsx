@@ -633,7 +633,7 @@ export default function App() {
                   y={financials.totalRecurringExpenses}
                   stroke="#F59E0B"
                   strokeDasharray="3 3"
-                  label={{ value: "Budget", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
+                  label={{ value: "Recurring", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
                 />
                 <Bar
                   dataKey="income"
