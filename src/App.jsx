@@ -5,7 +5,7 @@ import {
 import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
-  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle
+  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,6 +16,11 @@ import ReactMarkdown from 'react-markdown';
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 const INCOME_CATEGORIES = [
   'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Other'
@@ -58,6 +63,7 @@ const Input = ({ label, ...props }) => (
         "bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-600 w-full",
         props.className
       )}
+      style={props.type === 'date' ? { colorScheme: 'dark' } : {}}
       {...props}
     />
   </div>
@@ -285,26 +291,59 @@ const ChatWindow = ({ isOpen, onClose, data, financials }) => {
 // --- Main App ---
 
 export default function App() {
-  // State
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, transactions, subscriptions
-  const [data, setData] = useState(() => {
-    const saved = localStorage.getItem('financeData');
-    return saved ? JSON.parse(saved) : { income: [], expenses: [] };
-  });
-
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [data, setData] = useState({ income: [], expenses: [] });
+
+  // Date Filtering State
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // One-time Legacy Data Wipe (Per User Request)
+  useEffect(() => {
+    const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
+    if (!hasWiped) {
+      localStorage.removeItem('financeData');
+      setData({ income: [], expenses: [] }); // Reset state
+      localStorage.setItem('hasWipedLegacyData_v2', 'true');
+      console.log("Legacy data wiped for fresh start.");
+    } else {
+      // Load data normally if already wiped
+      const saved = localStorage.getItem('financeData');
+      if (saved) {
+        try {
+          setData(JSON.parse(saved));
+        } catch (e) {
+          console.error("Failed to load data", e);
+        }
+      }
+    }
+  }, []);
+
+  // Save Data
+  useEffect(() => {
+    if (localStorage.getItem('hasWipedLegacyData_v2')) {
+      localStorage.setItem('financeData', JSON.stringify(data));
+    }
+  }, [data]);
 
   // Persistence & Migration (Add IDs if missing)
+  // Migration / ID Check (runs on load/change) - Keep mostly for ID generation ensuring
   useEffect(() => {
     let hasChanges = false;
     const migrate = (arr) => arr.map(item => {
-      if (!item.id) {
+      let newItem = { ...item };
+      if (!newItem.id) {
         hasChanges = true;
-        return { ...item, id: crypto.randomUUID() };
+        newItem.id = crypto.randomUUID();
       }
-      return item;
+      if (!newItem.date) {
+        hasChanges = true;
+        newItem.date = new Date().toISOString().split('T')[0];
+      }
+      return newItem;
     });
 
     const newIncome = migrate(data.income);
@@ -312,10 +351,8 @@ export default function App() {
 
     if (hasChanges) {
       setData({ income: newIncome, expenses: newExpenses });
-    } else {
-      localStorage.setItem('financeData', JSON.stringify(data));
     }
-  }, [data]);
+  }, [data.income.length, data.expenses.length]); // Only run when counts change to avoid loops
 
   // Derived Data
   const normalizeToMonthly = (amount, frequency) => {
@@ -332,19 +369,58 @@ export default function App() {
   };
 
   const financials = useMemo(() => {
-    const totalIncome = data.income.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
-    const totalExpenses = data.expenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    // Filter data by selected Month and Year
+    const filterByDate = (item) => {
+      if (!item.date) return false; // Should have date from migration, but safety first
+      const d = new Date(item.date);
+      // Adjust for timezone issues by effectively treating the string YYYY-MM-DD as local
+      // Or simply parsing the string parts to avoid timezone shifts
+      const [y, m] = item.date.split('-').map(Number);
+      return (m - 1) === selectedMonth && y === selectedYear;
+    };
+
+    const monthlyIncome = data.income.filter(filterByDate);
+    const monthlyExpenses = data.expenses.filter(filterByDate);
+
+    // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
+    // User asked: "monthly income... should only reflect that month".
+    // Strategy:
+    // 1. One-time items: Only count if date is in this month.
+    // 2. Recurring (Monthly): Always count them (assuming they happen every month).
+    // 3. Recurring (Weekly): Count occurences in this specific month? Or just simplified 4x?
+    // Let's stick to the previous "normalizeToMonthly" logic but filter ONE-TIME items strictly.
+    // AND show recurring items regardless of "date" created? 
+    // Actually, usually "Date" on a recurring item is "Start Date".
+    // For simplicity and standard UX:
+    // - Show ALL Recurring items types (Weekly, Monthly, Annual / 12)
+    // - Show One-Time items ONLY if they fall in this month.
+
+    // Split items into Recurring vs One-Time
+    const isRecurring = (item) => item.frequency !== 'one-time';
+
+    // Income
+    const recurringIncome = data.income.filter(isRecurring);
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i));
+    const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
+
+    // Expenses
+    const recurringExpenses = data.expenses.filter(isRecurring);
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e));
+    const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
+
+    const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const net = totalIncome - totalExpenses;
 
     // Group expenses by category
-    const byCategory = data.expenses.reduce((acc, item) => {
+    const byCategory = effectiveExpenses.reduce((acc, item) => {
       const amt = normalizeToMonthly(item.amount, item.frequency);
       acc[item.category] = (acc[item.category] || 0) + amt;
       return acc;
     }, {});
 
     return { totalIncome, totalExpenses, net, byCategory };
-  }, [data]);
+  }, [data, selectedMonth, selectedYear]);
 
   // Handlers
   const handleDelete = (type, id) => {
@@ -469,9 +545,27 @@ export default function App() {
         <Card className="lg:col-span-2 min-h-[400px]">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold">Financial Overview</h3>
-            <select className="bg-background border border-border text-xs rounded-lg px-2 py-1">
-              <option>This Year</option>
-            </select>
+
+            {/* Date Filters */}
+            <div className="flex gap-2">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
+              >
+                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
+              >
+                {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-8 h-8 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
+                <Plus size={18} />
+              </Button>
+            </div>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -514,7 +608,7 @@ export default function App() {
                   dataKey="value"
                 >
                   {Object.entries(financials.byCategory).map((entry, index) => (
-                    <Cell key={`cell-\${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                   ))}
                 </Pie>
                 <Tooltip
@@ -566,6 +660,7 @@ export default function App() {
               <thead>
                 <tr className="border-b border-border text-muted text-sm">
                   <th className="pb-4 pl-4 font-medium">Name</th>
+                  <th className="pb-4 font-medium">Date</th>
                   <th className="pb-4 font-medium">Category</th>
                   <th className="pb-4 font-medium">Amount</th>
                   <th className="pb-4 font-medium">Frequency</th>
@@ -596,6 +691,7 @@ export default function App() {
                         </div>
                         {item.name}
                       </td>
+                      <td className="py-4 text-sm text-muted">{item.date}</td>
                       <td className="py-4 text-sm text-muted">
                         <span className="px-2 py-1 rounded-md bg-white/5 border border-white/5">
                           {item.category}
@@ -747,14 +843,17 @@ const MobileNavItem = ({ icon: Icon, label, active, onClick }) => (
 );
 
 const TransactionForm = ({ initialData, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(initialData || {
-    name: '',
-    amount: '',
-    frequency: 'monthly',
-    category: 'Food', // Default, will change via effect
-    type: 'variable',
-    isIncome: false
-  });
+  const [formData, setFormData] = useState(
+    initialData || {
+      name: '',
+      amount: '',
+      category: 'Food',
+      frequency: 'one-time',
+      type: 'variable',
+      isIncome: false,
+      date: new Date().toISOString().split('T')[0] // Default to today
+    }
+  );
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiFlash, setAiFlash] = useState(false); // Visual cue for AI actions
 
@@ -777,7 +876,9 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
       const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
       if (cache[lowerName]) {
         console.log("Memory Hit:", lowerName);
-        setFormData(prev => ({ ...prev, ...cache[lowerName] }));
+        // Preserve current date if set, otherwise don't overwrite it with old cache data (cache usually has no date)
+        const { date, ...rest } = cache[lowerName];
+        setFormData(prev => ({ ...prev, ...rest }));
         triggerAiFlash();
         return;
       }
@@ -869,34 +970,151 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
     onSave(formData);
   };
 
+  // Receipt Scanning
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const apiKey = localStorage.getItem('geminiApiKey');
+    if (!apiKey) {
+      alert("Please add your Gemini API Key in settings to use Receipt Scanning.");
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      // Convert to Base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result.split(',')[1];
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = `
+          Analyze this receipt image. Extract:
+          - Merchant Name (name)
+          - Date (date) in YYYY-MM-DD format
+          - Total Amount (amount)
+          - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
+          
+          Return strict JSON: { "name": string, "date": string, "amount": number, "category": string }
+        `;
+
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: file.type
+            }
+          }
+        ]);
+
+        const text = result.response.text();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          const data = JSON.parse(jsonMatch[0]);
+          console.log("Receipt Data:", data);
+
+          setFormData(prev => ({
+            ...prev,
+            name: data.name || prev.name,
+            amount: data.amount || prev.amount,
+            date: data.date || prev.date,
+            category: data.category || prev.category,
+            // Default to expense for receipts usually
+            isIncome: false
+          }));
+          triggerAiFlash();
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Receipt scanning failed", err);
+      alert("Failed to scan receipt. Please try again.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const aiClass = aiFlash ? "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000" : "";
+  const isIncome = formData.isIncome;
 
   return (
-    <form onSubmit={handleSubmit} className="p-6 space-y-4">
-      <div className="grid grid-cols-2 gap-2 bg-background p-1 rounded-xl mb-4">
-        <button
-          type="button"
-          onClick={() => setFormData(prev => ({ ...prev, isIncome: false }))}
-          className={cn("py-2 rounded-lg text-sm font-medium transition-all", !formData.isIncome ? "bg-card shadow text-white" : "text-muted hover:text-white")}
-        >
-          Expense
-        </button>
-        <button
-          type="button"
-          onClick={() => setFormData(prev => ({ ...prev, isIncome: true }))}
-          className={cn("py-2 rounded-lg text-sm font-medium transition-all", formData.isIncome ? "bg-card shadow text-white" : "text-muted hover:text-white")}
-        >
-          Income
-        </button>
+    <form onSubmit={handleSubmit} className="space-y-4 animate-in zoom-in-50 duration-300">
+
+      {/* Top Controls: Type & Scan */}
+      <div className="flex gap-3">
+        {/* Toggle Type */}
+        <div className="flex-1 flex p-1 bg-background border border-border rounded-xl">
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, isIncome: false }))}
+            className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-all", !isIncome ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white")}
+          >
+            Expense
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, isIncome: true }))}
+            className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-all", isIncome ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white")}
+          >
+            Income
+          </button>
+        </div>
+
+        {/* Scan Button */}
+        <div className="relative">
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            id="receipt-upload"
+            onChange={handleFileUpload}
+          />
+          <label
+            htmlFor="receipt-upload"
+            className={cn(
+              "h-full px-4 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
+              isAiLoading && "animate-pulse pointer-events-none"
+            )}
+            title="Scan Receipt"
+          >
+            <Camera size={20} />
+            <span className="text-sm font-medium hidden sm:inline">{isAiLoading ? 'Scanning...' : 'Scan'}</span>
+          </label>
+        </div>
       </div>
 
-      <div className="relative">
-        <Input label="Name" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Netflix" autoFocus />
-        {isAiLoading && (
-          <div className="absolute right-3 top-[34px] animate-pulse text-primary">
-            <Bot size={16} />
-          </div>
-        )}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="relative w-full">
+          <Input
+            label="Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+            placeholder="Netflix, Salary, etc."
+            autoFocus
+          />
+          {isAiLoading && (
+            <div className="absolute right-3 top-[34px] animate-pulse text-primary">
+              <Bot size={16} />
+            </div>
+          )}
+        </div>
+        <Input
+          label="Date"
+          type="date"
+          name="date"
+          value={formData.date}
+          onChange={handleChange}
+          required
+          max="2030-12-31" // Basic sanity check
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -934,6 +1152,6 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button type="submit" className="flex-1">Save Item</Button>
       </div>
-    </form>
+    </form >
   )
 }
