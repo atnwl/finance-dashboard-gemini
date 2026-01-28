@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
+  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine
 } from 'recharts';
 import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
@@ -442,14 +442,8 @@ export default function App() {
       const inc = mRecurringInc + mOneTimeInc;
       const exp = mRecurringExp + mOneTimeExp;
 
-      // Logic to hide future months ("Blue Bars" issue)
-      // Only show months that have passed or are current, UNLESS it's a past year (show all) 
-      // or future year (show none? or projection? User asked to hide).
-      const today = new Date();
-      const isFutureMonth = selectedYear === today.getFullYear() && index > today.getMonth();
-      const isFutureYear = selectedYear > today.getFullYear();
-
-      const shouldShow = (!isFutureMonth && !isFutureYear) && (inc > 0 || exp > 0);
+      // Show all months that have recurring OR one-time data, or just show all 12 for alignment
+      const shouldShow = true;
 
       return {
         name: monthName.slice(0, 3),
@@ -459,7 +453,12 @@ export default function App() {
       };
     });
 
-    return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData };
+    // Calculate Total Recurring for Budget Line
+    const totalRecurringExpenses = data.expenses
+      .filter(isRecurring)
+      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -588,13 +587,9 @@ export default function App() {
 
             {/* Date Filters */}
             <div className="flex gap-2">
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
-              >
-                {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-              </select>
+              <span className="text-xs text-muted flex items-center px-2">
+                Select bar to filter
+              </span>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -610,18 +605,62 @@ export default function App() {
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={financials.yearlyData.filter(d => d.hasData)} // Hide empty months
+                key={selectedMonth}
+                data={financials.yearlyData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                onClick={(e) => {
+                  if (e) {
+                    if (e.activeTooltipIndex !== undefined) {
+                      setSelectedMonth(e.activeTooltipIndex);
+                    } else if (e.activeLabel) {
+                      // Fallback: find index by name
+                      const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
+                      if (index !== -1) setSelectedMonth(index);
+                    }
+                  }
+                }}
+                cursor="pointer"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                 <Tooltip
+                  cursor={{ fill: 'transparent' }}
                   contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                   itemStyle={{ color: '#E5E7EB' }}
                 />
-                <Bar dataKey="income" fill="#4ADE80" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="expenses" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={30} />
+                <ReferenceLine
+                  y={financials.totalRecurringExpenses}
+                  stroke="#F59E0B"
+                  strokeDasharray="3 3"
+                  label={{ value: "Budget", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
+                />
+                <Bar
+                  dataKey="income"
+                  radius={[4, 4, 0, 0]}
+                  barSize={30}
+                >
+                  {financials.yearlyData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill="#4ADE80"
+                      fillOpacity={index === selectedMonth ? 1 : 0.2}
+                    />
+                  ))}
+                </Bar>
+                <Bar
+                  dataKey="expenses"
+                  radius={[4, 4, 0, 0]}
+                  barSize={30}
+                >
+                  {financials.yearlyData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill="#3B82F6"
+                      fillOpacity={index === selectedMonth ? 1 : 0.2}
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
