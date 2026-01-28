@@ -412,6 +412,10 @@ export default function App() {
     const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const net = totalIncome - totalExpenses;
 
+    const totalSubscriptionsCost = data.expenses
+      .filter(e => e.type === 'subscription')
+      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
     // Group expenses by category
     const byCategory = effectiveExpenses.reduce((acc, item) => {
       const amt = normalizeToMonthly(item.amount, item.frequency);
@@ -419,7 +423,43 @@ export default function App() {
       return acc;
     }, {});
 
-    return { totalIncome, totalExpenses, net, byCategory };
+    // Calculate Yearly Data for Chart (Dynamic)
+    const yearlyData = MONTHS.map((monthName, index) => {
+      const monthFilter = (item) => {
+        if (!item.date) return false;
+        const [y, m] = item.date.split('-').map(Number);
+        return (m - 1) === index && y === selectedYear;
+      };
+
+      // Recurring logic applies to all months
+      const mRecurringInc = data.income.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringExp = data.expenses.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+
+      // One-time logic specific to this month
+      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+
+      const inc = mRecurringInc + mOneTimeInc;
+      const exp = mRecurringExp + mOneTimeExp;
+
+      // Logic to hide future months ("Blue Bars" issue)
+      // Only show months that have passed or are current, UNLESS it's a past year (show all) 
+      // or future year (show none? or projection? User asked to hide).
+      const today = new Date();
+      const isFutureMonth = selectedYear === today.getFullYear() && index > today.getMonth();
+      const isFutureYear = selectedYear > today.getFullYear();
+
+      const shouldShow = (!isFutureMonth && !isFutureYear) && (inc > 0 || exp > 0);
+
+      return {
+        name: monthName.slice(0, 3),
+        income: inc,
+        expenses: exp,
+        hasData: shouldShow
+      };
+    });
+
+    return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -532,10 +572,10 @@ export default function App() {
           </div>
           <h3 className="text-muted text-sm font-medium">Subscriptions</h3>
           <p className="text-3xl font-bold mt-2 text-white">
-            {data.expenses.filter(e => e.type === 'subscription').length}
+            ${financials.totalSubscriptionsCost.toFixed(2)}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            Active services
+            {data.expenses.filter(e => e.type === 'subscription').length} active services
           </div>
         </Card>
       </div>
@@ -569,14 +609,10 @@ export default function App() {
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={[
-                { name: 'Jan', income: financials.totalIncome, expenses: financials.totalExpenses },
-                { name: 'Feb', income: financials.totalIncome, expenses: financials.totalExpenses * 1.05 },
-                { name: 'Mar', income: financials.totalIncome, expenses: financials.totalExpenses * 0.9 },
-                { name: 'Apr', income: financials.totalIncome, expenses: financials.totalExpenses * 1.1 },
-                { name: 'May', income: financials.totalIncome, expenses: financials.totalExpenses },
-                { name: 'Jun', income: financials.totalIncome, expenses: financials.totalExpenses },
-              ]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart
+                data={financials.yearlyData.filter(d => d.hasData)} // Hide empty months
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
@@ -644,6 +680,9 @@ export default function App() {
     const items = isSubView
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' }))
       : [...data.income.map(x => ({ ...x, _type: 'income' })), ...data.expenses.map(x => ({ ...x, _type: 'expenses' }))];
+
+    // Sort by Date Descending
+    items.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1069,7 +1108,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         <div className="relative">
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,application/pdf"
             capture="environment"
             className="hidden"
             id="receipt-upload"
