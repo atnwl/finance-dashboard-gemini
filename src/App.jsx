@@ -639,6 +639,7 @@ export default function App() {
                   cursor={{ fill: 'transparent' }}
                   contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                   itemStyle={{ color: '#E5E7EB' }}
+                  formatter={(value) => [`$${Number(value).toFixed(2)}`, ""]}
                 />
                 <ReferenceLine
                   y={financials.totalRecurringExpenses}
@@ -666,9 +667,9 @@ export default function App() {
                       <Cell
                         key={`cell-${index}`}
                         fill={isPast ? "#334155" : isCurrent ? "#4ADE80" : "#22c55e"} // Past=Dark, Current=Bright, Future=MutedGreen
-                        stroke={isCurrent ? "#ffffff" : "none"}
-                        strokeWidth={isCurrent ? 2 : 0}
-                        fillOpacity={isFuture ? 0.3 : (isSelected ? 1 : 0.6)}
+                        stroke={isSelected ? "#ffffff" : "none"}
+                        strokeWidth={isSelected ? 2 : 0}
+                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
                       />
                     );
                   })}
@@ -693,9 +694,9 @@ export default function App() {
                       <Cell
                         key={`cell-${index}`}
                         fill={isPast ? "#334155" : isCurrent ? "#3B82F6" : "#2563eb"} // Past=Dark, Current=Bright, Future=MutedBlue
-                        stroke={isCurrent ? "#ffffff" : "none"}
-                        strokeWidth={isCurrent ? 2 : 0}
-                        fillOpacity={isFuture ? 0.3 : (isSelected ? 1 : 0.6)}
+                        stroke={isSelected ? "#ffffff" : "none"}
+                        strokeWidth={isSelected ? 2 : 0}
+                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
                       />
                     );
                   })}
@@ -728,6 +729,7 @@ export default function App() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                   itemStyle={{ color: '#E5E7EB' }}
+                  formatter={(value) => `$${Number(value).toFixed(2)}`}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -806,6 +808,11 @@ export default function App() {
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' }))
       : getMonthlyItems;
 
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const isFutureMonth = selectedYear > currentYear || (selectedYear === currentYear && selectedMonth > currentMonth);
+
     // If Sub View, strictly showing list of services (no virtual logic needed usually, but keeping simple)
     // Actually for Sub View, user checks specific list.
     // For Main View, we use the Calculated Monthly Items.
@@ -816,7 +823,7 @@ export default function App() {
           <div className="bg-card w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
             <Search size={24} opacity={0.5} />
           </div>
-          <p>No transactions found for this month.</p>
+          <p>No transactions found for {MONTHS[selectedMonth]} {selectedYear}.</p>
         </div>
       );
     }
@@ -824,6 +831,16 @@ export default function App() {
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <Card className="p-0 overflow-hidden border-border/50">
+          <div className="p-4 border-b border-white/5 flex justify-between items-center">
+            <h2 className="font-semibold text-lg">
+              {isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
+            </h2>
+            {!isSubView && (
+              <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
+                {isFutureMonth ? 'Projected' : selectedMonth === currentMonth && selectedYear === currentYear ? 'Current' : 'Historic'}
+              </span>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
@@ -831,7 +848,7 @@ export default function App() {
                   <th className="px-6 py-4 text-left">Transaction</th>
                   <th className="px-6 py-4 text-left">Date</th>
                   <th className="px-6 py-4 text-left">Category</th>
-                  <th className="px-6 py-4 text-right">Amount</th>
+                  <th className="px-6 py-4 text-left">Amount</th>
                   <th className="px-6 py-4 text-center">Action</th>
                 </tr>
               </thead>
@@ -841,7 +858,7 @@ export default function App() {
                     key={item.id}
                     className={cn(
                       "group transition-colors hover:bg-white/5",
-                      item.isVirtual && "opacity-50 italic" // Virtual Style
+                      item.isVirtual && isFutureMonth && "opacity-50 italic" // Virtual Style ONLY for Future
                     )}
                   >
                     <td className="px-6 py-4">
