@@ -1072,7 +1072,11 @@ export default function App() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">
-                      {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                      {(() => {
+                        const [y, m, d] = item.date.split('-').map(Number);
+                        const dateObj = new Date(y, m - 1, d);
+                        return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+                      })()}
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5">
@@ -1250,11 +1254,15 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     initialData || {
       name: '',
       amount: '',
-      category: 'Food',
+      category: 'Groceries', // Updated default
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
-      date: new Date().toISOString().split('T')[0] // Default to today
+      date: (() => {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - offset).toISOString().split('T')[0];
+      })() // Local "YYYY-MM-DD"
     }
   );
   const [isAiLoading, setIsAiLoading] = useState(false);
