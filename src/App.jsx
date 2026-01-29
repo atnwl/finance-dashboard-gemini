@@ -1424,6 +1424,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     }
 
     setIsAiLoading(true);
+    const startTime = Date.now();
 
     // Small delay to allow React to render the loading spinner before processing starts
     setTimeout(() => {
@@ -1466,24 +1467,49 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             }
           ]);
 
-          const text = result.response.text();
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          const responseText = result.response.text().replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(responseText);
+          const items = Array.isArray(parsed) ? parsed : [parsed];
 
-          if (jsonMatch) {
-            const data = JSON.parse(jsonMatch[0]);
-            console.log("Receipt Data:", data);
+          if (items.length === 0) throw new Error("No transactions found");
+
+          const minLoadTimePromise = new Promise(resolve => {
+            const elapsed = Date.now() - startTime;
+            setTimeout(resolve, Math.max(0, 1500 - elapsed));
+          });
+
+          await minLoadTimePromise;
+
+          if (items.length === 1) {
+            // Single Item Mode (Old Behavior)
+            const prediction = items[0];
+            console.log("Gemini Prediction:", prediction);
+
+            const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+            if (!validCats.includes(prediction.category)) {
+              prediction.category = validCats[0];
+            }
 
             setFormData(prev => ({
               ...prev,
-              name: data.name || prev.name,
-              amount: data.amount || prev.amount,
-              date: data.date || prev.date,
-              category: data.category || prev.category,
-              // Default to expense for receipts usually
-              isIncome: false
+              name: prediction.name,
+              amount: prediction.amount,
+              category: prediction.category,
+              // If date is present, use it, else keep default
+              ...(prediction.date && { date: prediction.date })
             }));
             triggerAiFlash();
+          } else {
+            // Bulk Mode
+            setBulkItems(items.map(i => ({
+              ...i,
+              id: Math.random().toString(36).substr(2, 9),
+              isIncome: false, // Default to expense for bulk
+              type: 'variable',
+              frequency: 'one-time'
+            })));
           }
+
         };
         reader.readAsDataURL(file);
       } catch (err) {
