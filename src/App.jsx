@@ -1464,9 +1464,9 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     <form onSubmit={handleSubmit} className="space-y-4 animate-in zoom-in-50 duration-300">
 
       {/* Top Controls: Type & Scan */}
-      <div className="flex gap-3">
-        {/* Toggle Type */}
-        <div className="flex-1 flex p-1 bg-background border border-border rounded-xl">
+      <div className="flex flex-col gap-3">
+        {/* Toggle Type (Full Width) */}
+        <div className="flex p-1 bg-background border border-border rounded-xl w-full">
           <button
             type="button"
             onClick={() => setFormData(prev => ({ ...prev, isIncome: false }))}
@@ -1483,10 +1483,10 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           </button>
         </div>
 
-        {/* Scan Actions */}
-        <div className="flex gap-3 h-12">
-          {/* Camera Button (Green Aesthetics) */}
-          <div className="relative flex-1">
+        {/* Scan Actions (New Row) */}
+        <div className="flex gap-3 h-12 w-full">
+          {/* Camera Button (Primary Action - Green) */}
+          <div className="relative flex-[2]">
             <input
               type="file"
               capture="environment"
@@ -1498,17 +1498,18 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full w-full flex items-center justify-center bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all",
-                aiFlash && "ring-2 ring-white",
+                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all",
+                aiFlash && "ring-2 ring-white scale-95",
                 isAiLoading && "opacity-50 pointer-events-none"
               )}
             >
-              {isAiLoading ? <Loader2 size={24} className="animate-spin text-black" /> : <Camera size={24} className="text-black" />}
+              {isAiLoading ? <Loader2 size={20} className="animate-spin text-black" /> : <Camera size={20} className="text-black" />}
+              <span className="text-sm font-semibold text-black">Scan Receipt</span>
             </label>
           </div>
 
-          {/* Upload Button (Subtle) */}
-          <div className="relative w-16">
+          {/* Upload Button (Secondary - Subtle) */}
+          <div className="relative flex-1">
             <input
               type="file"
               accept="image/*,application/pdf"
