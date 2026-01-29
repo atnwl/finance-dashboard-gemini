@@ -903,7 +903,7 @@ export default function App() {
                           {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
                         </div>
                         <div>
-                          <p className="font-medium text-text">{item.name} {item.isVirtual && <span className="text-[10px] ml-1 border border-border px-1 rounded">Est</span>}</p>
+                          <p className="font-medium text-text">{item.name} {item.isVirtual && <span className="text-[10px] ml-1 border border-border px-1 rounded">Monthly</span>}</p>
                           <p className="text-xs text-muted capitalize">{item.type || 'Income'}</p>
                         </div>
                       </div>
