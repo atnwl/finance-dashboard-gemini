@@ -823,7 +823,7 @@ export default function App() {
                                 {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
                               </span>
                               <span className="font-bold text-gray-200">
-                                ${Number(entry.value).toFixed(2)}
+                                ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -925,13 +925,13 @@ export default function App() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                   itemStyle={{ color: '#E5E7EB' }}
-                  formatter={(value) => `$${Number(value).toFixed(2)}`}
+                  formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
               <span className="text-xs text-muted">Total</span>
-              <p className="font-bold text-white">${financials.totalExpenses.toFixed(0)}</p>
+              <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
