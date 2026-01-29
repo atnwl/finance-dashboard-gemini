@@ -30,7 +30,9 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Housing', 'Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal', 'Other'
+  'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
+  'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
+  'Student Loans', 'Buy Now Pay Later', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
@@ -39,8 +41,10 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Housing': '🏠', 'Food': '🍔', 'Transport': '🚗', 'Utilities': '💡',
+    'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
+    'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
+    'Student Loans': '🎓', 'Buy Now Pay Later': '💳',
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
@@ -150,7 +154,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const context = `
         You are a helpful financial assistant analyzing the user's personal finance dashboard.
@@ -473,6 +477,7 @@ export default function App() {
       'weekly': 52 / 12,
       'biweekly': 26 / 12,
       'monthly': 1,
+      'quarterly': 1 / 3,
       'annual': 1 / 12,
       'one-time': 1 // Assuming one-time expenses count fully against the current month's budget
     };
@@ -966,10 +971,9 @@ export default function App() {
     const generateVirtual = (items, type) => items.filter(isRecurring).map(item => {
       // Create a virtual date for this month
       // Preserve the day of the month from the original date
-      const originalDate = new Date(item.date);
-      const day = originalDate.getDate();
-      // Handle day overflow (e.g. 31st in Feb) -> simplified to clamp or just use Date auto-correction
-      const virtualDate = new Date(selectedYear, selectedMonth, day);
+      const [oy, om, od] = item.date.split('-').map(Number);
+      // Handle day overflow (e.g. 31st in Feb) -> javascript Date object handles this (rolls over to Mar 1), which is fine/safe enough
+      const virtualDate = new Date(selectedYear, selectedMonth, od);
 
       return {
         ...item,
@@ -1571,6 +1575,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             { value: 'weekly', label: 'Weekly' },
             { value: 'biweekly', label: 'Bi-Weekly' },
             { value: 'monthly', label: 'Monthly' },
+            { value: 'quarterly', label: 'Quarterly' },
             { value: 'annual', label: 'Yearly' },
           ]} />
       </div>
