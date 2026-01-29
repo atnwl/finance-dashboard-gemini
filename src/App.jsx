@@ -1484,8 +1484,8 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
         </div>
 
         {/* Scan Actions */}
-        <div className="flex gap-2">
-          {/* Camera Button (Mobile Friendly) */}
+        <div className="flex gap-3 h-12">
+          {/* Camera Button (Green Aesthetics) */}
           <div className="relative flex-1">
             <input
               type="file"
@@ -1498,18 +1498,17 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full py-2 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
-                aiFlash && "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000",
+                "h-full w-full flex items-center justify-center bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all",
+                aiFlash && "ring-2 ring-white",
                 isAiLoading && "opacity-50 pointer-events-none"
               )}
             >
-              {isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
-              <span className="text-sm font-medium">Camera</span>
+              {isAiLoading ? <Loader2 size={24} className="animate-spin text-black" /> : <Camera size={24} className="text-black" />}
             </label>
           </div>
 
-          {/* Upload Button */}
-          <div className="relative flex-1">
+          {/* Upload Button (Subtle) */}
+          <div className="relative w-16">
             <input
               type="file"
               accept="image/*,application/pdf"
@@ -1520,12 +1519,11 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="file-upload"
               className={cn(
-                "h-full py-2 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
+                "h-full w-full flex items-center justify-center bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 active:scale-95 transition-all text-muted hover:text-white",
                 isAiLoading && "opacity-50 pointer-events-none"
               )}
             >
-              <Upload size={18} />
-              <span className="text-sm font-medium">Upload</span>
+              <Upload size={20} />
             </label>
           </div>
         </div>
