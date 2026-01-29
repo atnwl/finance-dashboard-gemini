@@ -1565,13 +1565,22 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all",
+                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
                 aiFlash && "ring-2 ring-white scale-95",
-                isAiLoading && "opacity-50 pointer-events-none"
+                isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
             >
-              {isAiLoading ? <Loader2 size={20} className="animate-spin text-black" /> : <Camera size={20} className="text-black" />}
-              <span className="text-sm font-semibold text-black">Scan Receipt</span>
+              {isAiLoading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="text-sm font-semibold">Processing...</span>
+                </>
+              ) : (
+                <>
+                  <Camera size={20} />
+                  <span className="text-sm font-semibold">Scan Receipt</span>
+                </>
+              )}
             </label>
           </div>
 
@@ -1588,10 +1597,10 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               htmlFor="file-upload"
               className={cn(
                 "h-full w-full flex items-center justify-center bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 active:scale-95 transition-all text-muted hover:text-white",
-                isAiLoading && "opacity-50 pointer-events-none"
+                isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
             >
-              <Upload size={20} />
+              {isAiLoading ? <Loader2 size={20} className="animate-spin text-primary" /> : <Upload size={20} />}
             </label>
           </div>
         </div>
