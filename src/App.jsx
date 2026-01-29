@@ -1539,7 +1539,6 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             onChange={handleChange}
             required
             placeholder="Netflix, Salary, etc."
-            autoFocus
           />
           {/* Visual Indicator for AI Status */}
           <div className="absolute right-3 top-[34px] flex items-center pointer-events-none">
