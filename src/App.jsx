@@ -717,7 +717,7 @@ export default function App() {
             <TrendingUp size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Income</h3>
-          <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toFixed(2)}</p>
+          <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-primary/80 flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Active
           </div>
@@ -728,7 +728,7 @@ export default function App() {
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-white">${financials.totalExpenses.toFixed(2)}</p>
+          <p className="text-3xl font-bold mt-2 text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Total recurring
           </div>
@@ -740,7 +740,7 @@ export default function App() {
           </div>
           <h3 className="text-muted text-sm font-medium">Net Cash Flow</h3>
           <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-red-400")}>
-            ${financials.net.toFixed(2)}
+            ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Available
@@ -753,7 +753,7 @@ export default function App() {
           </div>
           <h3 className="text-muted text-sm font-medium">Subscriptions</h3>
           <p className="text-3xl font-bold mt-2 text-white">
-            ${financials.totalSubscriptionsCost.toFixed(2)}
+            ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             {data.expenses.filter(e => e.type === 'subscription').length} active services
@@ -1084,7 +1084,7 @@ export default function App() {
                       </span>
                     </td>
                     <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-emerald-400" : "text-text")}>
-                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toFixed(2)}
+                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
