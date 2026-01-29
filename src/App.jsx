@@ -1511,8 +1511,22 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           }
 
         } catch (err) {
-          console.error("Receipt scanning failed", err);
-          alert("Failed to scan receipt. Please try again.");
+          console.error("Receipt scanning failed:", err);
+
+          let errorMessage = "Failed to scan receipt. ";
+          if (err.message?.includes("API key")) {
+            errorMessage += "API key issue - check your Gemini API key.";
+          } else if (err.message?.includes("JSON") || err.name === "SyntaxError") {
+            errorMessage += "Could not parse AI response. The image might be unclear.";
+          } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
+            errorMessage += "API rate limit reached. Try again in a minute.";
+          } else if (err.message?.includes("RECITATION") || err.message?.includes("SAFETY")) {
+            errorMessage += "Content was blocked by AI safety filters.";
+          } else {
+            errorMessage += err.message || "Unknown error occurred.";
+          }
+
+          alert(errorMessage);
         } finally {
           setIsAiLoading(false);
           // Reset file input value so same file can be selected again if needed
