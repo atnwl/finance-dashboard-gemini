@@ -1483,27 +1483,51 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           </button>
         </div>
 
-        {/* Scan Button */}
-        <div className="relative">
-          <input
-            type="file"
-            capture="environment"
-            accept="image/*,application/pdf"
-            className="hidden"
-            id="receipt-upload"
-            onChange={handleFileUpload}
-          />
-          <label
-            htmlFor="receipt-upload"
-            className={cn(
-              "h-full px-4 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
-              isAiLoading && "animate-pulse pointer-events-none"
-            )}
-            title="Scan Receipt"
-          >
-            {isAiLoading ? <Loader2 size={20} className="animate-spin text-primary" /> : <Camera size={20} />}
-            <span className="text-sm font-medium hidden sm:inline">{isAiLoading ? 'Scanning...' : 'Scan'}</span>
-          </label>
+        {/* Scan Actions */}
+        <div className="flex gap-2">
+          {/* Camera Button (Mobile Friendly) */}
+          <div className="relative flex-1">
+            <input
+              type="file"
+              capture="environment"
+              accept="image/*"
+              className="hidden"
+              id="camera-input"
+              onChange={handleFileUpload}
+            />
+            <label
+              htmlFor="camera-input"
+              className={cn(
+                "h-full py-2 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
+                aiFlash && "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000",
+                isAiLoading && "opacity-50 pointer-events-none"
+              )}
+            >
+              {isAiLoading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+              <span className="text-sm font-medium">Camera</span>
+            </label>
+          </div>
+
+          {/* Upload Button */}
+          <div className="relative flex-1">
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              id="file-upload"
+              onChange={handleFileUpload}
+            />
+            <label
+              htmlFor="file-upload"
+              className={cn(
+                "h-full py-2 flex items-center justify-center gap-2 bg-background border border-border rounded-xl cursor-pointer hover:bg-white/5 transition-colors text-muted hover:text-primary",
+                isAiLoading && "opacity-50 pointer-events-none"
+              )}
+            >
+              <Upload size={18} />
+              <span className="text-sm font-medium">Upload</span>
+            </label>
+          </div>
         </div>
       </div>
 
