@@ -1424,16 +1424,19 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     }
 
     setIsAiLoading(true);
-    try {
-      // Convert to Base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result.split(',')[1];
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Small delay to allow React to render the loading spinner before processing starts
+    setTimeout(() => {
+      try {
+        // Convert to Base64
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Data = reader.result.split(',')[1];
 
-        const prompt = `
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+          const prompt = `
     Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
     
     EXTRACT ALL distinct transactions found in the document.
@@ -1453,44 +1456,45 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     ]
     `;
 
-        const result = await model.generateContent([
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: file.type
+          const result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: file.type
+              }
             }
+          ]);
+
+          const text = result.response.text();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+          if (jsonMatch) {
+            const data = JSON.parse(jsonMatch[0]);
+            console.log("Receipt Data:", data);
+
+            setFormData(prev => ({
+              ...prev,
+              name: data.name || prev.name,
+              amount: data.amount || prev.amount,
+              date: data.date || prev.date,
+              category: data.category || prev.category,
+              // Default to expense for receipts usually
+              isIncome: false
+            }));
+            triggerAiFlash();
           }
-        ]);
-
-        const text = result.response.text();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-        if (jsonMatch) {
-          const data = JSON.parse(jsonMatch[0]);
-          console.log("Receipt Data:", data);
-
-          setFormData(prev => ({
-            ...prev,
-            name: data.name || prev.name,
-            amount: data.amount || prev.amount,
-            date: data.date || prev.date,
-            category: data.category || prev.category,
-            // Default to expense for receipts usually
-            isIncome: false
-          }));
-          triggerAiFlash();
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      console.error("Receipt scanning failed", err);
-      alert("Failed to scan receipt. Please try again.");
-    } finally {
-      setIsAiLoading(false);
-      // Reset file input value so same file can be selected again if needed
-      e.target.value = '';
-    }
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Receipt scanning failed", err);
+        alert("Failed to scan receipt. Please try again.");
+      } finally {
+        setIsAiLoading(false);
+        // Reset file input value so same file can be selected again if needed
+        e.target.value = '';
+      }
+    }, 10);
   };
 
   const aiClass = aiFlash ? "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000" : "";
