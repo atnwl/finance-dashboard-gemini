@@ -1052,8 +1052,9 @@ export default function App() {
                 {items.map((item) => (
                   <tr
                     key={item.id}
+                    onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
                     className={cn(
-                      "group transition-colors hover:bg-white/5",
+                      "group transition-colors hover:bg-white/5 cursor-pointer",
                       item.isVirtual && isFutureMonth && "opacity-50 italic" // Virtual Style ONLY for Future
                     )}
                   >
@@ -1087,15 +1088,27 @@ export default function App() {
                       {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(item);
+                            setIsFormOpen(true);
+                          }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors"
+                        >
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => handleDelete(item._type, item.id)} className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item._type, item.id);
+                          }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors"
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>
-
                     </td>
                   </tr>
                 ))}
