@@ -1428,10 +1428,10 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
     // Small delay to allow React to render the loading spinner before processing starts
     setTimeout(() => {
-      try {
-        // Convert to Base64
-        const reader = new FileReader();
-        reader.onloadend = async () => {
+      // Convert to Base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
           const base64Data = reader.result.split(',')[1];
 
           const genAI = new GoogleGenerativeAI(apiKey);
@@ -1510,16 +1510,16 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             })));
           }
 
-        };
-        reader.readAsDataURL(file);
-      } catch (err) {
-        console.error("Receipt scanning failed", err);
-        alert("Failed to scan receipt. Please try again.");
-      } finally {
-        setIsAiLoading(false);
-        // Reset file input value so same file can be selected again if needed
-        e.target.value = '';
-      }
+        } catch (err) {
+          console.error("Receipt scanning failed", err);
+          alert("Failed to scan receipt. Please try again.");
+        } finally {
+          setIsAiLoading(false);
+          // Reset file input value so same file can be selected again if needed
+          e.target.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
     }, 10);
   };
 
