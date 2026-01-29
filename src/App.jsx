@@ -5,12 +5,15 @@ import {
 import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
-  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2
+  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
+  Cloud, Upload, Download, LogOut
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
+import { supabase } from './utils/supabase';
+import { encryptData, decryptData } from './utils/crypto';
 
 // --- Utils ---
 function cn(...inputs) {
@@ -111,7 +114,7 @@ const Select = ({ label, options, ...props }) => (
 );
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -223,21 +226,94 @@ const ChatWindow = ({ isOpen, onClose, data, financials }) => {
       </div>
 
       {/* Settings Overlay */}
+      {/* Settings Overlay */}
       {showSettings && (
-        <div className="absolute inset-0 bg-card/95 backdrop-blur z-20 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-          <Settings size={48} className="text-muted mb-4" />
-          <h3 className="font-bold text-lg mb-2">Configuration</h3>
-          <p className="text-sm text-muted mb-6">Enter your Gemini API Key to enable AI features. Your key is stored locally.</p>
-          <Input
-            placeholder="AIzaSy..."
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            type="password"
-          />
-          <div className="flex gap-2 w-full mt-4">
-            <Button variant="outline" className="flex-1" onClick={() => setShowSettings(false)}>Back</Button>
-            <Button className="flex-1" onClick={() => handleSaveKey(apiKey)}>Save Key</Button>
+        <div className="absolute inset-0 bg-card/95 backdrop-blur z-20 flex flex-col items-center p-6 text-center animate-in fade-in overflow-y-auto">
+          <Settings size={32} className="text-muted mb-4" />
+          <h3 className="font-bold text-lg mb-6">Settings</h3>
+
+          {/* AI Section */}
+          <div className="w-full bg-white/5 rounded-xl p-4 mb-4 text-left">
+            <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Bot size={12} /> Gemini Intelligence
+            </h4>
+            <p className="text-xs text-muted mb-3">API Key for AI insights & receipt scanning.</p>
+            <Input
+              placeholder="AIzaSy..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              type="password"
+              className="mb-2"
+            />
+            <Button className="w-full" size="sm" onClick={() => handleSaveKey(apiKey)}>Save AI Key</Button>
           </div>
+
+          {/* Cloud Sync Section */}
+          <div className="w-full bg-white/5 rounded-xl p-4 mb-4 text-left">
+            <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Cloud size={12} /> Cloud Backup
+            </h4>
+
+            {!user ? (
+              <div className="text-center py-2">
+                <p className="text-xs text-muted mb-3">Sign in to sync your data across devices.</p>
+                <Button onClick={onLogin} className="w-full bg-[#24292F] hover:bg-[#24292F]/90 text-white gap-2">
+                  <User size={14} /> Login with GitHub
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-muted bg-black/20 p-2 rounded-lg">
+                  <span className="truncate max-w-[150px]">{user.email || 'Logged In'}</span>
+                  <button onClick={onLogout} className="text-red-400 hover:text-red-300 flex items-center gap-1">
+                    <LogOut size={10} /> Logout
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-muted leading-tight">
+                  Enter a <strong>Sync Password</strong>. This encrypts your data before upload.
+                  <span className="text-red-400 block mt-1">If you lose this password, your cloud data is lost forever.</span>
+                </p>
+
+                <Input
+                  placeholder="Encryption Password"
+                  id="sync-pass" // simple ID to grab value ref-style or just use an uncontrolled input for safety? 
+                // Better: simple state in this component?
+                // No, let's use a ref to avoid re-renders or stealing focus? 
+                // Actually controlled state is fine if we clear it.
+                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="text-xs gap-1" onClick={() => {
+                    const pass = document.getElementById('sync-pass').value;
+                    if (!pass) return alert('Enter a password!');
+                    onSync(pass);
+                  }}>
+                    <Upload size={12} /> Backup
+                  </Button>
+                  <Button variant="outline" className="text-xs gap-1" onClick={() => {
+                    const pass = document.getElementById('sync-pass').value;
+                    if (!pass) return alert('Enter a password!');
+                    onRestore(pass);
+                  }}>
+                    <Download size={12} /> Restore
+                  </Button>
+                </div>
+
+                {syncStatus && (
+                  <div className={cn("text-xs p-2 rounded border",
+                    syncStatus.includes('Success') ? "bg-green-500/10 border-green-500/20 text-green-400" :
+                      syncStatus.includes('Error') ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                        "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                  )}>
+                    {syncStatus}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <Button variant="ghost" className="w-full" onClick={() => setShowSettings(false)}>Close Settings</Button>
         </div>
       )}
 
@@ -321,6 +397,19 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [user, setUser] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('');
+
+  // Auth State Listener
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // One-time Legacy Data Wipe (Per User Request)
   useEffect(() => {
@@ -538,7 +627,69 @@ export default function App() {
 
     setIsFormOpen(false);
     setEditingItem(null);
+  };
 
+  // --- Auth & Sync Handlers ---
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: { redirectTo: window.location.origin }
+    });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleSync = async (password) => {
+    if (!user) return;
+    setSyncStatus('Encrypting...');
+    try {
+      const encrypted = await encryptData(data, password);
+      setSyncStatus('Uploading...');
+
+      const { error } = await supabase
+        .from('sync_store')
+        .upsert({
+          id: user.id,
+          encrypted_blob: JSON.stringify(encrypted)
+        });
+
+      if (error) throw error;
+      setSyncStatus('Success: Backup Complete');
+      setTimeout(() => setSyncStatus(''), 3000);
+    } catch (err) {
+      console.error(err);
+      setSyncStatus('Error: ' + err.message);
+    }
+  };
+
+  const handleRestore = async (password) => {
+    if (!user) return;
+    setSyncStatus('Downloading...');
+    try {
+      const { data: rows, error } = await supabase
+        .from('sync_store')
+        .select('encrypted_blob')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      if (!rows) throw new Error("No backup found");
+
+      setSyncStatus('Decrypting...');
+      const decrypted = await decryptData(JSON.parse(rows.encrypted_blob), password);
+
+      setData(decrypted);
+      localStorage.setItem('financeData', JSON.stringify(decrypted));
+
+      setSyncStatus('Success: Data Restored');
+      setTimeout(() => setSyncStatus(''), 3000);
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      setSyncStatus('Error: ' + err.message);
+    }
   };
 
   const openAddModal = () => {
@@ -1016,6 +1167,12 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
         data={data}
         financials={financials}
+        user={user}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        onSync={handleSync}
+        onRestore={handleRestore}
+        syncStatus={syncStatus}
       />
 
       {/* Transaction Modal */}
