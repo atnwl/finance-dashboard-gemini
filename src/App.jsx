@@ -1487,8 +1487,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
         <div className="relative">
           <input
             type="file"
-            // Remove 'capture' to avoid potential desktop permission confusion unless specifically desired
-            // capture="environment" 
+            capture="environment"
             accept="image/*,application/pdf"
             className="hidden"
             id="receipt-upload"
