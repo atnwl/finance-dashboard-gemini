@@ -1280,6 +1280,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
   );
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiFlash, setAiFlash] = useState(false); // Visual cue for AI actions
+  const [bulkItems, setBulkItems] = useState([]); // Array of parsed items for review
 
   // Helper to flash fields
   const triggerAiFlash = () => {
@@ -1430,16 +1431,26 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
         const base64Data = reader.result.split(',')[1];
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
-    Analyze this receipt image. Extract:
-    - Merchant Name (name)
+    Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
+    
+    EXTRACT ALL distinct transactions found in the document.
+    - Ignore headers, footers, account summaries, or balances.
+    - If it's a statement, handle various layouts (tables, lists, blocks).
+    
+    For EACH transaction, extract:
+    - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Total Amount (amount)
+    - Amount (amount) - number only (absolute value)
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
-
-    Return strict JSON: {"name": string, "date": string, "amount": number, "category": string }
+    
+    Return STRICT JSON Array: 
+    [
+      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "category": "Food"},
+      ...
+    ]
     `;
 
         const result = await model.generateContent([
@@ -1484,6 +1495,37 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
   const aiClass = aiFlash ? "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000" : "";
   const isIncome = formData.isIncome;
+
+  // BULK HANDLERS
+  const handleBulkUpdate = (index, field, value) => {
+    setBulkItems(prev => prev.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleBulkRemove = (index) => {
+    setBulkItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkImport = () => {
+    bulkItems.forEach(item => {
+      onSave(item);
+    });
+    setBulkItems([]);
+    if (onCancel) onCancel();
+  };
+
+  if (bulkItems.length > 0) {
+    return (
+      <BulkReviewView
+        items={bulkItems}
+        onUpdate={handleBulkUpdate}
+        onRemove={handleBulkRemove}
+        onCancel={() => { setBulkItems([]); }} // Go back to single add
+        onImport={handleBulkImport}
+      />
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-in zoom-in-50 duration-300">
@@ -1625,5 +1667,92 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
       </div>
     </form >
   )
+};
+
+// HELPER: Bulk Review UI
+const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
+  return (
+    <div className="flex flex-col h-full max-h-[80vh]">
+      <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#0D1117] z-10 py-2">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          <Upload size={18} className="text-primary" />
+          Review Import ({items.length})
+        </h3>
+        <span className="text-xs text-muted">Check details before importing</span>
+      </div>
+
+      <div className="overflow-y-auto flex-1 pr-2 space-y-3">
+        {items.map((item, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-3 group relative">
+            <button
+              onClick={() => onRemove(idx)}
+              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-red-500/20 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              title="Remove Item"
+            >
+              <Trash2 size={14} />
+            </button>
+
+            <div className="flex gap-2">
+              <input
+                type="date"
+                className="bg-transparent border-b border-white/10 text-xs text-muted py-1 w-24 focus:outline-none focus:border-primary"
+                value={item.date || ''}
+                onChange={(e) => onUpdate(idx, 'date', e.target.value)}
+              />
+              <input
+                type="text"
+                className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
+                placeholder="Merchant Name"
+                value={item.name}
+                onChange={(e) => onUpdate(idx, 'name', e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Expense/Income Toggle */}
+              <button
+                onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none",
+                  item.isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-400"
+                )}
+              >
+                {item.isIncome ? 'Income' : 'Expense'}
+              </button>
+
+              {/* Category Select (Simplified) */}
+              <select
+                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none"
+                value={item.category}
+                onChange={(e) => onUpdate(idx, 'category', e.target.value)}
+              >
+                {(item.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => (
+                  <option key={c} value={c} className="bg-[#0D1117]">{c}</option>
+                ))}
+              </select>
+
+              {/* Amount */}
+              <div className="relative w-24">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
+                <input
+                  type="number"
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none"
+                  value={item.amount}
+                  onChange={(e) => onUpdate(idx, 'amount', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-4 mt-2 border-t border-white/10 flex gap-3 sticky bottom-0 bg-[#0D1117] z-10">
+        <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button className="flex-1 bg-primary text-black hover:bg-primary/90" onClick={onImport}>
+          Import All ({items.length})
+        </Button>
+      </div>
+    </div>
+  );
 };
 
