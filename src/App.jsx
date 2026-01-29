@@ -5,7 +5,7 @@ import {
 import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
-  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera
+  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -312,6 +312,8 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   // One-time Legacy Data Wipe (Per User Request)
   useEffect(() => {
     const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
@@ -331,14 +333,15 @@ export default function App() {
         }
       }
     }
+    setIsLoaded(true);
   }, []);
 
   // Save Data
   useEffect(() => {
-    if (localStorage.getItem('hasWipedLegacyData_v2')) {
+    if (isLoaded && localStorage.getItem('hasWipedLegacyData_v2')) {
       localStorage.setItem('financeData', JSON.stringify(data));
     }
-  }, [data]);
+  }, [data, isLoaded]);
 
   // Persistence & Migration (Add IDs if missing)
   // Migration / ID Check (runs on load/change) - Keep mostly for ID generation ensuring
@@ -458,6 +461,7 @@ export default function App() {
 
       return {
         name: monthName.slice(0, 3),
+        year: selectedYear,
         income: inc,
         expenses: exp,
         hasData: shouldShow
@@ -482,32 +486,35 @@ export default function App() {
   };
 
   const handleSave = (item) => {
-    const newData = { ...data };
-    const type = item.isIncome ? 'income' : 'expenses';
     // Remove transient UI flags
     const cleanItem = { ...item };
+    const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
 
     // Ensure ID
     if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
 
-    if (editingItem) {
-      // Find and update by ID in the correct array
-      // Note: Type might have changed (Expense -> Income), so we need to handle moving
-      const originalType = editingItem.type; // 'income' or 'expenses' (passed from modal open)
+    setData(prev => {
+      const newData = { ...prev };
 
-      if (originalType === type) {
-        // Same list update
-        newData[type] = newData[type].map(x => x.id === cleanItem.id ? cleanItem : x);
+      if (editingItem) {
+        const originalType = editingItem.type; // 'income' or 'expenses' (passed from modal open)
+
+        if (originalType === type) {
+          // Same list update
+          newData[type] = prev[type].map(x => x.id === cleanItem.id ? cleanItem : x);
+        } else {
+          // Move logic: remove from old, add to new
+          newData[originalType] = prev[originalType].filter(x => x.id !== cleanItem.id);
+          newData[type] = [...prev[type], cleanItem];
+        }
       } else {
-        // Move logic: remove from old, add to new
-        newData[originalType] = newData[originalType].filter(x => x.id !== cleanItem.id);
-        newData[type].push(cleanItem);
+        // Add new
+        newData[type] = [...prev[type], cleanItem];
       }
-    } else {
-      newData[type].push(cleanItem);
-    }
+      return newData;
+    });
 
     // Update Intelligence Cache with User's Truth
     if (cleanItem.name && cleanItem.name.length >= 3) {
@@ -515,15 +522,15 @@ export default function App() {
       cache[cleanItem.name.toLowerCase().trim()] = {
         category: cleanItem.category,
         frequency: cleanItem.frequency,
-        isIncome: cleanItem.isIncome,
+        isIncome: type === 'income',
         type: cleanItem.type
       };
       localStorage.setItem('intelligenceCache', JSON.stringify(cache));
     }
 
-    setData(newData);
     setIsFormOpen(false);
     setEditingItem(null);
+
   };
 
   const openAddModal = () => {
@@ -613,16 +620,20 @@ export default function App() {
               </Button>
             </div>
           </div>
-          <div className="h-[300px] w-full">
+          <div className="h-[300px] w-full" style={{ outline: 'none' }}>
+            <style>{`
+              .recharts-wrapper { outline: none !important; }
+              .recharts-surface:focus { outline: none !important; }
+            `}</style>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                key={selectedMonth}
+                className="outline-none focus:outline-none"
                 data={financials.yearlyData}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                 onClick={(e) => {
                   if (e) {
                     if (e.activeTooltipIndex !== undefined) {
-                      setSelectedMonth(e.activeTooltipIndex);
+                      setSelectedMonth(Number(e.activeTooltipIndex));
                     } else if (e.activeLabel) {
                       // Fallback: find index by name
                       const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
@@ -637,9 +648,26 @@ export default function App() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
-                  contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
-                  itemStyle={{ color: '#E5E7EB' }}
-                  formatter={(value) => [`$${Number(value).toFixed(2)}`, ""]}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
+                          <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
+                          {payload.map((entry, index) => (
+                            <div key={index} className="flex justify-between gap-4 text-sm">
+                              <span style={{ color: entry.fill }}>
+                                {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
+                              </span>
+                              <span className="font-bold text-gray-200">
+                                ${Number(entry.value).toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
                 />
                 <ReferenceLine
                   y={financials.totalRecurringExpenses}
@@ -648,9 +676,11 @@ export default function App() {
                   label={{ value: "Recurring", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
                 />
                 <Bar
+                  key={`income-${selectedMonth}`}
                   dataKey="income"
                   radius={[4, 4, 0, 0]}
                   barSize={30}
+                  isAnimationActive={false}
                 >
                   {financials.yearlyData.map((entry, index) => {
                     const today = new Date();
@@ -675,9 +705,11 @@ export default function App() {
                   })}
                 </Bar>
                 <Bar
+                  key={`expenses-${selectedMonth}`}
                   dataKey="expenses"
                   radius={[4, 4, 0, 0]}
                   barSize={30}
+                  isAnimationActive={false}
                 >
                   {financials.yearlyData.map((entry, index) => {
                     const today = new Date();
@@ -753,6 +785,7 @@ export default function App() {
   );
 
   // --- Virtual Transactions Helper ---
+
   const getMonthlyItems = useMemo(() => {
     const today = new Date();
     const currentMonthIndex = today.getMonth();
@@ -908,6 +941,9 @@ export default function App() {
     );
   };
 
+
+
+
   return (
     <div className="min-h-screen bg-background text-text flex flex-col relative selection:bg-primary/20">
       {/* Sidebar */}
@@ -988,6 +1024,15 @@ export default function App() {
               initialData={editingItem}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
+              onOpenSettings={() => {
+                setIsFormOpen(false); // Close form to show settings... or maybe keep form open?
+                // Actually, ChatWindow settings is inside the Chat. We might need a global way to open settings.
+                // For now, let's just use the existing state in ChatWindow if it were lifted, ALAS it is not.
+                // We'll instruct user to open AI Chat > Settings.
+                // BETTER: Lift 'showSettings' or pass a handler if possible. 
+                // Since ChatWindow handles its own state, let's just open the AI Chat window so they see it.
+                setIsChatOpen(true);
+              }}
             />
           </div>
         </div>
@@ -996,37 +1041,43 @@ export default function App() {
   );
 }
 
+
+
 // --- Sub-components ---
 
-const NavTab = ({ label, active, onClick, icon: Icon }) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
-      active
-        ? "bg-white text-black shadow-sm"
-        : "text-muted hover:text-white hover:bg-white/5"
-    )}
-  >
-    {Icon && <Icon size={16} />}
-    {label}
-  </button>
-);
+function NavTab({ label, active, onClick, icon: Icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+        active
+          ? "bg-white text-black shadow-sm"
+          : "text-muted hover:text-white hover:bg-white/5"
+      )}
+    >
+      {Icon && <Icon size={16} />}
+      {label}
+    </button>
+  );
+}
 
-const MobileNavItem = ({ icon: Icon, label, active, onClick }) => (
-  <button
-    onClick={onClick}
-    className={cn(
-      "flex-1 flex flex-col items-center justify-center gap-1 h-full",
-      active ? "text-primary" : "text-muted hover:text-text"
-    )}
-  >
-    <Icon size={20} />
-    <span className="text-[10px] font-medium">{label}</span>
-  </button>
-);
+function MobileNavItem({ icon: Icon, label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex-1 flex flex-col items-center justify-center gap-1 h-full",
+        active ? "text-primary" : "text-muted hover:text-text"
+      )}
+    >
+      <Icon size={20} />
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+}
 
-const TransactionForm = ({ initialData, onSave, onCancel }) => {
+function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
       name: '',
@@ -1057,11 +1108,18 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
       const lowerName = formData.name.toLowerCase().trim();
 
       // 1. Check Cache
-      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{ }');
       if (cache[lowerName]) {
         console.log("Memory Hit:", lowerName);
         // Preserve current date if set, otherwise don't overwrite it with old cache data (cache usually has no date)
         const { date, ...rest } = cache[lowerName];
+
+        // Validate cache data
+        if (!rest.category || (rest.isIncome === undefined)) {
+          // Invalid cache, skip it
+          return;
+        }
+
         setFormData(prev => ({ ...prev, ...rest }));
         triggerAiFlash();
         return;
@@ -1069,7 +1127,11 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
 
       // 2. Ask Gemini
       const apiKey = localStorage.getItem('geminiApiKey');
-      if (!apiKey) return; // Cannot use AI without key
+      if (!apiKey) {
+        // Silent fail or maybe subtle indicator?
+        // Since this is auto-running while typing, we shouldn't alert repeatedly.
+        return;
+      }
 
       setIsAiLoading(true);
       try {
@@ -1077,20 +1139,20 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
-          Classify transaction: "${formData.name}"
-          
-          Context lists:
-          - Income Categories: ${INCOME_CATEGORIES.join(', ')}
-          - Expense Categories: ${EXPENSE_CATEGORIES.join(', ')}
-          
-          Return STRICT JSON only:
-          { 
-            "category": "String (must be one of the lists above)", 
-            "frequency": "String (one-time, weekly, biweekly, monthly, annual)", 
-            "isIncome": boolean, 
-            "type": "String (variable, bill, subscription) - only for expenses" 
+    Classify transaction: "${formData.name}"
+
+    Context lists:
+    - Income Categories: ${INCOME_CATEGORIES.join(', ')}
+    - Expense Categories: ${EXPENSE_CATEGORIES.join(', ')}
+
+    Return STRICT JSON only:
+    {
+      "category": "String (must be one of the lists above)",
+    "frequency": "String (one-time, weekly, biweekly, monthly, annual)",
+    "isIncome": boolean,
+    "type": "String (variable, bill, subscription) - only for expenses" 
           }
-        `;
+    `;
 
         const result = await model.generateContent(prompt);
         const text = result.response.text();
@@ -1112,6 +1174,10 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
             isIncome: prediction.isIncome,
             type: prediction.type || 'variable'
           };
+
+          if (!suggestion.category) {
+            suggestion.category = suggestion.isIncome ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
+          }
 
           setFormData(prev => ({ ...prev, ...suggestion }));
           triggerAiFlash();
@@ -1161,7 +1227,9 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
 
     const apiKey = localStorage.getItem('geminiApiKey');
     if (!apiKey) {
-      alert("Please add your Gemini API Key in settings to use Receipt Scanning.");
+      if (window.confirm("Gemini API Key is missing. Open AI Assistant to configure it?")) {
+        onOpenSettings();
+      }
       return;
     }
 
@@ -1176,14 +1244,14 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
-          Analyze this receipt image. Extract:
-          - Merchant Name (name)
-          - Date (date) in YYYY-MM-DD format
-          - Total Amount (amount)
-          - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
-          
-          Return strict JSON: { "name": string, "date": string, "amount": number, "category": string }
-        `;
+    Analyze this receipt image. Extract:
+    - Merchant Name (name)
+    - Date (date) in YYYY-MM-DD format
+    - Total Amount (amount)
+    - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
+
+    Return strict JSON: {"name": string, "date": string, "amount": number, "category": string }
+    `;
 
         const result = await model.generateContent([
           prompt,
@@ -1220,6 +1288,8 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
       alert("Failed to scan receipt. Please try again.");
     } finally {
       setIsAiLoading(false);
+      // Reset file input value so same file can be selected again if needed
+      e.target.value = '';
     }
   };
 
@@ -1253,8 +1323,9 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
         <div className="relative">
           <input
             type="file"
+            // Remove 'capture' to avoid potential desktop permission confusion unless specifically desired
+            // capture="environment" 
             accept="image/*,application/pdf"
-            capture="environment"
             className="hidden"
             id="receipt-upload"
             onChange={handleFileUpload}
@@ -1267,7 +1338,7 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
             )}
             title="Scan Receipt"
           >
-            <Camera size={20} />
+            {isAiLoading ? <Loader2 size={20} className="animate-spin text-primary" /> : <Camera size={20} />}
             <span className="text-sm font-medium hidden sm:inline">{isAiLoading ? 'Scanning...' : 'Scan'}</span>
           </label>
         </div>
@@ -1284,11 +1355,16 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
             placeholder="Netflix, Salary, etc."
             autoFocus
           />
-          {isAiLoading && (
-            <div className="absolute right-3 top-[34px] animate-pulse text-primary">
-              <Bot size={16} />
-            </div>
-          )}
+          {/* Visual Indicator for AI Status */}
+          <div className="absolute right-3 top-[34px] flex items-center pointer-events-none">
+            {isAiLoading ? (
+              <Loader2 size={16} className="animate-spin text-primary" />
+            ) : !localStorage.getItem('geminiApiKey') ? (
+              <span className="text-[10px] text-muted opacity-50">AI Off</span>
+            ) : (
+              <Bot size={16} className="text-primary/20" />
+            )}
+          </div>
         </div>
         <Input
           label="Date"
@@ -1338,4 +1414,5 @@ const TransactionForm = ({ initialData, onSave, onCancel }) => {
       </div>
     </form >
   )
-}
+};
+
