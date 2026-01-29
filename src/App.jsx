@@ -200,7 +200,15 @@ const ChatWindow = ({ isOpen, onClose, data, financials }) => {
           <div>
             <h3 className="font-bold text-sm">Gemini Assistant</h3>
             <p className="text-[10px] text-muted flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
+              {localStorage.getItem('geminiApiKey') ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Offline (Missing Key)
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -499,7 +507,7 @@ export default function App() {
       const newData = { ...prev };
 
       if (editingItem) {
-        const originalType = editingItem.type; // 'income' or 'expenses' (passed from modal open)
+        const originalType = editingItem.isIncome ? 'income' : 'expenses';
 
         if (originalType === type) {
           // Same list update
@@ -816,8 +824,8 @@ export default function App() {
         ...item,
         date: virtualDate.toISOString().split('T')[0],
         _type: type,
-        isVirtual: true,
-        id: `virtual-${item.id}-${selectedMonth}-${selectedYear}` // Unique ID for key
+        isVirtual: true
+        // id: item.id - Keep original ID for editing/deletion to work
       };
     });
 
@@ -920,16 +928,15 @@ export default function App() {
                       {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {!item.isVirtual && (
-                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => handleDelete(item._type, item.id)} className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(item._type, item.id)} className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
                     </td>
                   </tr>
                 ))}
