@@ -731,14 +731,22 @@ export default function App() {
       const encrypted = await encryptData(data, password);
       setSyncStatus('Uploading...');
 
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('sync_store')
         .upsert({
           id: user.id,
-          encrypted_blob: JSON.stringify(encrypted)
+          encrypted_blob: JSON.stringify(encrypted),
+          updated_at: now
         });
 
       if (error) throw error;
+
+      // Update local freshness tracker
+      const backupDate = new Date(now);
+      setLastBackupTime(backupDate);
+      localStorage.setItem('lastBackupTime', now);
+
       setSyncStatus('Success: Backup Complete');
       setTimeout(() => setSyncStatus(''), 3000);
     } catch (err) {
@@ -753,7 +761,7 @@ export default function App() {
     try {
       const { data: rows, error } = await supabase
         .from('sync_store')
-        .select('encrypted_blob')
+        .select('encrypted_blob, updated_at')
         .eq('id', user.id)
         .single();
 
@@ -765,6 +773,13 @@ export default function App() {
 
       setData(decrypted);
       localStorage.setItem('financeData', JSON.stringify(decrypted));
+
+      // Sync the freshness badge from server timestamp
+      if (rows.updated_at) {
+        const serverTime = new Date(rows.updated_at);
+        setLastBackupTime(serverTime);
+        localStorage.setItem('lastBackupTime', rows.updated_at);
+      }
 
       setSyncStatus('Success: Data Restored');
       setTimeout(() => setSyncStatus(''), 3000);
@@ -786,9 +801,6 @@ export default function App() {
       return;
     }
     await handleSync(syncPassword);
-    const now = new Date();
-    setLastBackupTime(now);
-    localStorage.setItem('lastBackupTime', now.toISOString());
   };
 
   // Quick Restore (for Sync Card)
