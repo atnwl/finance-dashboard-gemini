@@ -1161,9 +1161,10 @@ export default function App() {
   // --- Render Functions ---
 
   const renderContent = () => {
-    if (activeTab === 'dashboard') return renderDashboard();
+    const isSearchActive = searchQuery.length >= 2;
+    if (!isSearchActive && activeTab === 'dashboard') return renderDashboard();
 
-    if (activeTab === 'statements') {
+    if (!isSearchActive && activeTab === 'statements') {
       const grouped = (data.statements || []).reduce((acc, s) => {
         acc[s.provider] = acc[s.provider] || [];
         acc[s.provider].push(s);
@@ -1208,7 +1209,7 @@ export default function App() {
 
     // Transactions / Subscriptions / Search Views
     const isSubView = activeTab === 'subscriptions';
-    const isSearchActive = searchQuery.length >= 2;
+    // isSearchActive defined at top
 
     const searchItems = isSearchActive ? [
       ...data.income.map(i => ({ ...i, _type: 'income' })),
@@ -1600,6 +1601,7 @@ export default function App() {
               initialData={editingItem}
               data={data}
               setPendingStatement={setPendingStatement}
+              pendingStatement={pendingStatement}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
@@ -1655,7 +1657,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, onSave, onCancel, onOpenSettings }) {
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
       name: '',
