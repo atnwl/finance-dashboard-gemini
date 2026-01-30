@@ -30,8 +30,8 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Global Entry / Travel', 'Groceries', 'Health', 'Housing',
-  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Transfer', 'Transport', 'Utilities', 'Other'
+  'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Groceries', 'Health', 'Housing',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Transport', 'Travel', 'Utilities', 'Other'
 ];
 
 const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
@@ -40,6 +40,7 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
+    'Apps/Software': '💻', 'Fees': '💸', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
@@ -1086,7 +1087,9 @@ export default function App() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={Object.entries(financials.byCategory).map(([name, value]) => ({ name, value }))}
+                  data={Object.entries(financials.byCategory)
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -1111,13 +1114,17 @@ export default function App() {
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-            {Object.entries(financials.byCategory).map(([name, value], idx) => (
-              <div key={name} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                <span className="text-muted truncate">{name}</span>
-                <span className="ml-auto text-white font-medium">{Math.round(value / financials.totalExpenses * 100)}%</span>
-              </div>
-            ))}
+            {Object.entries(financials.byCategory)
+              .sort(([, a], [, b]) => b - a)
+              .map(([name, value], idx) => (
+                <div key={name} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <span className="text-muted truncate">{name}</span>
+                  <span className="ml-auto text-white font-medium">
+                    ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 0 })} ({Math.round(value / financials.totalExpenses * 100)}%)
+                  </span>
+                </div>
+              ))}
           </div>
         </Card>
       </div>
@@ -2102,16 +2109,29 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               <button
                 onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
                 className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none",
+                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none min-w-[64px] text-center",
                   item.isIncome ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
                 )}
               >
                 {item.isIncome ? 'Income' : 'Expense'}
               </button>
 
+              {/* Expense Type (Subscription Support) */}
+              {!item.isIncome && (
+                <select
+                  className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-gray-400 focus:outline-none uppercase font-bold"
+                  value={item.type || 'variable'}
+                  onChange={(e) => onUpdate(idx, 'type', e.target.value)}
+                >
+                  <option value="variable">Var</option>
+                  <option value="bill">Bill</option>
+                  <option value="subscription">Sub</option>
+                </select>
+              )}
+
               {/* Category Select (Simplified) */}
               <select
-                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none"
+                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none truncate"
                 value={item.category}
                 onChange={(e) => onUpdate(idx, 'category', e.target.value)}
               >
@@ -2121,11 +2141,12 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               </select>
 
               {/* Amount */}
-              <div className="relative w-24">
+              <div className="relative w-32">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
                 <input
                   type="number"
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none"
+                  step="0.01"
+                  className="w-full bg-white/10 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none focus:border-primary"
                   value={item.amount}
                   onChange={(e) => onUpdate(idx, 'amount', e.target.value)}
                 />
