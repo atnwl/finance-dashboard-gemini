@@ -32,7 +32,7 @@ const INCOME_CATEGORIES = [
 const EXPENSE_CATEGORIES = [
   'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
   'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
-  'Student Loans', 'Buy Now Pay Later', 'Other'
+  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
@@ -44,7 +44,7 @@ const getCategoryIcon = (category) => {
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
-    'Student Loans': '🎓', 'Buy Now Pay Later': '💳',
+    'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
@@ -187,8 +187,9 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
 
       setMessages(prev => [...prev, { role: 'model', text }]);
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'model', text: "Error: Could not connect to Gemini. Please check your API Key." }]);
+      console.error("Chat Error:", error);
+      const msg = error.message || "Unknown error";
+      setMessages(prev => [...prev, { role: 'model', text: `Error: Could not connect to Gemini (${msg}). Please check your API Key and network.` }]);
     } finally {
       setIsLoading(false);
     }
@@ -1448,11 +1449,12 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
     - Amount (amount) - number only (absolute value)
+    - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
     
     Return STRICT JSON Array: 
     [
-      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "category": "Food"},
+      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
       ...
     ]
     `;
@@ -1504,7 +1506,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             setBulkItems(items.map(i => ({
               ...i,
               id: Math.random().toString(36).substr(2, 9),
-              isIncome: false, // Default to expense for bulk
+              isIncome: i.isIncome ?? false,
               type: 'variable',
               frequency: 'one-time'
             })));
