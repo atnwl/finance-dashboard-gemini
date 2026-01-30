@@ -1210,6 +1210,16 @@ export default function App() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="font-semibold text-lg">Accounts & Statements</h2>
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setIsFormOpen(true);
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors"
+            >
+              <Upload size={14} className="mr-2" />
+              Upload Statement
+            </button>
           </div>
           {sortedAccounts.length === 0 ? (
             <div className="text-center py-12 text-muted">No statements uploaded yet.</div>
@@ -1990,7 +2000,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     }
     
     IMPORTANT for metadata:
-    - provider: The bank/card issuer name (Chase, Fidelity, Amex, etc.). For Amazon cards, use "Amazon Chase" or similar.
+    - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
     - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
     - statementEndDate: Look for "Opening/Closing Date", "Statement Period", or "Closing Date".
       Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
