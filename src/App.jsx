@@ -986,7 +986,12 @@ export default function App() {
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
                   content={({ active, payload, label }) => {
@@ -1852,7 +1857,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
               type: i.type || 'variable',
-              frequency: 'one-time'
+              frequency: (i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time'
             })));
           }
 
