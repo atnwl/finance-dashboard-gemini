@@ -30,16 +30,17 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Global Entry / Travel', 'Groceries', 'Health', 'Housing',
-  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Transfer', 'Transport', 'Utilities', 'Other'
+  'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Groceries', 'Health', 'Housing',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Transport', 'Travel', 'Utilities', 'Other'
 ];
 
-const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
+const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
 
 const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
+    'Apps/Software': '💻', 'Fees': '💸', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
@@ -64,7 +65,7 @@ const Button = ({ children, variant = 'primary', className, ...props }) => {
     primary: "bg-primary text-black hover:bg-primary/90 shadow-lg shadow-primary/20",
     outline: "border border-border text-muted hover:text-text hover:border-gray-600",
     ghost: "text-muted hover:text-text hover:bg-white/5",
-    danger: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
+    danger: "bg-danger/10 text-danger hover:bg-danger/20",
   };
   return (
     <button className={cn(baseStyles, variants[variant], className)} {...props}>
@@ -271,7 +272,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center bg-card rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50 flex items-center justify-center">
             <Sparkles size={16} className="text-black fill-current" />
           </div>
           <div>
@@ -279,11 +280,11 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
             <p className="text-[10px] text-muted flex items-center gap-1">
               {localStorage.getItem('geminiApiKey') ? (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Online
                 </>
               ) : (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Offline (Missing Key)
+                  <span className="w-1.5 h-1.5 rounded-full bg-danger" /> Offline (Missing Key)
                 </>
               )}
             </p>
@@ -339,14 +340,14 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-muted bg-black/20 p-2 rounded-lg">
                   <span className="truncate max-w-[150px]">{user.email || 'Logged In'}</span>
-                  <button onClick={onLogout} className="text-red-400 hover:text-red-300 flex items-center gap-1">
+                  <button onClick={onLogout} className="text-danger hover:text-danger/80 flex items-center gap-1">
                     <LogOut size={10} /> Logout
                   </button>
                 </div>
 
                 <p className="text-[10px] text-muted leading-tight">
                   Enter a <strong>Sync Password</strong>. This encrypts your data before upload.
-                  <span className="text-red-400 block mt-1">If you lose this password, your cloud data is lost forever.</span>
+                  <span className="text-danger block mt-1">If you lose this password, your cloud data is lost forever.</span>
                 </p>
 
                 <Input
@@ -376,9 +377,9 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
                 {syncStatus && (
                   <div className={cn("text-xs p-2 rounded border",
-                    syncStatus.includes('Success') ? "bg-green-500/10 border-green-500/20 text-green-400" :
-                      syncStatus.includes('Error') ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                        "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                    syncStatus.includes('Success') ? "bg-primary/10 border-primary/20 text-primary" :
+                      syncStatus.includes('Error') ? "bg-danger/10 border-danger/20 text-danger" :
+                        "bg-secondary/10 border-secondary/20 text-secondary"
                   )}>
                     {syncStatus}
                   </div>
@@ -473,6 +474,16 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
+
+  // User Menu State
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [syncPassword, setSyncPassword] = useState('');
+  const [lastBackupTime, setLastBackupTime] = useState(() => {
+    const saved = localStorage.getItem('lastBackupTime');
+    return saved ? new Date(saved) : null;
+  });
+  const [showDevMenu, setShowDevMenu] = useState(false);
+  const userMenuRef = useRef(null);
 
   // Auth State Listener
   useEffect(() => {
@@ -706,7 +717,12 @@ export default function App() {
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin }
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          prompt: 'consent'  // Force GitHub to show auth screen (allows switching accounts)
+        }
+      }
     });
   };
 
@@ -721,14 +737,22 @@ export default function App() {
       const encrypted = await encryptData(data, password);
       setSyncStatus('Uploading...');
 
+      const now = new Date().toISOString();
       const { error } = await supabase
         .from('sync_store')
         .upsert({
           id: user.id,
-          encrypted_blob: JSON.stringify(encrypted)
+          encrypted_blob: JSON.stringify(encrypted),
+          updated_at: now
         });
 
       if (error) throw error;
+
+      // Update local freshness tracker
+      const backupDate = new Date(now);
+      setLastBackupTime(backupDate);
+      localStorage.setItem('lastBackupTime', now);
+
       setSyncStatus('Success: Backup Complete');
       setTimeout(() => setSyncStatus(''), 3000);
     } catch (err) {
@@ -743,7 +767,7 @@ export default function App() {
     try {
       const { data: rows, error } = await supabase
         .from('sync_store')
-        .select('encrypted_blob')
+        .select('encrypted_blob, updated_at')
         .eq('id', user.id)
         .single();
 
@@ -756,6 +780,13 @@ export default function App() {
       setData(decrypted);
       localStorage.setItem('financeData', JSON.stringify(decrypted));
 
+      // Sync the freshness badge from server timestamp
+      if (rows.updated_at) {
+        const serverTime = new Date(rows.updated_at);
+        setLastBackupTime(serverTime);
+        localStorage.setItem('lastBackupTime', rows.updated_at);
+      }
+
       setSyncStatus('Success: Data Restored');
       setTimeout(() => setSyncStatus(''), 3000);
       window.location.reload();
@@ -764,6 +795,57 @@ export default function App() {
       setSyncStatus('Error: ' + err.message);
     }
   };
+
+  // Quick Backup (for Sync Card)
+  const handleQuickBackup = async () => {
+    if (!user) {
+      setSyncStatus('Login required');
+      return;
+    }
+    if (!syncPassword) {
+      setSyncStatus('Enter password first');
+      return;
+    }
+    await handleSync(syncPassword);
+  };
+
+  // Quick Restore (for Sync Card)
+  const handleQuickRestore = async () => {
+    if (!user) {
+      setSyncStatus('Login required');
+      return;
+    }
+    if (!syncPassword) {
+      setSyncStatus('Enter password first');
+      return;
+    }
+    await handleRestore(syncPassword);
+  };
+
+  // Delete All Transactions
+  const handleDeleteAllData = () => {
+    if (window.confirm('⚠️ Are you sure you want to delete ALL transactions?\\n\\nThis clears local data only. You can still restore from your cloud backup.')) {
+      setData({ income: [], expenses: [] });
+      localStorage.setItem('financeData', JSON.stringify({ income: [], expenses: [] }));
+      setShowUserMenu(false);
+      setSyncStatus('All transactions deleted');
+      setTimeout(() => setSyncStatus(''), 3000);
+    }
+  };
+
+  // Click-away handler for user menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+        setShowDevMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -791,12 +873,12 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-blue-500/10">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Excl. CC Payments
           </div>
@@ -807,7 +889,7 @@ export default function App() {
             <Wallet size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Net Cash Flow</h3>
-          <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-red-400")}>
+          <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-danger")}>
             ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
@@ -831,15 +913,15 @@ export default function App() {
 
       {/* Secondary / Credit & Debt Tier */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-amber-500/30 transition-colors">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
           <div>
             <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
-            <p className="text-2xl font-bold text-amber-400/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
         </div>
 
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-blue-500/30 transition-colors">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
           <div>
             <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
             <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
@@ -874,8 +956,8 @@ export default function App() {
               >
                 {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
-              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-8 h-8 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
-                <Plus size={18} />
+              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
+                <Plus size={22} />
               </Button>
             </div>
           </div>
@@ -930,9 +1012,9 @@ export default function App() {
                 />
                 <ReferenceLine
                   y={financials.totalRecurringExpenses}
-                  stroke="#F59E0B"
+                  stroke="#D4A373"
                   strokeDasharray="3 3"
-                  label={{ value: "Recurring", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
+                  label={{ value: "Budget", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
                 />
                 <Bar
                   key={`income-${selectedMonth}`}
@@ -955,7 +1037,7 @@ export default function App() {
                     return (
                       <Cell
                         key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#4ADE80" : "#22c55e"} // Past=Dark, Current=Bright, Future=MutedGreen
+                        fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
                         stroke={isSelected ? "#ffffff" : "none"}
                         strokeWidth={isSelected ? 2 : 0}
                         fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -984,7 +1066,7 @@ export default function App() {
                     return (
                       <Cell
                         key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#3B82F6" : "#2563eb"} // Past=Dark, Current=Bright, Future=MutedBlue
+                        fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
                         stroke={isSelected ? "#ffffff" : "none"}
                         strokeWidth={isSelected ? 2 : 0}
                         fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1005,7 +1087,9 @@ export default function App() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={Object.entries(financials.byCategory).map(([name, value]) => ({ name, value }))}
+                  data={Object.entries(financials.byCategory)
+                    .map(([name, value]) => ({ name, value }))
+                    .sort((a, b) => b.value - a.value)}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -1029,14 +1113,25 @@ export default function App() {
               <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-            {Object.entries(financials.byCategory).map(([name, value], idx) => (
-              <div key={name} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                <span className="text-muted truncate">{name}</span>
-                <span className="ml-auto text-white font-medium">{Math.round(value / financials.totalExpenses * 100)}%</span>
-              </div>
-            ))}
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            {Object.entries(financials.byCategory)
+              .sort(([, a], [, b]) => b - a)
+              .map(([name, value], idx) => (
+                <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <span className="text-muted truncate flex-1">{name}</span>
+                  <span className="text-white font-medium shrink-0">
+                    {Math.round(value / financials.totalExpenses * 100)}%
+                  </span>
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                    <p className="text-[10px] text-muted mb-0.5">{name}</p>
+                    <p className="text-sm font-bold text-white">
+                      ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+              ))}
           </div>
         </Card>
       </div>
@@ -1157,7 +1252,7 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
-                          item._type === 'income' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
                         )}>
                           {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
                         </div>
@@ -1179,7 +1274,7 @@ export default function App() {
                         {item.category}
                       </span>
                     </td>
-                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-emerald-400" : "text-text")}>
+                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-primary" : "text-text")}>
                       {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -1190,7 +1285,7 @@ export default function App() {
                             setEditingItem(item);
                             setIsFormOpen(true);
                           }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors"
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-secondary transition-colors"
                         >
                           <Edit2 size={14} />
                         </button>
@@ -1199,7 +1294,7 @@ export default function App() {
                             e.stopPropagation();
                             handleDelete(item._type, item.id);
                           }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors"
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-danger transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1248,9 +1343,137 @@ export default function App() {
             </div>
             <button className="p-2 text-muted hover:text-white relative">
               <Bell size={20} />
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></div>
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-danger rounded-full border border-background"></div>
             </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border border-white/10"></div>
+
+            {/* User Avatar & Sync Card Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50 border border-white/10 hover:ring-2 hover:ring-primary/50 transition-all"
+              />
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                  {/* User Info Row */}
+                  <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50" />
+                      <div>
+                        <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'Guest'}</p>
+                        <p className="text-xs text-muted">{user ? 'Logged In' : 'Not Logged In'}</p>
+                      </div>
+                    </div>
+                    {lastBackupTime && (
+                      <div className={cn(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        (Date.now() - lastBackupTime.getTime()) < 86400000 ? "bg-primary/20 text-primary" :
+                          (Date.now() - lastBackupTime.getTime()) < 604800000 ? "bg-warning/20 text-warning" :
+                            "bg-danger/20 text-danger"
+                      )}>
+                        {(Date.now() - lastBackupTime.getTime()) < 60000 ? 'Just now' :
+                          (Date.now() - lastBackupTime.getTime()) < 3600000 ? `${Math.floor((Date.now() - lastBackupTime.getTime()) / 60000)}m ago` :
+                            (Date.now() - lastBackupTime.getTime()) < 86400000 ? `${Math.floor((Date.now() - lastBackupTime.getTime()) / 3600000)}h ago` :
+                              `${Math.floor((Date.now() - lastBackupTime.getTime()) / 86400000)}d ago`}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sync Actions */}
+                  <div className="p-3">
+                    {user ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <button
+                            onClick={handleQuickBackup}
+                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all"
+                          >
+                            <Cloud size={20} className="text-primary" />
+                            <span className="text-xs font-medium">Backup</span>
+                          </button>
+                          <button
+                            onClick={handleQuickRestore}
+                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-secondary/50 hover:bg-secondary/5 transition-all"
+                          >
+                            <Download size={20} className="text-secondary" />
+                            <span className="text-xs font-medium">Restore</span>
+                          </button>
+                        </div>
+
+                        {/* Inline Password */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 relative">
+                            <input
+                              type="password"
+                              placeholder="Encryption password..."
+                              value={syncPassword}
+                              onChange={(e) => setSyncPassword(e.target.value)}
+                              className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { handleLogin(); setShowUserMenu(false); }}
+                        className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 border border-border/50 rounded-lg hover:bg-white/10 transition-all"
+                      >
+                        <User size={16} className="text-primary" />
+                        <span className="text-sm font-medium">Login with GitHub to Sync</span>
+                      </button>
+                    )}
+
+                    {/* Status */}
+                    {syncStatus && (
+                      <p className={cn(
+                        "text-xs text-center py-1 rounded animate-pulse",
+                        syncStatus.includes('Success') ? "text-primary" :
+                          syncStatus.includes('Error') ? "text-danger" : "text-muted"
+                      )}>{syncStatus}</p>
+                    )}
+                  </div>
+
+                  {/* Developer Menu */}
+                  <div className="border-t border-border/50">
+                    <button
+                      onClick={() => setShowDevMenu(!showDevMenu)}
+                      className="w-full px-4 py-2 flex items-center justify-between text-xs text-muted hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Settings size={14} />
+                        Developer
+                      </span>
+                      <span className={cn("transition-transform", showDevMenu && "rotate-90")}>▸</span>
+                    </button>
+
+                    {showDevMenu && (
+                      <div className="bg-danger/5 border-t border-danger/20">
+                        <button
+                          onClick={handleDeleteAllData}
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-danger hover:bg-danger/10 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          Delete All Transactions
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Logout */}
+                  {user && (
+                    <div className="border-t border-border/50">
+                      <button
+                        onClick={() => { supabase.auth.signOut(); setUser(null); setShowUserMenu(false); }}
+                        className="w-full px-4 py-2 flex items-center gap-2 text-xs text-muted hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <LogOut size={14} />
+                        Log Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -1270,9 +1493,9 @@ export default function App() {
           <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
           <button
             onClick={openAddModal}
-            className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-4 border-4 border-background"
+            className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
           >
-            <Plus size={24} />
+            <Plus size={28} />
           </button>
           <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
           <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
@@ -1553,13 +1776,14 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     - Amount (amount) - number only (absolute value)
     - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
+    - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
     
     USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
     ${knownRules || 'No custom rules set yet.'}
 
     Return STRICT JSON Array: 
     [
-      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
+      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
       ...
     ]
     `;
@@ -1627,7 +1851,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               ...i,
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
-              type: 'variable',
+              type: i.type || 'variable',
               frequency: 'one-time'
             })));
           }
@@ -1731,7 +1955,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
+                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-primary to-primary/80 rounded-xl cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
                 aiFlash && "ring-2 ring-white scale-95",
                 isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
@@ -1844,6 +2068,52 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
   )
 };
 
+// HELPER: Formatted Amount Input for Review
+const ReviewAmountInput = ({ value, onChange }) => {
+  const [localValue, setLocalValue] = useState('');
+
+  useEffect(() => {
+    // Only update local value from parent if they are different (to avoid cursor jumps)
+    const formatted = (value === undefined || value === '') ? '' : Number(value).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    if (parseFloat(localValue.replace(/,/g, '')) !== parseFloat(value)) {
+      setLocalValue(formatted);
+    }
+  }, [value]);
+
+  const handleInputChange = (e) => {
+    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    setLocalValue(e.target.value); // Keep typing feel
+    onChange(raw);
+  };
+
+  const handleBlur = () => {
+    const num = parseFloat(localValue.replace(/,/g, ''));
+    const clean = isNaN(num) ? '0' : num.toString();
+    const formatted = (clean === '0') ? '' : Number(clean).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    setLocalValue(formatted);
+    onChange(clean);
+  };
+
+  return (
+    <div className="relative w-32">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
+      <input
+        type="text"
+        className="w-full bg-white/10 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none focus:border-primary"
+        value={localValue}
+        onChange={handleInputChange}
+        onBlur={handleBlur}
+      />
+    </div>
+  );
+};
+
 // HELPER: Bulk Review UI
 const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
   return (
@@ -1861,7 +2131,7 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
           <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-3 group relative">
             <button
               onClick={() => onRemove(idx)}
-              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-red-500/20 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-danger/20 text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-all"
               title="Remove Item"
             >
               <Trash2 size={14} />
@@ -1893,16 +2163,29 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               <button
                 onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
                 className={cn(
-                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none",
-                  item.isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-400"
+                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none min-w-[64px] text-center",
+                  item.isIncome ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
                 )}
               >
                 {item.isIncome ? 'Income' : 'Expense'}
               </button>
 
+              {/* Expense Type (Subscription Support) */}
+              {!item.isIncome && (
+                <select
+                  className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-gray-400 focus:outline-none uppercase font-bold"
+                  value={item.type || 'variable'}
+                  onChange={(e) => onUpdate(idx, 'type', e.target.value)}
+                >
+                  <option value="variable">Var</option>
+                  <option value="bill">Bill</option>
+                  <option value="subscription">Sub</option>
+                </select>
+              )}
+
               {/* Category Select (Simplified) */}
               <select
-                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none"
+                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none truncate"
                 value={item.category}
                 onChange={(e) => onUpdate(idx, 'category', e.target.value)}
               >
@@ -1912,15 +2195,10 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               </select>
 
               {/* Amount */}
-              <div className="relative w-24">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
-                <input
-                  type="number"
-                  className="w-full bg-white/5 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none"
-                  value={item.amount}
-                  onChange={(e) => onUpdate(idx, 'amount', e.target.value)}
-                />
-              </div>
+              <ReviewAmountInput
+                value={item.amount}
+                onChange={(val) => onUpdate(idx, 'amount', val)}
+              />
             </div>
           </div>
         ))}
@@ -1932,7 +2210,7 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
           Import All ({items.length})
         </Button>
       </div>
-    </div>
+    </div >
   );
 };
 
