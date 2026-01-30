@@ -1916,18 +1916,21 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       "metadata": {
         "provider": "Chase",
         "last4": "1234",
-        "statementEndDate": "2024-01-22"
+        "statementEndDate": "2026-01-24"
       },
       "transactions": [
-        {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
+        {"name": "Merchant", "date": "2026-01-15", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
         ...
       ]
     }
     
     IMPORTANT for metadata:
-    - provider: The bank/card issuer name (Chase, Fidelity, Amex, etc.)
-    - last4: Last 4 digits of the account/card number
-    - statementEndDate: The STATEMENT CLOSING DATE (period end), NOT the start date or due date
+    - provider: The bank/card issuer name (Chase, Fidelity, Amex, etc.). For Amazon cards, use "Amazon Chase" or similar.
+    - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
+    - statementEndDate: Look for "Opening/Closing Date", "Statement Period", or "Closing Date".
+      Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
+      CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
+      Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
     `;
 
           const result = await model.generateContent([
