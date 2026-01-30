@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut
+  Cloud, Upload, Download, LogOut, FileText
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -30,7 +30,7 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
+  'Alcohol', 'Amazon', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
 ];
 
@@ -40,7 +40,7 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
+    'Amazon': '📦', 'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Gas': '⛽', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
@@ -386,11 +386,13 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [data, setData] = useState({ income: [], expenses: [] });
+  const [data, setData] = useState({ income: [], expenses: [], statements: [] });
 
   // Date Filtering State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingStatement, setPendingStatement] = useState(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [user, setUser] = useState(null);
@@ -423,7 +425,7 @@ export default function App() {
     const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
     if (!hasWiped) {
       localStorage.removeItem('financeData');
-      setData({ income: [], expenses: [] }); // Reset state
+      setData({ income: [], expenses: [], statements: [] }); // Reset state
       localStorage.setItem('hasWipedLegacyData_v2', 'true');
       console.log("Legacy data wiped for fresh start.");
     } else {
@@ -431,7 +433,7 @@ export default function App() {
       const saved = localStorage.getItem('financeData');
       if (saved) {
         try {
-          setData(JSON.parse(saved));
+          setData({ income: [], expenses: [], statements: [], ...JSON.parse(saved) });
         } catch (e) {
           console.error("Failed to load data", e);
         }
@@ -1161,11 +1163,66 @@ export default function App() {
   const renderContent = () => {
     if (activeTab === 'dashboard') return renderDashboard();
 
-    // Transactions / Subscriptions Views
+    if (activeTab === 'statements') {
+      const grouped = (data.statements || []).reduce((acc, s) => {
+        acc[s.provider] = acc[s.provider] || [];
+        acc[s.provider].push(s);
+        return acc;
+      }, {});
+
+      return (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="font-semibold text-lg">Statements</h2>
+          </div>
+          {Object.keys(grouped).length === 0 ? (
+            <div className="text-center py-12 text-muted">No statements uploaded yet.</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(grouped).map(([provider, stmts]) => (
+                <Card key={provider} className="p-4 border-border/50">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{provider}</h3>
+                      {stmts[0].last4 && <p className="text-xs text-muted">Ending in ••••{stmts[0].last4}</p>}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {stmts.sort((a, b) => new Date(b.date) - new Date(a.date)).map(s => (
+                      <div key={s.id} className="flex justify-between items-center text-sm p-2 hover:bg-white/5 rounded transition-colors group">
+                        <span className="text-text">{new Date(s.date).toLocaleDateString()}</span>
+                        <span className="text-xs text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Transactions / Subscriptions / Search Views
     const isSubView = activeTab === 'subscriptions';
-    const items = isSubView
+    const isSearchActive = searchQuery.length >= 2;
+
+    const searchItems = isSearchActive ? [
+      ...data.income.map(i => ({ ...i, _type: 'income' })),
+      ...data.expenses.map(e => ({ ...e, _type: 'expenses' }))
+    ].filter(item => {
+      const q = searchQuery.toLowerCase();
+      const matchesName = item.name.toLowerCase().includes(q);
+      const matchesAmount = !isNaN(parseFloat(searchQuery)) && Math.abs(parseFloat(item.amount) - parseFloat(searchQuery)) < 0.01;
+      return matchesName || matchesAmount;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+
+    const items = isSearchActive ? searchItems : (isSubView
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => parseInt(a.date.split('-')[2]) - parseInt(b.date.split('-')[2]))
-      : getMonthlyItems;
+      : getMonthlyItems);
 
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -1191,10 +1248,15 @@ export default function App() {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <Card className="p-0 overflow-hidden border-border/50">
           <div className="p-4 border-b border-white/5 flex justify-between items-center">
-            <h2 className="font-semibold text-lg">
-              {isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
+            <h2 className="font-semibold text-lg flex items-center gap-2">
+              {isSearchActive ? (
+                <>
+                  Search Results for "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full"><X size={14} /></button>
+                </>
+              ) : isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
             </h2>
-            {!isSubView && (
+            {!isSubView && !isSearchActive && (
               <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
                 {isFutureMonth ? 'Projected' : selectedMonth === currentMonth && selectedYear === currentYear ? 'Current' : 'Historic'}
               </span>
@@ -1312,6 +1374,7 @@ export default function App() {
             <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
             <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
             <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
             <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
@@ -1320,6 +1383,8 @@ export default function App() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
               <input
                 placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-card/50 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary h-9 transition-all"
               />
             </div>
@@ -1504,6 +1569,7 @@ export default function App() {
             <Plus size={28} />
           </button>
           <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
           <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
         </div>
       </div>
@@ -1796,11 +1862,18 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
     ${knownRules || 'No custom rules set yet.'}
 
-    Return STRICT JSON Array: 
-    [
-      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
-      ...
-    ]
+    Return STRICT JSON Object: 
+    {
+      "metadata": {
+        "provider": "Chase", 
+        "last4": "1234", 
+        "statementDate": "2024-01-01" 
+      },
+      "transactions": [
+        {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
+        ...
+      ]
+    }
     `;
 
           const result = await model.generateContent([
@@ -1815,7 +1888,18 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
           const responseText = result.response.text().replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(responseText);
-          const rawItems = Array.isArray(parsed) ? parsed : [parsed];
+
+          let rawItems = [];
+          let metadata = null;
+
+          if (Array.isArray(parsed)) {
+            rawItems = parsed;
+          } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+            rawItems = parsed.transactions;
+            metadata = parsed.metadata;
+          } else {
+            rawItems = [parsed];
+          }
 
           // Apply local cache as a secondary "Guarantee" layer
           const items = rawItems.map(item => {
@@ -1863,6 +1947,11 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             triggerAiFlash();
           } else {
             // Bulk Mode
+            if (metadata) {
+              setPendingStatement(metadata);
+            } else {
+              setPendingStatement(null);
+            }
             setBulkItems(items.map(i => ({
               ...i,
               id: Math.random().toString(36).substr(2, 9),
@@ -1918,6 +2007,17 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
       onSave(item);
     });
     setBulkItems([]);
+    if (pendingStatement) {
+      const newStmt = {
+        id: Math.random().toString(36).substr(2, 9),
+        provider: pendingStatement.provider || 'Unknown Provider',
+        last4: pendingStatement.last4 || '????',
+        date: pendingStatement.statementDate || new Date().toISOString().split('T')[0],
+        uploadDate: new Date().toISOString()
+      };
+      setData(prev => ({ ...prev, statements: [...(prev.statements || []), newStmt] }));
+      setPendingStatement(null);
+    }
     if (onCancel) onCancel();
   };
 
