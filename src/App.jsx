@@ -778,20 +778,20 @@ export default function App() {
   // Renderers
   const renderDashboard = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+      {/* Primary Highlights */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingUp size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Income</h3>
           <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-primary/80 flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Active
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-blue-500/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingDown size={48} />
           </div>
@@ -799,17 +799,6 @@ export default function App() {
           <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Excl. CC Payments
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <CreditCard size={48} />
-          </div>
-          <h3 className="text-muted text-sm font-medium">CC Payments</h3>
-          <p className="text-3xl font-bold mt-2 text-amber-400">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            Internal Transfers
           </div>
         </Card>
 
@@ -826,7 +815,7 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={48} />
           </div>
@@ -835,9 +824,36 @@ export default function App() {
             ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            {data.expenses.filter(e => e.type === 'subscription').length} active services
+            {data.expenses.filter(e => e.type === 'subscription' && e.category !== 'Transfer' && e.category !== 'Credit Card Payment').length} active services
           </div>
         </Card>
+      </div>
+
+      {/* Secondary / Credit & Debt Tier */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-amber-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
+            <p className="text-2xl font-bold text-amber-400/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
+
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-blue-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
+            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
+          </div>
+          <Activity size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
+
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-purple-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Balance Transfers</h4>
+            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
+          </div>
+          <TrendingDown size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
       </div>
 
       {/* Charts Section */}
