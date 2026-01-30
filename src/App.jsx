@@ -1362,37 +1362,47 @@ export default function App() {
 
                   {/* Sync Actions */}
                   <div className="p-3">
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <button
-                        onClick={handleQuickBackup}
-                        disabled={!user}
-                        className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Cloud size={20} className="text-primary" />
-                        <span className="text-xs font-medium">Backup</span>
-                      </button>
-                      <button
-                        onClick={handleQuickRestore}
-                        disabled={!user}
-                        className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-blue-500/50 hover:bg-blue-500/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Download size={20} className="text-blue-400" />
-                        <span className="text-xs font-medium">Restore</span>
-                      </button>
-                    </div>
+                    {user ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <button
+                            onClick={handleQuickBackup}
+                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all"
+                          >
+                            <Cloud size={20} className="text-primary" />
+                            <span className="text-xs font-medium">Backup</span>
+                          </button>
+                          <button
+                            onClick={handleQuickRestore}
+                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                          >
+                            <Download size={20} className="text-blue-400" />
+                            <span className="text-xs font-medium">Restore</span>
+                          </button>
+                        </div>
 
-                    {/* Inline Password */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 relative">
-                        <input
-                          type="password"
-                          placeholder="Encryption password..."
-                          value={syncPassword}
-                          onChange={(e) => setSyncPassword(e.target.value)}
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
-                        />
-                      </div>
-                    </div>
+                        {/* Inline Password */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 relative">
+                            <input
+                              type="password"
+                              placeholder="Encryption password..."
+                              value={syncPassword}
+                              onChange={(e) => setSyncPassword(e.target.value)}
+                              className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => { handleLogin(); setShowUserMenu(false); }}
+                        className="w-full flex items-center justify-center gap-2 p-3 bg-white/5 border border-border/50 rounded-lg hover:bg-white/10 transition-all"
+                      >
+                        <User size={16} className="text-primary" />
+                        <span className="text-sm font-medium">Login with GitHub to Sync</span>
+                      </button>
+                    )}
 
                     {/* Status */}
                     {syncStatus && (
