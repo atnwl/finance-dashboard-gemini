@@ -985,7 +985,7 @@ export default function App() {
                 cursor="pointer"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
@@ -1014,7 +1014,7 @@ export default function App() {
                   y={financials.totalRecurringExpenses}
                   stroke="#D4A373"
                   strokeDasharray="3 3"
-                  label={{ value: "Budget", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
+                  label={{ value: "Recurring", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
                 />
                 <Bar
                   key={`income-${selectedMonth}`}
