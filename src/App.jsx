@@ -6,9 +6,6 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
-  DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
-  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
   Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX
 } from 'lucide-react';
 import { clsx } from 'clsx';
