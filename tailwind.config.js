@@ -11,7 +11,7 @@ export default {
         // Custom colors based on the "Paier" image
         background: '#0F1115',
         card: '#161B21',
-        primary: '#8B9B8E', // Eucalyptus muted green
+        primary: '#8DAA7F', // Moss Green (high pigment)
         secondary: '#3B82F6', // Blue accent for some elements
         text: '#E5E7EB',
         muted: '#9CA3AF',
