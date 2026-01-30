@@ -2071,15 +2071,26 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     });
     setBulkItems([]);
     if (pendingStatement) {
-      const newStmt = {
-        id: Math.random().toString(36).substr(2, 9),
-        provider: pendingStatement.provider || 'Unknown Provider',
-        last4: pendingStatement.last4 || '????',
-        date: pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0],
-        uploadDate: new Date().toISOString(),
-        transactionCount: bulkItems.filter(i => !((data?.expenses || []).some(e => e.name === i.name && e.date === i.date) || (data?.income || []).some(e => e.name === i.name && e.date === i.date))).length
-      };
-      onSaveStatement(newStmt);
+      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0];
+      const stmtLast4 = pendingStatement.last4 || '????';
+      const stmtProvider = pendingStatement.provider || 'Unknown Provider';
+
+      // Check for duplicate statement (same provider + last4 + date)
+      const isDuplicateStatement = (data?.statements || []).some(
+        s => s.provider === stmtProvider && s.last4 === stmtLast4 && s.date === stmtDate
+      );
+
+      if (!isDuplicateStatement) {
+        const newStmt = {
+          id: Math.random().toString(36).substr(2, 9),
+          provider: stmtProvider,
+          last4: stmtLast4,
+          date: stmtDate,
+          uploadDate: new Date().toISOString(),
+          transactionCount: bulkItems.length // Total from statement, not just new
+        };
+        onSaveStatement(newStmt);
+      }
       setPendingStatement(null);
     }
     if (onCancel) onCancel();
