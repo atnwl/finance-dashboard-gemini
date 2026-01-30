@@ -571,10 +571,32 @@ export default function App() {
       };
     });
 
-    // Calculate Total Recurring for Budget Line
-    const totalRecurringExpenses = data.expenses
+    // Calculate Total Recurring for Budget Line (Smart)
+    // 1. Group by Merchant Name (normalized)
+    // 2. Take only the LATEST transaction
+    // 3. Must be recent enough to be considered active (e.g. within 45 days for monthly)
+    const uniqueRecurring = {};
+    const NOW = new Date();
+
+    data.expenses
       .filter(e => isRecurring(e) && notSpecial(e))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+      .sort((a, b) => new Date(a.date) - new Date(b.date)) // Sort ascending to process latest last
+      .forEach(item => {
+        const key = item.name.toLowerCase().trim();
+        uniqueRecurring[key] = item;
+      });
+
+    const totalRecurringExpenses = Object.values(uniqueRecurring).reduce((acc, item) => {
+      // Recency Check: If it's Monthly but haven't seen it in 60 days, assume cancelled?
+      // For now, let's just use a simple "last 60 days" rule for monthly items to be safe.
+      const itemDate = new Date(item.date);
+      const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
+
+      // If frequence is Monthly but it's been > 60 days, skip it (likely cancelled)
+      if (item.frequency === 'monthly' && daysSince > 60) return acc;
+
+      return acc + normalizeToMonthly(item.amount, item.frequency);
+    }, 0);
 
     return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
@@ -1818,7 +1840,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
             const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
             if (!validCats.includes(prediction.category)) {
-              prediction.category = validCats[0];
+              prediction.category = 'Other'; // Safer default than index 0 (Alcohol)
             }
 
             setFormData(prev => ({
@@ -2160,7 +2182,13 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
                 <select
                   className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-gray-400 focus:outline-none uppercase font-bold"
                   value={item.type || 'variable'}
-                  onChange={(e) => onUpdate(idx, 'type', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(idx, 'type', e.target.value);
+                    // Auto-default to Monthly if switching to Bill/Sub and no freq set
+                    if ((e.target.value === 'bill' || e.target.value === 'subscription') && (!item.frequency || item.frequency === 'one-time')) {
+                      onUpdate(idx, 'frequency', 'monthly');
+                    }
+                  }}
                 >
                   <option value="variable">Var</option>
                   <option value="bill">Bill</option>
