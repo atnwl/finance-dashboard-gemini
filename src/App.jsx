@@ -6,7 +6,10 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight
+  Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
+  DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
+  MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -675,12 +678,25 @@ export default function App() {
     setData(prev => ({ ...prev, statements: [...(prev.statements || []), stmt] }));
   };
 
-  const handleDeleteStatement = (id) => {
-    if (window.confirm("Remove this statement record? \n\nNote: This only removes the entry from this list. Imported transactions will be KEPT in your dashboard.")) {
-      setData(prev => ({
-        ...prev,
-        statements: prev.statements.filter(s => s.id !== id)
-      }));
+  const handleDeleteStatement = (id, includeTransactions = false) => {
+    const msg = includeTransactions
+      ? "WARNING: This will delete the statement record AND all transactions imported from it.\n\nAre you sure you want to proceed?"
+      : "Remove this statement record? \n\nNote: This only removes the entry from this list. Imported transactions will be KEPT in your dashboard.";
+
+    if (window.confirm(msg)) {
+      setData(prev => {
+        const next = {
+          ...prev,
+          statements: prev.statements.filter(s => s.id !== id)
+        };
+
+        if (includeTransactions) {
+          next.income = prev.income.filter(i => i.statementId !== id);
+          next.expenses = prev.expenses.filter(i => i.statementId !== id);
+        }
+
+        return next;
+      });
     }
   };
 
@@ -1692,14 +1708,21 @@ function AccountCard({ account, onDelete }) {
           </div>
         </div>
         <div className="text-right flex flex-col items-end">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">Latest: {formatDate(latest.date)}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-sm font-medium mr-1">Latest: {formatDate(latest.date)}</p>
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete(latest.id); }}
-              className="text-muted hover:text-red-400 transition-colors p-1"
-              title="Remove statement record"
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
+              className="text-muted hover:text-orange-400 transition-colors p-1"
+              title="Remove record only (Keep transactions)"
             >
               <Trash2 size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
+              className="text-muted hover:text-red-500 transition-colors p-1"
+              title="Delete record AND transactions"
+            >
+              <FileX size={14} />
             </button>
           </div>
           {latest.transactionCount !== undefined && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
@@ -1720,14 +1743,21 @@ function AccountCard({ account, onDelete }) {
               {history.map(s => (
                 <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
                   <span>{formatDate(s.date)}</span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
                     <button
-                      onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
-                      className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                      title="Remove statement record"
+                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, false); }}
+                      className="text-muted hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Remove record only (Keep transactions)"
                     >
                       <Trash2 size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, true); }}
+                      className="text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Delete record AND transactions"
+                    >
+                      <FileX size={12} />
                     </button>
                   </div>
                 </div>
@@ -2098,17 +2128,21 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   };
 
   const handleBulkImport = () => {
+    // Generate statement ID early so we can link transactions
+    const pendingStmtId = pendingStatement ? Math.random().toString(36).substr(2, 9) : null;
+
     bulkItems.forEach(item => {
       // Safe duplicate check
       const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
         (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
 
       if (!exists) {
-        onSave(item);
+        // Link transaction to statement
+        onSave({ ...item, statementId: pendingStmtId });
       }
     });
     setBulkItems([]);
-    if (pendingStatement) {
+    if (pendingStatement && pendingStmtId) {
       const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0];
       const stmtLast4 = pendingStatement.last4 || '????';
       const stmtProvider = pendingStatement.provider || 'Unknown Provider';
@@ -2120,12 +2154,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
 
       if (!isDuplicateStatement) {
         const newStmt = {
-          id: Math.random().toString(36).substr(2, 9),
+          id: pendingStmtId, // Use the same ID
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
           uploadDate: new Date().toISOString(),
-          transactionCount: bulkItems.length // Total from statement, not just new
+          transactionCount: bulkItems.length
         };
         onSaveStatement(newStmt);
       }
