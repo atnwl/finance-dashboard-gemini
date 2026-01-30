@@ -1019,7 +1019,12 @@ export default function App() {
                   y={financials.totalRecurringExpenses}
                   stroke="#D4A373"
                   strokeDasharray="3 3"
-                  label={{ value: "Recurring", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
+                  label={{
+                    value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                    fill: "#D4A373",
+                    fontSize: 10,
+                    position: "insideTopRight"
+                  }}
                 />
                 <Bar
                   key={`income-${selectedMonth}`}
