@@ -1776,13 +1776,14 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     - Amount (amount) - number only (absolute value)
     - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
+    - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
     
     USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
     ${knownRules || 'No custom rules set yet.'}
 
     Return STRICT JSON Array: 
     [
-      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
+      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
       ...
     ]
     `;
@@ -1850,7 +1851,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               ...i,
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
-              type: 'variable',
+              type: i.type || 'variable',
               frequency: 'one-time'
             })));
           }
