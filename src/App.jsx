@@ -26,11 +26,13 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Other'
+  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Transfer', 'Other'
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Housing', 'Food', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal', 'Other'
+  'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
+  'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
+  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Transfer', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
@@ -39,8 +41,11 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Housing': '🏠', 'Food': '🍔', 'Transport': '🚗', 'Utilities': '💡',
+    'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
+    'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
+    'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
+    'Transfer': '🔄',
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
@@ -114,7 +119,7 @@ const Select = ({ label, options, ...props }) => (
 );
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -144,7 +149,8 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
     }
 
     const userMsg = { role: 'user', text: input };
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
@@ -168,23 +174,69 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
         Expenses: ${JSON.stringify(data.expenses.slice(0, 5))}...
 
         Answer the user's question concisely based on this data. formatting: use markdown.
+
+        AVAILABLE CATEGORIES:
+        - Income: ${INCOME_CATEGORIES.join(', ')}
+        - Expenses: ${EXPENSE_CATEGORIES.join(', ')}
+
+        ACTIONABLE POWER: 
+        You can ADD transactions for the user. If they ask you to record something, explain that you've done it and include this EXACT JSON block at the bottom of your response:
+        \`\`\`json
+        {
+          "action": "add_transaction",
+          "data": {
+            "name": "Merchant Name",
+            "amount": 0.00,
+            "date": "YYYY-MM-DD",
+            "category": "One of the categories above",
+            "isIncome": true/false,
+            "frequency": "one-time",
+            "type": "variable"
+          }
+        }
+        \`\`\`
       `;
 
+      // Filter history to ensure it starts with role 'user' (Gemini requirement)
+      let historyItems = newMessages.slice(0, -1).map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
+      const firstUserIdx = historyItems.findIndex(h => h.role === 'user');
+      if (firstUserIdx !== -1) {
+        historyItems = historyItems.slice(firstUserIdx);
+      } else {
+        historyItems = [];
+      }
+
       const chat = model.startChat({
-        history: messages.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }]
-        })).slice(-10), // keep some history context, but limited
+        history: historyItems.slice(-10), // keep limited context
       });
 
       const result = await chat.sendMessage(context + "\n\nUser Question: " + input);
       const response = await result.response;
       const text = response.text();
 
+      // Check for AI Actions
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          const actionData = JSON.parse(jsonMatch[1]);
+          if (actionData.action === 'add_transaction' && onAddItem) {
+            onAddItem(actionData.data);
+            console.log("AI added transaction:", actionData.data);
+          }
+        } catch (e) {
+          console.error("AI Action JSON parse failed", e);
+        }
+      }
+
       setMessages(prev => [...prev, { role: 'model', text }]);
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'model', text: "Error: Could not connect to Gemini. Please check your API Key." }]);
+      console.error("Chat Error:", error);
+      const msg = error.message || "Unknown error";
+      setMessages(prev => [...prev, { role: 'model', text: `Error: Could not connect to Gemini (${msg}). Please check your API Key and network.` }]);
     } finally {
       setIsLoading(false);
     }
@@ -473,6 +525,7 @@ export default function App() {
       'weekly': 52 / 12,
       'biweekly': 26 / 12,
       'monthly': 1,
+      'quarterly': 1 / 3,
       'annual': 1 / 12,
       'one-time': 1 // Assuming one-time expenses count fully against the current month's budget
     };
@@ -493,30 +546,23 @@ export default function App() {
     const monthlyIncome = data.income.filter(filterByDate);
     const monthlyExpenses = data.expenses.filter(filterByDate);
 
+    // Helpers
+    const isRecurring = (item) => item.frequency !== 'one-time';
+    const notTransfer = (item) => item.category !== 'Transfer';
+
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
     // User asked: "monthly income... should only reflect that month".
     // Strategy:
-    // 1. One-time items: Only count if date is in this month.
-    // 2. Recurring (Monthly): Always count them (assuming they happen every month).
-    // 3. Recurring (Weekly): Count occurences in this specific month? Or just simplified 4x?
-    // Let's stick to the previous "normalizeToMonthly" logic but filter ONE-TIME items strictly.
-    // AND show recurring items regardless of "date" created? 
-    // Actually, usually "Date" on a recurring item is "Start Date".
-    // For simplicity and standard UX:
-    // - Show ALL Recurring items types (Weekly, Monthly, Annual / 12)
-    // - Show One-Time items ONLY if they fall in this month.
-
-    // Split items into Recurring vs One-Time
-    const isRecurring = (item) => item.frequency !== 'one-time';
+    // ... logic ...
 
     // Income
-    const recurringIncome = data.income.filter(isRecurring);
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i));
+    const recurringIncome = data.income.filter(i => isRecurring(i) && notTransfer(i));
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notTransfer(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
     // Expenses
-    const recurringExpenses = data.expenses.filter(isRecurring);
-    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e));
+    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notTransfer(e));
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notTransfer(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
@@ -524,7 +570,7 @@ export default function App() {
     const net = totalIncome - totalExpenses;
 
     const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription')
+      .filter(e => e.type === 'subscription' && notTransfer(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
     // Group expenses by category
@@ -543,12 +589,12 @@ export default function App() {
       };
 
       // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringInc = data.income.filter(i => isRecurring(i) && notTransfer(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notTransfer(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
 
       // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notTransfer(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notTransfer(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const inc = mRecurringInc + mOneTimeInc;
       const exp = mRecurringExp + mOneTimeExp;
@@ -567,7 +613,7 @@ export default function App() {
 
     // Calculate Total Recurring for Budget Line
     const totalRecurringExpenses = data.expenses
-      .filter(isRecurring)
+      .filter(e => isRecurring(e) && notTransfer(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
     return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
@@ -712,7 +758,7 @@ export default function App() {
             <TrendingUp size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Income</h3>
-          <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toFixed(2)}</p>
+          <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-primary/80 flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Active
           </div>
@@ -723,7 +769,7 @@ export default function App() {
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-white">${financials.totalExpenses.toFixed(2)}</p>
+          <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Total recurring
           </div>
@@ -735,7 +781,7 @@ export default function App() {
           </div>
           <h3 className="text-muted text-sm font-medium">Net Cash Flow</h3>
           <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-red-400")}>
-            ${financials.net.toFixed(2)}
+            ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Available
@@ -748,7 +794,7 @@ export default function App() {
           </div>
           <h3 className="text-muted text-sm font-medium">Subscriptions</h3>
           <p className="text-3xl font-bold mt-2 text-white">
-            ${financials.totalSubscriptionsCost.toFixed(2)}
+            ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             {data.expenses.filter(e => e.type === 'subscription').length} active services
@@ -818,7 +864,7 @@ export default function App() {
                                 {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
                               </span>
                               <span className="font-bold text-gray-200">
-                                ${Number(entry.value).toFixed(2)}
+                                ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -920,13 +966,13 @@ export default function App() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                   itemStyle={{ color: '#E5E7EB' }}
-                  formatter={(value) => `$${Number(value).toFixed(2)}`}
+                  formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
               <span className="text-xs text-muted">Total</span>
-              <p className="font-bold text-white">${financials.totalExpenses.toFixed(0)}</p>
+              <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -966,10 +1012,9 @@ export default function App() {
     const generateVirtual = (items, type) => items.filter(isRecurring).map(item => {
       // Create a virtual date for this month
       // Preserve the day of the month from the original date
-      const originalDate = new Date(item.date);
-      const day = originalDate.getDate();
-      // Handle day overflow (e.g. 31st in Feb) -> simplified to clamp or just use Date auto-correction
-      const virtualDate = new Date(selectedYear, selectedMonth, day);
+      const [oy, om, od] = item.date.split('-').map(Number);
+      // Handle day overflow (e.g. 31st in Feb) -> javascript Date object handles this (rolls over to Mar 1), which is fine/safe enough
+      const virtualDate = new Date(selectedYear, selectedMonth, od);
 
       return {
         ...item,
@@ -1048,8 +1093,9 @@ export default function App() {
                 {items.map((item) => (
                   <tr
                     key={item.id}
+                    onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
                     className={cn(
-                      "group transition-colors hover:bg-white/5",
+                      "group transition-colors hover:bg-white/5 cursor-pointer",
                       item.isVirtual && isFutureMonth && "opacity-50 italic" // Virtual Style ONLY for Future
                     )}
                   >
@@ -1068,26 +1114,42 @@ export default function App() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">
-                      {new Date(item.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                      {(() => {
+                        const [y, m, d] = item.date.split('-').map(Number);
+                        const dateObj = new Date(y, m - 1, d);
+                        return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+                      })()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5 whitespace-nowrap">
                         {item.category}
                       </span>
                     </td>
                     <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-emerald-400" : "text-text")}>
-                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toFixed(2)}
+                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditingItem(item); setIsFormOpen(true); }} className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(item);
+                            setIsFormOpen(true);
+                          }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors"
+                        >
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => handleDelete(item._type, item.id)} className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item._type, item.id);
+                          }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors"
+                        >
                           <Trash2 size={14} />
                         </button>
                       </div>
-
                     </td>
                   </tr>
                 ))}
@@ -1167,6 +1229,7 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
         data={data}
         financials={financials}
+        onAddItem={handleSave}
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
@@ -1246,15 +1309,20 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     initialData || {
       name: '',
       amount: '',
-      category: 'Food',
+      category: 'Groceries', // Updated default
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
-      date: new Date().toISOString().split('T')[0] // Default to today
+      date: (() => {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - offset).toISOString().split('T')[0];
+      })() // Local "YYYY-MM-DD"
     }
   );
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiFlash, setAiFlash] = useState(false); // Visual cue for AI actions
+  const [bulkItems, setBulkItems] = useState([]); // Array of parsed items for review
 
   // Helper to flash fields
   const triggerAiFlash = () => {
@@ -1398,67 +1466,153 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     }
 
     setIsAiLoading(true);
-    try {
+    const startTime = Date.now();
+
+    // Small delay to allow React to render the loading spinner before processing starts
+    setTimeout(() => {
       // Convert to Base64
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Data = reader.result.split(',')[1];
+        try {
+          const base64Data = reader.result.split(',')[1];
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const genAI = new GoogleGenerativeAI(apiKey);
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const prompt = `
-    Analyze this receipt image. Extract:
-    - Merchant Name (name)
+          const prompt = `
+    Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
+    
+    EXTRACT ALL distinct transactions found in the document.
+    - Ignore headers, footers, account summaries, or balances.
+    - If it's a statement, handle various layouts (tables, lists, blocks).
+    
+    For EACH transaction, extract:
+    - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Total Amount (amount)
+    - Amount (amount) - number only (absolute value)
+    - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
-
-    Return strict JSON: {"name": string, "date": string, "amount": number, "category": string }
+    
+    Return STRICT JSON Array: 
+    [
+      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
+      ...
+    ]
     `;
 
-        const result = await model.generateContent([
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: file.type
+          const result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: file.type
+              }
             }
+          ]);
+
+          const responseText = result.response.text().replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(responseText);
+          const items = Array.isArray(parsed) ? parsed : [parsed];
+
+          if (items.length === 0) throw new Error("No transactions found");
+
+          const minLoadTimePromise = new Promise(resolve => {
+            const elapsed = Date.now() - startTime;
+            setTimeout(resolve, Math.max(0, 1500 - elapsed));
+          });
+
+          await minLoadTimePromise;
+
+          if (items.length === 1) {
+            // Single Item Mode (Old Behavior)
+            const prediction = items[0];
+            console.log("Gemini Prediction:", prediction);
+
+            const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+            if (!validCats.includes(prediction.category)) {
+              prediction.category = validCats[0];
+            }
+
+            setFormData(prev => ({
+              ...prev,
+              name: prediction.name,
+              amount: prediction.amount,
+              category: prediction.category,
+              // If date is present, use it, else keep default
+              ...(prediction.date && { date: prediction.date })
+            }));
+            triggerAiFlash();
+          } else {
+            // Bulk Mode
+            setBulkItems(items.map(i => ({
+              ...i,
+              id: Math.random().toString(36).substr(2, 9),
+              isIncome: i.isIncome ?? false,
+              type: 'variable',
+              frequency: 'one-time'
+            })));
           }
-        ]);
 
-        const text = result.response.text();
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        } catch (err) {
+          console.error("Receipt scanning failed:", err);
 
-        if (jsonMatch) {
-          const data = JSON.parse(jsonMatch[0]);
-          console.log("Receipt Data:", data);
+          let errorMessage = "Failed to scan receipt. ";
+          if (err.message?.includes("API key")) {
+            errorMessage += "API key issue - check your Gemini API key.";
+          } else if (err.message?.includes("JSON") || err.name === "SyntaxError") {
+            errorMessage += "Could not parse AI response. The image might be unclear.";
+          } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
+            errorMessage += "API rate limit reached. Try again in a minute.";
+          } else if (err.message?.includes("RECITATION") || err.message?.includes("SAFETY")) {
+            errorMessage += "Content was blocked by AI safety filters.";
+          } else {
+            errorMessage += err.message || "Unknown error occurred.";
+          }
 
-          setFormData(prev => ({
-            ...prev,
-            name: data.name || prev.name,
-            amount: data.amount || prev.amount,
-            date: data.date || prev.date,
-            category: data.category || prev.category,
-            // Default to expense for receipts usually
-            isIncome: false
-          }));
-          triggerAiFlash();
+          alert(errorMessage);
+        } finally {
+          setIsAiLoading(false);
+          // Reset file input value so same file can be selected again if needed
+          e.target.value = '';
         }
       };
       reader.readAsDataURL(file);
-    } catch (err) {
-      console.error("Receipt scanning failed", err);
-      alert("Failed to scan receipt. Please try again.");
-    } finally {
-      setIsAiLoading(false);
-      // Reset file input value so same file can be selected again if needed
-      e.target.value = '';
-    }
+    }, 10);
   };
 
   const aiClass = aiFlash ? "!bg-[#0F1115] ring-2 ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-1000" : "";
   const isIncome = formData.isIncome;
+
+  // BULK HANDLERS
+  const handleBulkUpdate = (index, field, value) => {
+    setBulkItems(prev => prev.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const handleBulkRemove = (index) => {
+    setBulkItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkImport = () => {
+    bulkItems.forEach(item => {
+      onSave(item);
+    });
+    setBulkItems([]);
+    if (onCancel) onCancel();
+  };
+
+  if (bulkItems.length > 0) {
+    return (
+      <BulkReviewView
+        items={bulkItems}
+        onUpdate={handleBulkUpdate}
+        onRemove={handleBulkRemove}
+        onCancel={() => { setBulkItems([]); }} // Go back to single add
+        onImport={handleBulkImport}
+      />
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 animate-in zoom-in-50 duration-300">
@@ -1498,13 +1652,22 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all",
+                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
                 aiFlash && "ring-2 ring-white scale-95",
-                isAiLoading && "opacity-50 pointer-events-none"
+                isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
             >
-              {isAiLoading ? <Loader2 size={20} className="animate-spin text-black" /> : <Camera size={20} className="text-black" />}
-              <span className="text-sm font-semibold text-black">Scan Receipt</span>
+              {isAiLoading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="text-sm font-semibold">Processing...</span>
+                </>
+              ) : (
+                <>
+                  <Camera size={20} />
+                  <span className="text-sm font-semibold">Scan Receipt</span>
+                </>
+              )}
             </label>
           </div>
 
@@ -1521,10 +1684,10 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               htmlFor="file-upload"
               className={cn(
                 "h-full w-full flex items-center justify-center bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:bg-white/10 active:scale-95 transition-all text-muted hover:text-white",
-                isAiLoading && "opacity-50 pointer-events-none"
+                isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
             >
-              <Upload size={20} />
+              {isAiLoading ? <Loader2 size={20} className="animate-spin text-primary" /> : <Upload size={20} />}
             </label>
           </div>
         </div>
@@ -1571,6 +1734,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             { value: 'weekly', label: 'Weekly' },
             { value: 'biweekly', label: 'Bi-Weekly' },
             { value: 'monthly', label: 'Monthly' },
+            { value: 'quarterly', label: 'Quarterly' },
             { value: 'annual', label: 'Yearly' },
           ]} />
       </div>
@@ -1599,5 +1763,92 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
       </div>
     </form >
   )
+};
+
+// HELPER: Bulk Review UI
+const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
+  return (
+    <div className="flex flex-col h-full max-h-[80vh]">
+      <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#0D1117] z-10 py-2">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          <Upload size={18} className="text-primary" />
+          Review Import ({items.length})
+        </h3>
+        <span className="text-xs text-muted">Check details before importing</span>
+      </div>
+
+      <div className="overflow-y-auto flex-1 pr-2 space-y-3">
+        {items.map((item, idx) => (
+          <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-3 group relative">
+            <button
+              onClick={() => onRemove(idx)}
+              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-red-500/20 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              title="Remove Item"
+            >
+              <Trash2 size={14} />
+            </button>
+
+            <div className="flex gap-2">
+              <input
+                type="date"
+                className="bg-transparent border-b border-white/10 text-xs text-muted py-1 w-24 focus:outline-none focus:border-primary"
+                value={item.date || ''}
+                onChange={(e) => onUpdate(idx, 'date', e.target.value)}
+              />
+              <input
+                type="text"
+                className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
+                placeholder="Merchant Name"
+                value={item.name}
+                onChange={(e) => onUpdate(idx, 'name', e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Expense/Income Toggle */}
+              <button
+                onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none",
+                  item.isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-400"
+                )}
+              >
+                {item.isIncome ? 'Income' : 'Expense'}
+              </button>
+
+              {/* Category Select (Simplified) */}
+              <select
+                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none"
+                value={item.category}
+                onChange={(e) => onUpdate(idx, 'category', e.target.value)}
+              >
+                {(item.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => (
+                  <option key={c} value={c} className="bg-[#0D1117]">{c}</option>
+                ))}
+              </select>
+
+              {/* Amount */}
+              <div className="relative w-24">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
+                <input
+                  type="number"
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none"
+                  value={item.amount}
+                  onChange={(e) => onUpdate(idx, 'amount', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-4 mt-2 border-t border-white/10 flex gap-3 sticky bottom-0 bg-[#0D1117] z-10">
+        <Button variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button className="flex-1 bg-primary text-black hover:bg-primary/90" onClick={onImport}>
+          Import All ({items.length})
+        </Button>
+      </div>
+    </div>
+  );
 };
 
