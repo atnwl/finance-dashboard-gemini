@@ -26,13 +26,12 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Transfer', 'Other'
+  'Freelance', 'Gift', 'Investments', 'Refund', 'Salary', 'Transfer', 'Other'
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
-  'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
-  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Transfer', 'Other'
+  'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Global Entry / Travel', 'Groceries', 'Health', 'Housing',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Transfer', 'Transport', 'Utilities', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
