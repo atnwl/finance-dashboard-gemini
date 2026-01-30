@@ -571,7 +571,8 @@ export default function App() {
 
     // Helpers
     const isRecurring = (item) => item.frequency !== 'one-time';
-    const notTransfer = (item) => item.category !== 'Transfer';
+    const isSpecial = (item) => item.category === 'Transfer' || item.category === 'Credit Card Payment';
+    const notSpecial = (item) => !isSpecial(item);
 
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
     // User asked: "monthly income... should only reflect that month".
@@ -579,13 +580,13 @@ export default function App() {
     // ... logic ...
 
     // Income
-    const recurringIncome = data.income.filter(i => isRecurring(i) && notTransfer(i));
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notTransfer(i));
+    const recurringIncome = data.income.filter(i => isRecurring(i) && notSpecial(i));
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
     // Expenses
-    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notTransfer(e));
-    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notTransfer(e));
+    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
@@ -593,8 +594,12 @@ export default function App() {
     const net = totalIncome - totalExpenses;
 
     const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription' && notTransfer(e))
+      .filter(e => e.type === 'subscription' && notSpecial(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    const totalCcPayments = data.expenses
+      .filter(e => e.category === 'Credit Card Payment' && filterByDate(e))
+      .reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
     // Group expenses by category
     const byCategory = effectiveExpenses.reduce((acc, item) => {
@@ -612,12 +617,12 @@ export default function App() {
       };
 
       // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(i => isRecurring(i) && notTransfer(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notTransfer(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
+      const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notSpecial(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
 
       // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notTransfer(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notTransfer(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notSpecial(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const inc = mRecurringInc + mOneTimeInc;
       const exp = mRecurringExp + mOneTimeExp;
@@ -636,10 +641,10 @@ export default function App() {
 
     // Calculate Total Recurring for Budget Line
     const totalRecurringExpenses = data.expenses
-      .filter(e => isRecurring(e) && notTransfer(e))
+      .filter(e => isRecurring(e) && notSpecial(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
-    return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -775,7 +780,7 @@ export default function App() {
   const renderDashboard = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingUp size={48} />
@@ -794,7 +799,18 @@ export default function App() {
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
           <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            Total recurring
+            Excl. CC Payments
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <CreditCard size={48} />
+          </div>
+          <h3 className="text-muted text-sm font-medium">CC Payments</h3>
+          <p className="text-3xl font-bold mt-2 text-amber-400">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="mt-4 text-xs text-muted flex items-center gap-1">
+            Internal Transfers
           </div>
         </Card>
 
