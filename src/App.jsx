@@ -1672,6 +1672,13 @@ function AccountCard({ account, onDelete }) {
   const latest = sortedStmts[0];
   const history = sortedStmts.slice(1);
 
+  // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   return (
     <Card className="p-4 border-border/50">
       <div className="flex items-center justify-between">
@@ -1686,7 +1693,7 @@ function AccountCard({ account, onDelete }) {
         </div>
         <div className="text-right flex flex-col items-end">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">Latest: {new Date(latest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            <p className="text-sm font-medium">Latest: {formatDate(latest.date)}</p>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(latest.id); }}
               className="text-muted hover:text-red-400 transition-colors p-1"
@@ -1712,7 +1719,7 @@ function AccountCard({ account, onDelete }) {
             <div className="mt-2 space-y-1 pl-5">
               {history.map(s => (
                 <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
-                  <span>{new Date(s.date).toLocaleDateString()}</span>
+                  <span>{formatDate(s.date)}</span>
                   <div className="flex items-center gap-3">
                     <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
                     <button
