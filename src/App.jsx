@@ -474,6 +474,16 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
 
+  // User Menu State
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [syncPassword, setSyncPassword] = useState('');
+  const [lastBackupTime, setLastBackupTime] = useState(() => {
+    const saved = localStorage.getItem('lastBackupTime');
+    return saved ? new Date(saved) : null;
+  });
+  const [showDevMenu, setShowDevMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
   // Auth State Listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -764,6 +774,60 @@ export default function App() {
       setSyncStatus('Error: ' + err.message);
     }
   };
+
+  // Quick Backup (for Sync Card)
+  const handleQuickBackup = async () => {
+    if (!user) {
+      setSyncStatus('Login required');
+      return;
+    }
+    if (!syncPassword) {
+      setSyncStatus('Enter password first');
+      return;
+    }
+    await handleSync(syncPassword);
+    const now = new Date();
+    setLastBackupTime(now);
+    localStorage.setItem('lastBackupTime', now.toISOString());
+  };
+
+  // Quick Restore (for Sync Card)
+  const handleQuickRestore = async () => {
+    if (!user) {
+      setSyncStatus('Login required');
+      return;
+    }
+    if (!syncPassword) {
+      setSyncStatus('Enter password first');
+      return;
+    }
+    await handleRestore(syncPassword);
+  };
+
+  // Delete All Transactions
+  const handleDeleteAllData = () => {
+    if (window.confirm('⚠️ Are you sure you want to delete ALL transactions?\\n\\nThis clears local data only. You can still restore from your cloud backup.')) {
+      setData({ income: [], expenses: [] });
+      localStorage.setItem('financeData', JSON.stringify({ income: [], expenses: [] }));
+      setShowUserMenu(false);
+      setSyncStatus('All transactions deleted');
+      setTimeout(() => setSyncStatus(''), 3000);
+    }
+  };
+
+  // Click-away handler for user menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+        setShowDevMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   const openAddModal = () => {
     setEditingItem(null);
@@ -1250,7 +1314,125 @@ export default function App() {
               <Bell size={20} />
               <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></div>
             </button>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border border-white/10"></div>
+
+            {/* User Avatar & Sync Card Dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border border-white/10 hover:ring-2 hover:ring-primary/50 transition-all"
+              />
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                  {/* User Info Row */}
+                  <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500" />
+                      <div>
+                        <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'Guest'}</p>
+                        <p className="text-xs text-muted">{user ? 'Logged In' : 'Not Logged In'}</p>
+                      </div>
+                    </div>
+                    {lastBackupTime && (
+                      <div className={cn(
+                        "text-xs px-2 py-0.5 rounded-full",
+                        (Date.now() - lastBackupTime.getTime()) < 86400000 ? "bg-primary/20 text-primary" :
+                          (Date.now() - lastBackupTime.getTime()) < 604800000 ? "bg-yellow-500/20 text-yellow-400" :
+                            "bg-red-500/20 text-red-400"
+                      )}>
+                        {(Date.now() - lastBackupTime.getTime()) < 60000 ? 'Just now' :
+                          (Date.now() - lastBackupTime.getTime()) < 3600000 ? `${Math.floor((Date.now() - lastBackupTime.getTime()) / 60000)}m ago` :
+                            (Date.now() - lastBackupTime.getTime()) < 86400000 ? `${Math.floor((Date.now() - lastBackupTime.getTime()) / 3600000)}h ago` :
+                              `${Math.floor((Date.now() - lastBackupTime.getTime()) / 86400000)}d ago`}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sync Actions */}
+                  <div className="p-3">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <button
+                        onClick={handleQuickBackup}
+                        disabled={!user}
+                        className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Cloud size={20} className="text-primary" />
+                        <span className="text-xs font-medium">Backup</span>
+                      </button>
+                      <button
+                        onClick={handleQuickRestore}
+                        disabled={!user}
+                        className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-blue-500/50 hover:bg-blue-500/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Download size={20} className="text-blue-400" />
+                        <span className="text-xs font-medium">Restore</span>
+                      </button>
+                    </div>
+
+                    {/* Inline Password */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type="password"
+                          placeholder="Encryption password..."
+                          value={syncPassword}
+                          onChange={(e) => setSyncPassword(e.target.value)}
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    {syncStatus && (
+                      <p className={cn(
+                        "text-xs text-center py-1 rounded animate-pulse",
+                        syncStatus.includes('Success') ? "text-primary" :
+                          syncStatus.includes('Error') ? "text-red-400" : "text-muted"
+                      )}>{syncStatus}</p>
+                    )}
+                  </div>
+
+                  {/* Developer Menu */}
+                  <div className="border-t border-border/50">
+                    <button
+                      onClick={() => setShowDevMenu(!showDevMenu)}
+                      className="w-full px-4 py-2 flex items-center justify-between text-xs text-muted hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Settings size={14} />
+                        Developer
+                      </span>
+                      <span className={cn("transition-transform", showDevMenu && "rotate-90")}>▸</span>
+                    </button>
+
+                    {showDevMenu && (
+                      <div className="bg-red-500/5 border-t border-red-500/20">
+                        <button
+                          onClick={handleDeleteAllData}
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          Delete All Transactions
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Logout */}
+                  {user && (
+                    <div className="border-t border-border/50">
+                      <button
+                        onClick={() => { supabase.auth.signOut(); setUser(null); setShowUserMenu(false); }}
+                        className="w-full px-4 py-2 flex items-center gap-2 text-xs text-muted hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <LogOut size={14} />
+                        Log Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
