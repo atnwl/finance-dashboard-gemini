@@ -598,6 +598,18 @@ export default function App() {
     // Ensure ID
     if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
 
+    // Update Intelligence Cache
+    if (cleanItem.name && cleanItem.name.length >= 3) {
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      cache[cleanItem.name.toLowerCase().trim()] = {
+        category: cleanItem.category,
+        frequency: cleanItem.frequency, // Save frequency preference!
+        isIncome: cleanItem.isIncome,
+        type: cleanItem.type
+      };
+      localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+    }
+
     setData(prev => {
       const newData = { ...prev };
 
@@ -1782,6 +1794,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
                 ...item,
                 category: cache[lowerName].category,
                 isIncome: cache[lowerName].isIncome,
+                frequency: cache[lowerName].frequency || item.frequency, // Restore frequency!
                 type: cache[lowerName].type || item.type,
                 isRuleApplied: true
               };
@@ -2152,6 +2165,21 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
                   <option value="variable">Var</option>
                   <option value="bill">Bill</option>
                   <option value="subscription">Sub</option>
+                </select>
+              )}
+
+              {/* Smart Frequency Badge (Bills/Subs only) */}
+              {(!item.isIncome && (item.type === 'bill' || item.type === 'subscription')) && (
+                <select
+                  className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-primary focus:outline-none font-bold"
+                  value={item.frequency || 'monthly'}
+                  onChange={(e) => onUpdate(idx, 'frequency', e.target.value)}
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-Wkly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Qrtrly</option>
+                  <option value="annual">Yearly</option>
                 </select>
               )}
 
