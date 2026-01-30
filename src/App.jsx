@@ -1215,7 +1215,7 @@ export default function App() {
                 setEditingItem(null);
                 setIsFormOpen(true);
               }}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors"
+              className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors border border-primary/20"
             >
               <Upload size={14} className="mr-2" />
               Upload Statement
