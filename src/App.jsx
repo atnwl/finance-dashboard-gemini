@@ -1380,7 +1380,7 @@ export default function App() {
 
           <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
             <div className="relative w-full max-w-[200px] hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
                 placeholder="Search..."
                 value={searchQuery}
@@ -1598,6 +1598,8 @@ export default function App() {
 
             <TransactionForm
               initialData={editingItem}
+              data={data}
+              setPendingStatement={setPendingStatement}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
@@ -1653,7 +1655,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
-function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
+function TransactionForm({ initialData, data, setPendingStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
       name: '',
@@ -2004,7 +2006,13 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
   const handleBulkImport = () => {
     bulkItems.forEach(item => {
-      onSave(item);
+      // Safe duplicate check
+      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
+        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+
+      if (!exists) {
+        onSave(item);
+      }
     });
     setBulkItems([]);
     if (pendingStatement) {
