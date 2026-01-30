@@ -675,6 +675,15 @@ export default function App() {
     setData(prev => ({ ...prev, statements: [...(prev.statements || []), stmt] }));
   };
 
+  const handleDeleteStatement = (id) => {
+    if (window.confirm("Remove this statement record? \n\nNote: This only removes the entry from this list. Imported transactions will be KEPT in your dashboard.")) {
+      setData(prev => ({
+        ...prev,
+        statements: prev.statements.filter(s => s.id !== id)
+      }));
+    }
+  };
+
   // --- Auth & Sync Handlers ---
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -1194,7 +1203,11 @@ export default function App() {
           ) : (
             <div className="space-y-4">
               {sortedAccounts.map((account) => (
-                <AccountCard key={`${account.provider}-${account.last4}`} account={account} />
+                <AccountCard
+                  key={`${account.provider}-${account.last4}`}
+                  account={account}
+                  onDelete={handleDeleteStatement}
+                />
               ))}
             </div>
           )}
@@ -1653,7 +1666,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
-function AccountCard({ account }) {
+function AccountCard({ account, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
@@ -1671,9 +1684,18 @@ function AccountCard({ account }) {
             <p className="text-xs text-muted">Ending in ••••{account.last4 || '????'}</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium">Latest: {new Date(latest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-          {latest.transactionCount > 0 && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
+        <div className="text-right flex flex-col items-end">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Latest: {new Date(latest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id); }}
+              className="text-muted hover:text-red-400 transition-colors p-1"
+              title="Remove statement record"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          {latest.transactionCount !== undefined && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
         </div>
       </div>
 
@@ -1689,9 +1711,18 @@ function AccountCard({ account }) {
           {expanded && (
             <div className="mt-2 space-y-1 pl-5">
               {history.map(s => (
-                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded">
+                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
                   <span>{new Date(s.date).toLocaleDateString()}</span>
-                  <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+                      className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Remove statement record"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
