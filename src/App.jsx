@@ -26,13 +26,13 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Other'
+  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Transfer', 'Other'
 ];
 
 const EXPENSE_CATEGORIES = [
   'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
   'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
-  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Other'
+  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Transfer', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
@@ -45,6 +45,7 @@ const getCategoryIcon = (category) => {
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
     'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
+    'Transfer': '🔄',
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
@@ -148,7 +149,8 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
     }
 
     const userMsg = { role: 'user', text: input };
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
     setIsLoading(true);
 
@@ -174,11 +176,21 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
         Answer the user's question concisely based on this data. formatting: use markdown.
       `;
 
+      // Filter history to ensure it starts with role 'user' (Gemini requirement)
+      let historyItems = newMessages.slice(0, -1).map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
+      const firstUserIdx = historyItems.findIndex(h => h.role === 'user');
+      if (firstUserIdx !== -1) {
+        historyItems = historyItems.slice(firstUserIdx);
+      } else {
+        historyItems = [];
+      }
+
       const chat = model.startChat({
-        history: messages.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }]
-        })).slice(-10), // keep some history context, but limited
+        history: historyItems.slice(-10), // keep limited context
       });
 
       const result = await chat.sendMessage(context + "\n\nUser Question: " + input);
@@ -499,30 +511,23 @@ export default function App() {
     const monthlyIncome = data.income.filter(filterByDate);
     const monthlyExpenses = data.expenses.filter(filterByDate);
 
+    // Helpers
+    const isRecurring = (item) => item.frequency !== 'one-time';
+    const notTransfer = (item) => item.category !== 'Transfer';
+
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
     // User asked: "monthly income... should only reflect that month".
     // Strategy:
-    // 1. One-time items: Only count if date is in this month.
-    // 2. Recurring (Monthly): Always count them (assuming they happen every month).
-    // 3. Recurring (Weekly): Count occurences in this specific month? Or just simplified 4x?
-    // Let's stick to the previous "normalizeToMonthly" logic but filter ONE-TIME items strictly.
-    // AND show recurring items regardless of "date" created? 
-    // Actually, usually "Date" on a recurring item is "Start Date".
-    // For simplicity and standard UX:
-    // - Show ALL Recurring items types (Weekly, Monthly, Annual / 12)
-    // - Show One-Time items ONLY if they fall in this month.
-
-    // Split items into Recurring vs One-Time
-    const isRecurring = (item) => item.frequency !== 'one-time';
+    // ... logic ...
 
     // Income
-    const recurringIncome = data.income.filter(isRecurring);
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i));
+    const recurringIncome = data.income.filter(i => isRecurring(i) && notTransfer(i));
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notTransfer(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
     // Expenses
-    const recurringExpenses = data.expenses.filter(isRecurring);
-    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e));
+    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notTransfer(e));
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notTransfer(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
@@ -530,7 +535,7 @@ export default function App() {
     const net = totalIncome - totalExpenses;
 
     const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription')
+      .filter(e => e.type === 'subscription' && notTransfer(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
     // Group expenses by category
@@ -549,12 +554,12 @@ export default function App() {
       };
 
       // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(isRecurring).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringInc = data.income.filter(i => isRecurring(i) && notTransfer(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notTransfer(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
 
       // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notTransfer(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notTransfer(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const inc = mRecurringInc + mOneTimeInc;
       const exp = mRecurringExp + mOneTimeExp;
@@ -573,7 +578,7 @@ export default function App() {
 
     // Calculate Total Recurring for Budget Line
     const totalRecurringExpenses = data.expenses
-      .filter(isRecurring)
+      .filter(e => isRecurring(e) && notTransfer(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
     return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
