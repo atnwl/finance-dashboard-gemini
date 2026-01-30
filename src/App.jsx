@@ -30,8 +30,8 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Groceries', 'Health', 'Housing',
-  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Transport', 'Travel', 'Utilities', 'Other'
+  'Alcohol', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
 ];
 
 const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
@@ -40,8 +40,8 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Apps/Software': '💻', 'Fees': '💸', 'Taxes': '🏛️', 'Travel': '✈️',
-    'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
+    'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
+    'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Gas': '⛽', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
     'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
@@ -303,92 +303,13 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
       {/* Settings Overlay */}
       {/* Settings Overlay */}
       {showSettings && (
-        <div className="absolute inset-0 bg-card/95 backdrop-blur z-20 flex flex-col items-center p-6 text-center animate-in fade-in overflow-y-auto">
+        <div className="absolute inset-0 bg-card/95 backdrop-blur z-20 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
           <Settings size={32} className="text-muted mb-4" />
-          <h3 className="font-bold text-lg mb-6">Settings</h3>
-
-          {/* AI Section */}
-          <div className="w-full bg-white/5 rounded-xl p-4 mb-4 text-left">
-            <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Bot size={12} /> Gemini Intelligence
-            </h4>
-            <p className="text-xs text-muted mb-3">API Key for AI insights & receipt scanning.</p>
-            <Input
-              placeholder="AIzaSy..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              type="password"
-              className="mb-2"
-            />
-            <Button className="w-full" size="sm" onClick={() => handleSaveKey(apiKey)}>Save AI Key</Button>
-          </div>
-
-          {/* Cloud Sync Section */}
-          <div className="w-full bg-white/5 rounded-xl p-4 mb-4 text-left">
-            <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Cloud size={12} /> Cloud Backup
-            </h4>
-
-            {!user ? (
-              <div className="text-center py-2">
-                <p className="text-xs text-muted mb-3">Sign in to sync your data across devices.</p>
-                <Button onClick={onLogin} className="w-full bg-[#24292F] hover:bg-[#24292F]/90 text-white gap-2">
-                  <User size={14} /> Login with GitHub
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-muted bg-black/20 p-2 rounded-lg">
-                  <span className="truncate max-w-[150px]">{user.email || 'Logged In'}</span>
-                  <button onClick={onLogout} className="text-danger hover:text-danger/80 flex items-center gap-1">
-                    <LogOut size={10} /> Logout
-                  </button>
-                </div>
-
-                <p className="text-[10px] text-muted leading-tight">
-                  Enter a <strong>Sync Password</strong>. This encrypts your data before upload.
-                  <span className="text-danger block mt-1">If you lose this password, your cloud data is lost forever.</span>
-                </p>
-
-                <Input
-                  placeholder="Encryption Password"
-                  id="sync-pass" // simple ID to grab value ref-style or just use an uncontrolled input for safety? 
-                // Better: simple state in this component?
-                // No, let's use a ref to avoid re-renders or stealing focus? 
-                // Actually controlled state is fine if we clear it.
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" className="text-xs gap-1" onClick={() => {
-                    const pass = document.getElementById('sync-pass').value;
-                    if (!pass) return alert('Enter a password!');
-                    onSync(pass);
-                  }}>
-                    <Upload size={12} /> Backup
-                  </Button>
-                  <Button variant="outline" className="text-xs gap-1" onClick={() => {
-                    const pass = document.getElementById('sync-pass').value;
-                    if (!pass) return alert('Enter a password!');
-                    onRestore(pass);
-                  }}>
-                    <Download size={12} /> Restore
-                  </Button>
-                </div>
-
-                {syncStatus && (
-                  <div className={cn("text-xs p-2 rounded border",
-                    syncStatus.includes('Success') ? "bg-primary/10 border-primary/20 text-primary" :
-                      syncStatus.includes('Error') ? "bg-danger/10 border-danger/20 text-danger" :
-                        "bg-secondary/10 border-secondary/20 text-secondary"
-                  )}>
-                    {syncStatus}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <Button variant="ghost" className="w-full" onClick={() => setShowSettings(false)}>Close Settings</Button>
+          <h3 className="font-bold text-lg mb-2">Settings Moved</h3>
+          <p className="text-sm text-muted mb-6 max-w-[250px]">
+            API keys and sync options are now available in the <strong>user menu</strong> (top-right avatar).
+          </p>
+          <Button variant="ghost" className="w-full" onClick={() => setShowSettings(false)}>Got it</Button>
         </div>
       )}
 
@@ -483,6 +404,7 @@ export default function App() {
     return saved ? new Date(saved) : null;
   });
   const [showDevMenu, setShowDevMenu] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('geminiApiKey') || '');
   const userMenuRef = useRef(null);
 
   // Auth State Listener
@@ -594,7 +516,32 @@ export default function App() {
     const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
-    // Expenses
+    // 1. SMART RECURRING CALCULATION (Deduplicated & Latest)
+    const uniqueRecurring = {};
+    const NOW = new Date();
+
+    // Group Expenses by Merchant (Latest wins)
+    data.expenses
+      .filter(e => isRecurring(e) && notSpecial(e))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(item => { uniqueRecurring[item.name.toLowerCase().trim()] = item; });
+
+    // Filter for Active (Recency Check)
+    const activeRecurringItems = Object.values(uniqueRecurring).filter(item => {
+      const itemDate = new Date(item.date);
+      const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
+      if (item.frequency === 'monthly' && daysSince > 60) return false;
+      return true;
+    });
+
+    const totalRecurringExpenses = activeRecurringItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    // Subscriptions Specifics (Subset of Active Recurring)
+    const activeSubscriptions = activeRecurringItems.filter(i => i.type === 'subscription');
+    const totalSubscriptionsCost = activeSubscriptions.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    const activeSubscriptionCount = activeSubscriptions.length;
+
+    // 2. Standard Expenses
     const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
@@ -603,9 +550,7 @@ export default function App() {
     const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const net = totalIncome - totalExpenses;
 
-    const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription' && notSpecial(e))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
 
     const totalCcPayments = data.expenses
       .filter(e => e.category === 'Credit Card Payment' && filterByDate(e))
@@ -628,7 +573,7 @@ export default function App() {
 
       // Recurring logic applies to all months
       const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notSpecial(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
+      const mRecurringExp = totalRecurringExpenses;
 
       // One-time logic specific to this month
       const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
@@ -649,12 +594,11 @@ export default function App() {
       };
     });
 
-    // Calculate Total Recurring for Budget Line
-    const totalRecurringExpenses = data.expenses
-      .filter(e => isRecurring(e) && notSpecial(e))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    // Calculate Total Recurring for Budget Line (Smart)
+    // 1. Group by Merchant Name (normalized)
+    // 2. Take only the LATEST transaction
 
-    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -675,6 +619,18 @@ export default function App() {
 
     // Ensure ID
     if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
+
+    // Update Intelligence Cache
+    if (cleanItem.name && cleanItem.name.length >= 3) {
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      cache[cleanItem.name.toLowerCase().trim()] = {
+        category: cleanItem.category,
+        frequency: cleanItem.frequency, // Save frequency preference!
+        isIncome: cleanItem.isIncome,
+        type: cleanItem.type
+      };
+      localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+    }
 
     setData(prev => {
       const newData = { ...prev };
@@ -833,6 +789,13 @@ export default function App() {
     }
   };
 
+  // Save Gemini API Key
+  const handleSaveGeminiKey = () => {
+    localStorage.setItem('geminiApiKey', geminiApiKey);
+    setSyncStatus('API key saved!');
+    setTimeout(() => setSyncStatus(''), 2000);
+  };
+
   // Click-away handler for user menu
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -906,7 +869,7 @@ export default function App() {
             ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            {data.expenses.filter(e => e.type === 'subscription' && e.category !== 'Transfer' && e.category !== 'Credit Card Payment').length} active services
+            {financials.activeSubscriptionCount} active services
           </div>
         </Card>
       </div>
@@ -985,8 +948,13 @@ export default function App() {
                 cursor="pointer"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                />
                 <Tooltip
                   cursor={{ fill: 'transparent' }}
                   content={({ active, payload, label }) => {
@@ -1014,7 +982,12 @@ export default function App() {
                   y={financials.totalRecurringExpenses}
                   stroke="#D4A373"
                   strokeDasharray="3 3"
-                  label={{ value: "Budget", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
+                  label={{
+                    value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                    fill: "#D4A373",
+                    fontSize: 10,
+                    position: "insideTopRight"
+                  }}
                 />
                 <Bar
                   key={`income-${selectedMonth}`}
@@ -1191,7 +1164,7 @@ export default function App() {
     // Transactions / Subscriptions Views
     const isSubView = activeTab === 'subscriptions';
     const items = isSubView
-      ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' }))
+      ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => parseInt(a.date.split('-')[2]) - parseInt(b.date.split('-')[2]))
       : getMonthlyItems;
 
     const today = new Date();
@@ -1232,7 +1205,7 @@ export default function App() {
               <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
                 <tr>
                   <th className="px-6 py-4 text-left">Transaction</th>
-                  <th className="px-6 py-4 text-left">Date</th>
+                  <th className="px-6 py-4 text-left">{isSubView ? 'Expected Day' : 'Date'}</th>
                   <th className="px-6 py-4 text-left">Category</th>
                   <th className="px-6 py-4 text-left">Amount</th>
                   <th className="px-6 py-4 text-center">Action</th>
@@ -1266,6 +1239,15 @@ export default function App() {
                       {(() => {
                         const [y, m, d] = item.date.split('-').map(Number);
                         const dateObj = new Date(y, m - 1, d);
+
+                        if (isSubView) {
+                          const j = d % 10, k = d % 100;
+                          if (j === 1 && k !== 11) return d + "st";
+                          if (j === 2 && k !== 12) return d + "nd";
+                          if (j === 3 && k !== 13) return d + "rd";
+                          return d + "th";
+                        }
+
                         return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
                       })()}
                     </td>
@@ -1447,10 +1429,34 @@ export default function App() {
                     </button>
 
                     {showDevMenu && (
-                      <div className="bg-danger/5 border-t border-danger/20">
+                      <div className="bg-background/50 border-t border-border/30">
+                        {/* Gemini API Key */}
+                        <div className="px-4 py-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs text-muted">
+                            <Bot size={12} />
+                            <span>Gemini API Key</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              placeholder="AIzaSy..."
+                              value={geminiApiKey}
+                              onChange={(e) => setGeminiApiKey(e.target.value)}
+                              className="flex-1 bg-background border border-border/50 rounded px-2 py-1 text-xs focus:outline-none focus:border-primary"
+                            />
+                            <button
+                              onClick={handleSaveGeminiKey}
+                              className="px-2 py-1 bg-primary/20 text-primary text-xs rounded hover:bg-primary/30 transition-colors"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Delete All */}
                         <button
                           onClick={handleDeleteAllData}
-                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-danger hover:bg-danger/10 transition-colors"
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-danger hover:bg-danger/10 transition-colors border-t border-danger/20"
                         >
                           <Trash2 size={14} />
                           Delete All Transactions
@@ -1764,17 +1770,26 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             .join('\n');
 
           const prompt = `
-    Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
+    Analyze this image (receipt, bank statement, or credit card statement). It may be a single receipt or a list of transactions.
     
     EXTRACT ALL distinct transactions found in the document.
     - Ignore headers, footers, account summaries, or balances.
     - If it's a statement, handle various layouts (tables, lists, blocks).
     
+    IMPORTANT - DETECTING DOCUMENT TYPE:
+    - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
+      - Charges/purchases = EXPENSES (isIncome: false)
+      - Payments/credits TO the card = mark as category "Credit Card Payment", isIncome: false (NOT income!)
+    - If this is a BANK STATEMENT:
+      - Deposits = INCOME (isIncome: true)
+      - Withdrawals/debits = EXPENSES (isIncome: false)
+      - Payments TO credit cards = category "Credit Card Payment", isIncome: false
+    
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
     - Amount (amount) - number only (absolute value)
-    - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
+    - Is Income (isIncome) - boolean. See rules above for proper classification.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
     
@@ -1810,6 +1825,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
                 ...item,
                 category: cache[lowerName].category,
                 isIncome: cache[lowerName].isIncome,
+                frequency: cache[lowerName].frequency || item.frequency, // Restore frequency!
                 type: cache[lowerName].type || item.type,
                 isRuleApplied: true
               };
@@ -1833,7 +1849,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
             const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
             if (!validCats.includes(prediction.category)) {
-              prediction.category = validCats[0];
+              prediction.category = 'Other'; // Safer default than index 0 (Alcohol)
             }
 
             setFormData(prev => ({
@@ -1852,7 +1868,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
               type: i.type || 'variable',
-              frequency: 'one-time'
+              frequency: (i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time'
             })));
           }
 
@@ -2175,11 +2191,32 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
                 <select
                   className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-gray-400 focus:outline-none uppercase font-bold"
                   value={item.type || 'variable'}
-                  onChange={(e) => onUpdate(idx, 'type', e.target.value)}
+                  onChange={(e) => {
+                    onUpdate(idx, 'type', e.target.value);
+                    // Auto-default to Monthly if switching to Bill/Sub and no freq set
+                    if ((e.target.value === 'bill' || e.target.value === 'subscription') && (!item.frequency || item.frequency === 'one-time')) {
+                      onUpdate(idx, 'frequency', 'monthly');
+                    }
+                  }}
                 >
                   <option value="variable">Var</option>
                   <option value="bill">Bill</option>
                   <option value="subscription">Sub</option>
+                </select>
+              )}
+
+              {/* Smart Frequency Badge (Bills/Subs only) */}
+              {(!item.isIncome && (item.type === 'bill' || item.type === 'subscription')) && (
+                <select
+                  className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-primary focus:outline-none font-bold"
+                  value={item.frequency || 'monthly'}
+                  onChange={(e) => onUpdate(idx, 'frequency', e.target.value)}
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-Wkly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Qrtrly</option>
+                  <option value="annual">Yearly</option>
                 </select>
               )}
 
