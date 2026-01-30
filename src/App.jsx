@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1169,41 +1169,32 @@ export default function App() {
     if (!isSearchActive && activeTab === 'dashboard') return renderDashboard();
 
     if (!isSearchActive && activeTab === 'statements') {
+      // Group by unique account (provider + last4)
       const grouped = (data.statements || []).reduce((acc, s) => {
-        acc[s.provider] = acc[s.provider] || [];
-        acc[s.provider].push(s);
+        const key = `${s.provider}-${s.last4 || 'unknown'}`;
+        acc[key] = acc[key] || { provider: s.provider, last4: s.last4, statements: [] };
+        acc[key].statements.push(s);
         return acc;
       }, {});
+
+      // Sort accounts by most recent upload
+      const sortedAccounts = Object.values(grouped).sort((a, b) => {
+        const latestA = Math.max(...a.statements.map(s => new Date(s.uploadDate)));
+        const latestB = Math.max(...b.statements.map(s => new Date(s.uploadDate)));
+        return latestB - latestA;
+      });
 
       return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="font-semibold text-lg">Statements</h2>
+            <h2 className="font-semibold text-lg">Accounts & Statements</h2>
           </div>
-          {Object.keys(grouped).length === 0 ? (
+          {sortedAccounts.length === 0 ? (
             <div className="text-center py-12 text-muted">No statements uploaded yet.</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(grouped).map(([provider, stmts]) => (
-                <Card key={provider} className="p-4 border-border/50">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <FileText size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{provider}</h3>
-                      {stmts[0].last4 && <p className="text-xs text-muted">Ending in ••••{stmts[0].last4}</p>}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {stmts.sort((a, b) => new Date(b.date) - new Date(a.date)).map(s => (
-                      <div key={s.id} className="flex justify-between items-center text-sm p-2 hover:bg-white/5 rounded transition-colors group">
-                        <span className="text-text">{new Date(s.date).toLocaleDateString()}</span>
-                        <span className="text-xs text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+            <div className="space-y-4">
+              {sortedAccounts.map((account) => (
+                <AccountCard key={`${account.provider}-${account.last4}`} account={account} />
               ))}
             </div>
           )}
@@ -1662,6 +1653,55 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
+function AccountCard({ account }) {
+  const [expanded, setExpanded] = useState(false);
+  const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latest = sortedStmts[0];
+  const history = sortedStmts.slice(1);
+
+  return (
+    <Card className="p-4 border-border/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <CreditCard size={20} />
+          </div>
+          <div>
+            <h3 className="font-semibold">{account.provider}</h3>
+            <p className="text-xs text-muted">Ending in ••••{account.last4 || '????'}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium">Latest: {new Date(latest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+          {latest.transactionCount > 0 && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
+        </div>
+      </div>
+
+      {history.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-muted hover:text-white flex items-center gap-1 transition-colors"
+          >
+            <ChevronRight size={14} className={cn("transition-transform", expanded && "rotate-90")} />
+            Statement History ({history.length} more)
+          </button>
+          {expanded && (
+            <div className="mt-2 space-y-1 pl-5">
+              {history.map(s => (
+                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded">
+                  <span>{new Date(s.date).toLocaleDateString()}</span>
+                  <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
@@ -1874,15 +1914,20 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     Return STRICT JSON Object: 
     {
       "metadata": {
-        "provider": "Chase", 
-        "last4": "1234", 
-        "statementDate": "2024-01-01" 
+        "provider": "Chase",
+        "last4": "1234",
+        "statementEndDate": "2024-01-22"
       },
       "transactions": [
         {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
         ...
       ]
     }
+    
+    IMPORTANT for metadata:
+    - provider: The bank/card issuer name (Chase, Fidelity, Amex, etc.)
+    - last4: Last 4 digits of the account/card number
+    - statementEndDate: The STATEMENT CLOSING DATE (period end), NOT the start date or due date
     `;
 
           const result = await model.generateContent([
@@ -2027,8 +2072,9 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         id: Math.random().toString(36).substr(2, 9),
         provider: pendingStatement.provider || 'Unknown Provider',
         last4: pendingStatement.last4 || '????',
-        date: pendingStatement.statementDate || new Date().toISOString().split('T')[0],
-        uploadDate: new Date().toISOString()
+        date: pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0],
+        uploadDate: new Date().toISOString(),
+        transactionCount: bulkItems.filter(i => !((data?.expenses || []).some(e => e.name === i.name && e.date === i.date) || (data?.income || []).some(e => e.name === i.name && e.date === i.date))).length
       };
       onSaveStatement(newStmt);
       setPendingStatement(null);
