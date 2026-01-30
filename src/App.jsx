@@ -671,6 +671,10 @@ export default function App() {
     setEditingItem(null);
   };
 
+  const handleSaveStatement = (stmt) => {
+    setData(prev => ({ ...prev, statements: [...(prev.statements || []), stmt] }));
+  };
+
   // --- Auth & Sync Handlers ---
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -1602,6 +1606,7 @@ export default function App() {
               data={data}
               setPendingStatement={setPendingStatement}
               pendingStatement={pendingStatement}
+              onSaveStatement={handleSaveStatement}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
@@ -1657,7 +1662,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSave, onCancel, onOpenSettings }) {
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
       name: '',
@@ -2025,7 +2030,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         date: pendingStatement.statementDate || new Date().toISOString().split('T')[0],
         uploadDate: new Date().toISOString()
       };
-      setData(prev => ({ ...prev, statements: [...(prev.statements || []), newStmt] }));
+      onSaveStatement(newStmt);
       setPendingStatement(null);
     }
     if (onCancel) onCancel();
