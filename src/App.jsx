@@ -30,7 +30,7 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Groceries', 'Health', 'Housing',
+  'Alcohol', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Groceries', 'Health', 'Housing', 'Insurance',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Transport', 'Travel', 'Utilities', 'Other'
 ];
 
@@ -40,7 +40,7 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Taxes': '🏛️', 'Travel': '✈️',
+    'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Transport': '🚗', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
