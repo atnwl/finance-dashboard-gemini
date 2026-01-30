@@ -34,7 +34,7 @@ const EXPENSE_CATEGORIES = [
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Transfer', 'Transport', 'Utilities', 'Other'
 ];
 
-const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
+const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
 
 const isRecurring = (item) => item.frequency !== 'one-time';
 
@@ -64,7 +64,7 @@ const Button = ({ children, variant = 'primary', className, ...props }) => {
     primary: "bg-primary text-black hover:bg-primary/90 shadow-lg shadow-primary/20",
     outline: "border border-border text-muted hover:text-text hover:border-gray-600",
     ghost: "text-muted hover:text-text hover:bg-white/5",
-    danger: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
+    danger: "bg-danger/10 text-danger hover:bg-danger/20",
   };
   return (
     <button className={cn(baseStyles, variants[variant], className)} {...props}>
@@ -271,7 +271,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center bg-card rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50 flex items-center justify-center">
             <Sparkles size={16} className="text-black fill-current" />
           </div>
           <div>
@@ -279,11 +279,11 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
             <p className="text-[10px] text-muted flex items-center gap-1">
               {localStorage.getItem('geminiApiKey') ? (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Online
                 </>
               ) : (
                 <>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Offline (Missing Key)
+                  <span className="w-1.5 h-1.5 rounded-full bg-danger" /> Offline (Missing Key)
                 </>
               )}
             </p>
@@ -339,14 +339,14 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-muted bg-black/20 p-2 rounded-lg">
                   <span className="truncate max-w-[150px]">{user.email || 'Logged In'}</span>
-                  <button onClick={onLogout} className="text-red-400 hover:text-red-300 flex items-center gap-1">
+                  <button onClick={onLogout} className="text-danger hover:text-danger/80 flex items-center gap-1">
                     <LogOut size={10} /> Logout
                   </button>
                 </div>
 
                 <p className="text-[10px] text-muted leading-tight">
                   Enter a <strong>Sync Password</strong>. This encrypts your data before upload.
-                  <span className="text-red-400 block mt-1">If you lose this password, your cloud data is lost forever.</span>
+                  <span className="text-danger block mt-1">If you lose this password, your cloud data is lost forever.</span>
                 </p>
 
                 <Input
@@ -376,9 +376,9 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
                 {syncStatus && (
                   <div className={cn("text-xs p-2 rounded border",
-                    syncStatus.includes('Success') ? "bg-green-500/10 border-green-500/20 text-green-400" :
-                      syncStatus.includes('Error') ? "bg-red-500/10 border-red-500/20 text-red-400" :
-                        "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                    syncStatus.includes('Success') ? "bg-primary/10 border-primary/20 text-primary" :
+                      syncStatus.includes('Error') ? "bg-danger/10 border-danger/20 text-danger" :
+                        "bg-secondary/10 border-secondary/20 text-secondary"
                   )}>
                     {syncStatus}
                   </div>
@@ -872,12 +872,12 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-blue-500/10">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Excl. CC Payments
           </div>
@@ -888,7 +888,7 @@ export default function App() {
             <Wallet size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Net Cash Flow</h3>
-          <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-red-400")}>
+          <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-danger")}>
             ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
@@ -912,15 +912,15 @@ export default function App() {
 
       {/* Secondary / Credit & Debt Tier */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-amber-500/30 transition-colors">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
           <div>
             <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
-            <p className="text-2xl font-bold text-amber-400/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
         </div>
 
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-blue-500/30 transition-colors">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
           <div>
             <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
             <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
@@ -1011,9 +1011,9 @@ export default function App() {
                 />
                 <ReferenceLine
                   y={financials.totalRecurringExpenses}
-                  stroke="#F59E0B"
+                  stroke="#D4A373"
                   strokeDasharray="3 3"
-                  label={{ value: "Recurring", fill: "#F59E0B", fontSize: 10, position: "insideTopRight" }}
+                  label={{ value: "Budget", fill: "#D4A373", fontSize: 10, position: "insideTopRight" }}
                 />
                 <Bar
                   key={`income-${selectedMonth}`}
@@ -1036,7 +1036,7 @@ export default function App() {
                     return (
                       <Cell
                         key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#4ADE80" : "#22c55e"} // Past=Dark, Current=Bright, Future=MutedGreen
+                        fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
                         stroke={isSelected ? "#ffffff" : "none"}
                         strokeWidth={isSelected ? 2 : 0}
                         fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1065,7 +1065,7 @@ export default function App() {
                     return (
                       <Cell
                         key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#3B82F6" : "#2563eb"} // Past=Dark, Current=Bright, Future=MutedBlue
+                        fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
                         stroke={isSelected ? "#ffffff" : "none"}
                         strokeWidth={isSelected ? 2 : 0}
                         fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1238,7 +1238,7 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
-                          item._type === 'income' ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"
+                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
                         )}>
                           {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
                         </div>
@@ -1260,7 +1260,7 @@ export default function App() {
                         {item.category}
                       </span>
                     </td>
-                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-emerald-400" : "text-text")}>
+                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-primary" : "text-text")}>
                       {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -1271,7 +1271,7 @@ export default function App() {
                             setEditingItem(item);
                             setIsFormOpen(true);
                           }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-blue-400 transition-colors"
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-secondary transition-colors"
                         >
                           <Edit2 size={14} />
                         </button>
@@ -1280,7 +1280,7 @@ export default function App() {
                             e.stopPropagation();
                             handleDelete(item._type, item.id);
                           }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-red-400 transition-colors"
+                          className="p-1.5 hover:bg-white/10 rounded-lg text-danger transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1329,14 +1329,14 @@ export default function App() {
             </div>
             <button className="p-2 text-muted hover:text-white relative">
               <Bell size={20} />
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-background"></div>
+              <div className="absolute top-2 right-2 w-1.5 h-1.5 bg-danger rounded-full border border-background"></div>
             </button>
 
             {/* User Avatar & Sync Card Dropdown */}
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500 border border-white/10 hover:ring-2 hover:ring-primary/50 transition-all"
+                className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50 border border-white/10 hover:ring-2 hover:ring-primary/50 transition-all"
               />
 
               {showUserMenu && (
@@ -1344,7 +1344,7 @@ export default function App() {
                   {/* User Info Row */}
                   <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-blue-500" />
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50" />
                       <div>
                         <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'Guest'}</p>
                         <p className="text-xs text-muted">{user ? 'Logged In' : 'Not Logged In'}</p>
@@ -1354,8 +1354,8 @@ export default function App() {
                       <div className={cn(
                         "text-xs px-2 py-0.5 rounded-full",
                         (Date.now() - lastBackupTime.getTime()) < 86400000 ? "bg-primary/20 text-primary" :
-                          (Date.now() - lastBackupTime.getTime()) < 604800000 ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-red-500/20 text-red-400"
+                          (Date.now() - lastBackupTime.getTime()) < 604800000 ? "bg-warning/20 text-warning" :
+                            "bg-danger/20 text-danger"
                       )}>
                         {(Date.now() - lastBackupTime.getTime()) < 60000 ? 'Just now' :
                           (Date.now() - lastBackupTime.getTime()) < 3600000 ? `${Math.floor((Date.now() - lastBackupTime.getTime()) / 60000)}m ago` :
@@ -1379,9 +1379,9 @@ export default function App() {
                           </button>
                           <button
                             onClick={handleQuickRestore}
-                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
+                            className="flex flex-col items-center justify-center gap-1 p-3 bg-background/50 border border-border/50 rounded-lg hover:border-secondary/50 hover:bg-secondary/5 transition-all"
                           >
-                            <Download size={20} className="text-blue-400" />
+                            <Download size={20} className="text-secondary" />
                             <span className="text-xs font-medium">Restore</span>
                           </button>
                         </div>
@@ -1414,7 +1414,7 @@ export default function App() {
                       <p className={cn(
                         "text-xs text-center py-1 rounded animate-pulse",
                         syncStatus.includes('Success') ? "text-primary" :
-                          syncStatus.includes('Error') ? "text-red-400" : "text-muted"
+                          syncStatus.includes('Error') ? "text-danger" : "text-muted"
                       )}>{syncStatus}</p>
                     )}
                   </div>
@@ -1433,10 +1433,10 @@ export default function App() {
                     </button>
 
                     {showDevMenu && (
-                      <div className="bg-red-500/5 border-t border-red-500/20">
+                      <div className="bg-danger/5 border-t border-danger/20">
                         <button
                           onClick={handleDeleteAllData}
-                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-danger hover:bg-danger/10 transition-colors"
                         >
                           <Trash2 size={14} />
                           Delete All Transactions
@@ -1940,7 +1940,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             <label
               htmlFor="camera-input"
               className={cn(
-                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-green-500 to-emerald-600 rounded-xl cursor-pointer shadow-lg shadow-green-500/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
+                "h-full w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-primary to-primary/80 rounded-xl cursor-pointer shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-black",
                 aiFlash && "ring-2 ring-white scale-95",
                 isAiLoading && "opacity-80 pointer-events-none cursor-wait"
               )}
@@ -2070,7 +2070,7 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
           <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-3 group relative">
             <button
               onClick={() => onRemove(idx)}
-              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-red-500/20 text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-danger/20 text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-all"
               title="Remove Item"
             >
               <Trash2 size={14} />
@@ -2103,7 +2103,7 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
                 onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
                 className={cn(
                   "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded cursor-pointer select-none",
-                  item.isIncome ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-400"
+                  item.isIncome ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
                 )}
               >
                 {item.isIncome ? 'Income' : 'Expense'}
