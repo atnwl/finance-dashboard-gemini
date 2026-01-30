@@ -26,13 +26,12 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Salary', 'Freelance', 'Investments', 'Gift', 'Refund', 'Transfer', 'Other'
+  'Freelance', 'Gift', 'Investments', 'Refund', 'Salary', 'Transfer', 'Other'
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Housing', 'Groceries', 'Restaurants', 'Transport', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Personal',
-  'Kids: Clothes', 'Kids: Toys', 'Kids: Activities', 'Global Entry / Travel',
-  'Student Loans', 'Buy Now Pay Later', 'Credit Card Payment', 'Transfer', 'Other'
+  'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Global Entry / Travel', 'Groceries', 'Health', 'Housing',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Transfer', 'Transport', 'Utilities', 'Other'
 ];
 
 const COLORS = ['#4ADE80', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#10B981', '#6B7280', '#6366f1'];
@@ -195,6 +194,18 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           }
         }
         \`\`\`
+
+        You can also SET CATEGORY RULES. If a user says "Always categorize X as Y", include this JSON:
+        \`\`\`json
+        {
+          "action": "update_rule",
+          "data": {
+            "name": "Merchant Name",
+            "category": "Category",
+            "isIncome": true/false
+          }
+        }
+        \`\`\`
       `;
 
       // Filter history to ensure it starts with role 'user' (Gemini requirement)
@@ -226,6 +237,17 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           if (actionData.action === 'add_transaction' && onAddItem) {
             onAddItem(actionData.data);
             console.log("AI added transaction:", actionData.data);
+          }
+          if (actionData.action === 'update_rule') {
+            const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+            cache[actionData.data.name.toLowerCase().trim()] = {
+              category: actionData.data.category,
+              isIncome: actionData.data.isIncome,
+              type: 'variable',
+              frequency: 'one-time'
+            };
+            localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+            console.log("AI updated rule:", actionData.data);
           }
         } catch (e) {
           console.error("AI Action JSON parse failed", e);
@@ -548,7 +570,8 @@ export default function App() {
 
     // Helpers
     const isRecurring = (item) => item.frequency !== 'one-time';
-    const notTransfer = (item) => item.category !== 'Transfer';
+    const isSpecial = (item) => item.category === 'Transfer' || item.category === 'Credit Card Payment';
+    const notSpecial = (item) => !isSpecial(item);
 
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
     // User asked: "monthly income... should only reflect that month".
@@ -556,13 +579,13 @@ export default function App() {
     // ... logic ...
 
     // Income
-    const recurringIncome = data.income.filter(i => isRecurring(i) && notTransfer(i));
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notTransfer(i));
+    const recurringIncome = data.income.filter(i => isRecurring(i) && notSpecial(i));
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
     // Expenses
-    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notTransfer(e));
-    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notTransfer(e));
+    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
+    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
@@ -570,8 +593,12 @@ export default function App() {
     const net = totalIncome - totalExpenses;
 
     const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription' && notTransfer(e))
+      .filter(e => e.type === 'subscription' && notSpecial(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    const totalCcPayments = data.expenses
+      .filter(e => e.category === 'Credit Card Payment' && filterByDate(e))
+      .reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
     // Group expenses by category
     const byCategory = effectiveExpenses.reduce((acc, item) => {
@@ -589,12 +616,12 @@ export default function App() {
       };
 
       // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(i => isRecurring(i) && notTransfer(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notTransfer(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
+      const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
+      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notSpecial(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
 
       // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notTransfer(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notTransfer(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notSpecial(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const inc = mRecurringInc + mOneTimeInc;
       const exp = mRecurringExp + mOneTimeExp;
@@ -613,10 +640,10 @@ export default function App() {
 
     // Calculate Total Recurring for Budget Line
     const totalRecurringExpenses = data.expenses
-      .filter(e => isRecurring(e) && notTransfer(e))
+      .filter(e => isRecurring(e) && notSpecial(e))
       .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
-    return { totalIncome, totalExpenses, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -751,27 +778,27 @@ export default function App() {
   // Renderers
   const renderDashboard = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+      {/* Primary Highlights */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingUp size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Income</h3>
           <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-primary/80 flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Active
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-blue-500/10">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
           <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            Total recurring
+            Excl. CC Payments
           </div>
         </Card>
 
@@ -788,7 +815,7 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
+        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={48} />
           </div>
@@ -797,9 +824,36 @@ export default function App() {
             ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            {data.expenses.filter(e => e.type === 'subscription').length} active services
+            {data.expenses.filter(e => e.type === 'subscription' && e.category !== 'Transfer' && e.category !== 'Credit Card Payment').length} active services
           </div>
         </Card>
+      </div>
+
+      {/* Secondary / Credit & Debt Tier */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-amber-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
+            <p className="text-2xl font-bold text-amber-400/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
+
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-blue-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
+            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
+          </div>
+          <Activity size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
+
+        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-purple-500/30 transition-colors">
+          <div>
+            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Balance Transfers</h4>
+            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
+          </div>
+          <TrendingDown size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -1479,6 +1533,13 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+          // Fetch Intelligence Cache to teach Gemini user's preferences
+          const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+          const knownRules = Object.entries(cache)
+            .map(([name, data]) => `- ${name}: ${data.category}`)
+            .slice(-40) // Pick last 40 most recent/relevant rules to avoid over-bloating prompt
+            .join('\n');
+
           const prompt = `
     Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
     
@@ -1493,6 +1554,9 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
     
+    USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
+    ${knownRules || 'No custom rules set yet.'}
+
     Return STRICT JSON Array: 
     [
       {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
@@ -1512,7 +1576,22 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
           const responseText = result.response.text().replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(responseText);
-          const items = Array.isArray(parsed) ? parsed : [parsed];
+          const rawItems = Array.isArray(parsed) ? parsed : [parsed];
+
+          // Apply local cache as a secondary "Guarantee" layer
+          const items = rawItems.map(item => {
+            const lowerName = item.name.toLowerCase().trim();
+            if (cache[lowerName]) {
+              return {
+                ...item,
+                category: cache[lowerName].category,
+                isIncome: cache[lowerName].isIncome,
+                type: cache[lowerName].type || item.type,
+                isRuleApplied: true
+              };
+            }
+            return item;
+          });
 
           if (items.length === 0) throw new Error("No transactions found");
 
@@ -1788,20 +1867,25 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               <Trash2 size={14} />
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 type="date"
                 className="bg-transparent border-b border-white/10 text-xs text-muted py-1 w-24 focus:outline-none focus:border-primary"
                 value={item.date || ''}
                 onChange={(e) => onUpdate(idx, 'date', e.target.value)}
               />
-              <input
-                type="text"
-                className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
-                placeholder="Merchant Name"
-                value={item.name}
-                onChange={(e) => onUpdate(idx, 'name', e.target.value)}
-              />
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  type="text"
+                  className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
+                  placeholder="Merchant Name"
+                  value={item.name}
+                  onChange={(e) => onUpdate(idx, 'name', e.target.value)}
+                />
+                {item.isRuleApplied && (
+                  <Sparkles size={14} className="text-purple-400 animate-pulse" title="Applied your custom rule" />
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
