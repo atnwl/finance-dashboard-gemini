@@ -516,7 +516,32 @@ export default function App() {
     const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
-    // Expenses
+    // 1. SMART RECURRING CALCULATION (Deduplicated & Latest)
+    const uniqueRecurring = {};
+    const NOW = new Date();
+
+    // Group Expenses by Merchant (Latest wins)
+    data.expenses
+      .filter(e => isRecurring(e) && notSpecial(e))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(item => { uniqueRecurring[item.name.toLowerCase().trim()] = item; });
+
+    // Filter for Active (Recency Check)
+    const activeRecurringItems = Object.values(uniqueRecurring).filter(item => {
+      const itemDate = new Date(item.date);
+      const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
+      if (item.frequency === 'monthly' && daysSince > 60) return false;
+      return true;
+    });
+
+    const totalRecurringExpenses = activeRecurringItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    // Subscriptions Specifics (Subset of Active Recurring)
+    const activeSubscriptions = activeRecurringItems.filter(i => i.type === 'subscription');
+    const totalSubscriptionsCost = activeSubscriptions.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    const activeSubscriptionCount = activeSubscriptions.length;
+
+    // 2. Standard Expenses
     const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
@@ -525,9 +550,7 @@ export default function App() {
     const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const net = totalIncome - totalExpenses;
 
-    const totalSubscriptionsCost = data.expenses
-      .filter(e => e.type === 'subscription' && notSpecial(e))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
 
     const totalCcPayments = data.expenses
       .filter(e => e.category === 'Credit Card Payment' && filterByDate(e))
@@ -550,7 +573,7 @@ export default function App() {
 
       // Recurring logic applies to all months
       const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = data.expenses.filter(e => isRecurring(e) && notSpecial(e)).reduce((acc, e) => acc + normalizeToMonthly(e.amount, e.frequency), 0);
+      const mRecurringExp = totalRecurringExpenses;
 
       // One-time logic specific to this month
       const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
@@ -574,31 +597,8 @@ export default function App() {
     // Calculate Total Recurring for Budget Line (Smart)
     // 1. Group by Merchant Name (normalized)
     // 2. Take only the LATEST transaction
-    // 3. Must be recent enough to be considered active (e.g. within 45 days for monthly)
-    const uniqueRecurring = {};
-    const NOW = new Date();
 
-    data.expenses
-      .filter(e => isRecurring(e) && notSpecial(e))
-      .sort((a, b) => new Date(a.date) - new Date(b.date)) // Sort ascending to process latest last
-      .forEach(item => {
-        const key = item.name.toLowerCase().trim();
-        uniqueRecurring[key] = item;
-      });
-
-    const totalRecurringExpenses = Object.values(uniqueRecurring).reduce((acc, item) => {
-      // Recency Check: If it's Monthly but haven't seen it in 60 days, assume cancelled?
-      // For now, let's just use a simple "last 60 days" rule for monthly items to be safe.
-      const itemDate = new Date(item.date);
-      const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
-
-      // If frequence is Monthly but it's been > 60 days, skip it (likely cancelled)
-      if (item.frequency === 'monthly' && daysSince > 60) return acc;
-
-      return acc + normalizeToMonthly(item.amount, item.frequency);
-    }, 0);
-
-    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, yearlyData, totalRecurringExpenses };
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   // Handlers
@@ -869,7 +869,7 @@ export default function App() {
             ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            {data.expenses.filter(e => e.type === 'subscription' && e.category !== 'Transfer' && e.category !== 'Credit Card Payment').length} active services
+            {financials.activeSubscriptionCount} active services
           </div>
         </Card>
       </div>
