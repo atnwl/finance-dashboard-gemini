@@ -11,7 +11,7 @@ export default {
         // Custom colors based on the "Paier" image
         background: '#0F1115',
         card: '#161B21',
-        primary: '#4ADE80', // Green accent
+        primary: '#3ECF8E', // Supabase emerald green
         secondary: '#3B82F6', // Blue accent for some elements
         text: '#E5E7EB',
         muted: '#9CA3AF',
