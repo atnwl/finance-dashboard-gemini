@@ -716,7 +716,12 @@ export default function App() {
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'github',
-      options: { redirectTo: window.location.origin }
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: {
+          prompt: 'consent'  // Force GitHub to show auth screen (allows switching accounts)
+        }
+      }
     });
   };
 
