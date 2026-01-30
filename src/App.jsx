@@ -1205,7 +1205,7 @@ export default function App() {
               <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
                 <tr>
                   <th className="px-6 py-4 text-left">Transaction</th>
-                  <th className="px-6 py-4 text-left">Date</th>
+                  <th className="px-6 py-4 text-left">{isSubView ? 'Expected Day' : 'Date'}</th>
                   <th className="px-6 py-4 text-left">Category</th>
                   <th className="px-6 py-4 text-left">Amount</th>
                   <th className="px-6 py-4 text-center">Action</th>
@@ -1239,6 +1239,15 @@ export default function App() {
                       {(() => {
                         const [y, m, d] = item.date.split('-').map(Number);
                         const dateObj = new Date(y, m - 1, d);
+
+                        if (isSubView) {
+                          const j = d % 10, k = d % 100;
+                          if (j === 1 && k !== 11) return d + "st";
+                          if (j === 2 && k !== 12) return d + "nd";
+                          if (j === 3 && k !== 13) return d + "rd";
+                          return d + "th";
+                        }
+
                         return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
                       })()}
                     </td>
