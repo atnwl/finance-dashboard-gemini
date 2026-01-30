@@ -955,8 +955,8 @@ export default function App() {
               >
                 {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
               </select>
-              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-8 h-8 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
-                <Plus size={18} />
+              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
+                <Plus size={22} />
               </Button>
             </div>
           </div>
@@ -1479,9 +1479,9 @@ export default function App() {
           <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
           <button
             onClick={openAddModal}
-            className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-4 border-4 border-background"
+            className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
           >
-            <Plus size={24} />
+            <Plus size={28} />
           </button>
           <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
           <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
