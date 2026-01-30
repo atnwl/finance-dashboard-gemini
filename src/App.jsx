@@ -154,7 +154,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
       const context = `
         You are a helpful financial assistant analyzing the user's personal finance dashboard.
@@ -1435,7 +1435,7 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           const base64Data = reader.result.split(',')[1];
 
           const genAI = new GoogleGenerativeAI(apiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
           const prompt = `
     Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
