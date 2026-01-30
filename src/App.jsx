@@ -1164,7 +1164,7 @@ export default function App() {
     // Transactions / Subscriptions Views
     const isSubView = activeTab === 'subscriptions';
     const items = isSubView
-      ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' }))
+      ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => parseInt(a.date.split('-')[2]) - parseInt(b.date.split('-')[2]))
       : getMonthlyItems;
 
     const today = new Date();
