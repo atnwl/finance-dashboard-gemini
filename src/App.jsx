@@ -1113,16 +1113,23 @@ export default function App() {
               <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             {Object.entries(financials.byCategory)
               .sort(([, a], [, b]) => b - a)
               .map(([name, value], idx) => (
-                <div key={name} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                  <span className="text-muted truncate">{name}</span>
-                  <span className="ml-auto text-white font-medium">
-                    ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 0 })} ({Math.round(value / financials.totalExpenses * 100)}%)
+                <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                  <span className="text-muted truncate flex-1">{name}</span>
+                  <span className="text-white font-medium shrink-0">
+                    {Math.round(value / financials.totalExpenses * 100)}%
                   </span>
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                    <p className="text-[10px] text-muted mb-0.5">{name}</p>
+                    <p className="text-sm font-bold text-white">
+                      ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
                 </div>
               ))}
           </div>
@@ -2060,6 +2067,52 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
   )
 };
 
+// HELPER: Formatted Amount Input for Review
+const ReviewAmountInput = ({ value, onChange }) => {
+  const [localValue, setLocalValue] = useState('');
+
+  useEffect(() => {
+    // Only update local value from parent if they are different (to avoid cursor jumps)
+    const formatted = (value === undefined || value === '') ? '' : Number(value).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    if (parseFloat(localValue.replace(/,/g, '')) !== parseFloat(value)) {
+      setLocalValue(formatted);
+    }
+  }, [value]);
+
+  const handleInputChange = (e) => {
+    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    setLocalValue(e.target.value); // Keep typing feel
+    onChange(raw);
+  };
+
+  const handleBlur = () => {
+    const num = parseFloat(localValue.replace(/,/g, ''));
+    const clean = isNaN(num) ? '0' : num.toString();
+    const formatted = (clean === '0') ? '' : Number(clean).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+    setLocalValue(formatted);
+    onChange(clean);
+  };
+
+  return (
+    <div className="relative w-32">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
+      <input
+        type="text"
+        className="w-full bg-white/10 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none focus:border-primary"
+        value={localValue}
+        onChange={handleInputChange}
+        onBlur={handleBlur}
+      />
+    </div>
+  );
+};
+
 // HELPER: Bulk Review UI
 const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
   return (
@@ -2141,16 +2194,10 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               </select>
 
               {/* Amount */}
-              <div className="relative w-32">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full bg-white/10 border border-white/10 rounded px-2 pl-5 py-1 text-right text-sm font-bold focus:outline-none focus:border-primary"
-                  value={item.amount}
-                  onChange={(e) => onUpdate(idx, 'amount', e.target.value)}
-                />
-              </div>
+              <ReviewAmountInput
+                value={item.amount}
+                onChange={(val) => onUpdate(idx, 'amount', val)}
+              />
             </div>
           </div>
         ))}
@@ -2162,7 +2209,7 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
           Import All ({items.length})
         </Button>
       </div>
-    </div>
+    </div >
   );
 };
 
