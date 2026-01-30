@@ -119,7 +119,7 @@ const Select = ({ label, options, ...props }) => (
 );
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -174,6 +174,27 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
         Expenses: ${JSON.stringify(data.expenses.slice(0, 5))}...
 
         Answer the user's question concisely based on this data. formatting: use markdown.
+
+        AVAILABLE CATEGORIES:
+        - Income: ${INCOME_CATEGORIES.join(', ')}
+        - Expenses: ${EXPENSE_CATEGORIES.join(', ')}
+
+        ACTIONABLE POWER: 
+        You can ADD transactions for the user. If they ask you to record something, explain that you've done it and include this EXACT JSON block at the bottom of your response:
+        \`\`\`json
+        {
+          "action": "add_transaction",
+          "data": {
+            "name": "Merchant Name",
+            "amount": 0.00,
+            "date": "YYYY-MM-DD",
+            "category": "One of the categories above",
+            "isIncome": true/false,
+            "frequency": "one-time",
+            "type": "variable"
+          }
+        }
+        \`\`\`
       `;
 
       // Filter history to ensure it starts with role 'user' (Gemini requirement)
@@ -196,6 +217,20 @@ const ChatWindow = ({ isOpen, onClose, data, financials, user, onLogin, onLogout
       const result = await chat.sendMessage(context + "\n\nUser Question: " + input);
       const response = await result.response;
       const text = response.text();
+
+      // Check for AI Actions
+      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try {
+          const actionData = JSON.parse(jsonMatch[1]);
+          if (actionData.action === 'add_transaction' && onAddItem) {
+            onAddItem(actionData.data);
+            console.log("AI added transaction:", actionData.data);
+          }
+        } catch (e) {
+          console.error("AI Action JSON parse failed", e);
+        }
+      }
 
       setMessages(prev => [...prev, { role: 'model', text }]);
     } catch (error) {
@@ -734,7 +769,7 @@ export default function App() {
             <TrendingDown size={48} />
           </div>
           <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold mt-2 text-[#3B82F6]">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           <div className="mt-4 text-xs text-muted flex items-center gap-1">
             Total recurring
           </div>
@@ -1194,6 +1229,7 @@ export default function App() {
         onClose={() => setIsChatOpen(false)}
         data={data}
         financials={financials}
+        onAddItem={handleSave}
         user={user}
         onLogin={handleLogin}
         onLogout={handleLogout}
