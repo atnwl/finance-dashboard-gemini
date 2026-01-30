@@ -195,6 +195,18 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           }
         }
         \`\`\`
+
+        You can also SET CATEGORY RULES. If a user says "Always categorize X as Y", include this JSON:
+        \`\`\`json
+        {
+          "action": "update_rule",
+          "data": {
+            "name": "Merchant Name",
+            "category": "Category",
+            "isIncome": true/false
+          }
+        }
+        \`\`\`
       `;
 
       // Filter history to ensure it starts with role 'user' (Gemini requirement)
@@ -226,6 +238,17 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           if (actionData.action === 'add_transaction' && onAddItem) {
             onAddItem(actionData.data);
             console.log("AI added transaction:", actionData.data);
+          }
+          if (actionData.action === 'update_rule') {
+            const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+            cache[actionData.data.name.toLowerCase().trim()] = {
+              category: actionData.data.category,
+              isIncome: actionData.data.isIncome,
+              type: 'variable',
+              frequency: 'one-time'
+            };
+            localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+            console.log("AI updated rule:", actionData.data);
           }
         } catch (e) {
           console.error("AI Action JSON parse failed", e);
@@ -1479,6 +1502,13 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+          // Fetch Intelligence Cache to teach Gemini user's preferences
+          const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+          const knownRules = Object.entries(cache)
+            .map(([name, data]) => `- ${name}: ${data.category}`)
+            .slice(-40) // Pick last 40 most recent/relevant rules to avoid over-bloating prompt
+            .join('\n');
+
           const prompt = `
     Analyze this image (receipt or bank statement). It may be a single receipt or a list of transactions.
     
@@ -1493,6 +1523,9 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     - Is Income (isIncome) - boolean. Determine if it's a deposit/credit (true) or withdrawal/debit (false). Look for minus signs, "DR/CR" labels, or separate columns.
     - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
     
+    USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
+    ${knownRules || 'No custom rules set yet.'}
+
     Return STRICT JSON Array: 
     [
       {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food"},
@@ -1512,7 +1545,22 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
           const responseText = result.response.text().replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(responseText);
-          const items = Array.isArray(parsed) ? parsed : [parsed];
+          const rawItems = Array.isArray(parsed) ? parsed : [parsed];
+
+          // Apply local cache as a secondary "Guarantee" layer
+          const items = rawItems.map(item => {
+            const lowerName = item.name.toLowerCase().trim();
+            if (cache[lowerName]) {
+              return {
+                ...item,
+                category: cache[lowerName].category,
+                isIncome: cache[lowerName].isIncome,
+                type: cache[lowerName].type || item.type,
+                isRuleApplied: true
+              };
+            }
+            return item;
+          });
 
           if (items.length === 0) throw new Error("No transactions found");
 
@@ -1788,20 +1836,25 @@ const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
               <Trash2 size={14} />
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 type="date"
                 className="bg-transparent border-b border-white/10 text-xs text-muted py-1 w-24 focus:outline-none focus:border-primary"
                 value={item.date || ''}
                 onChange={(e) => onUpdate(idx, 'date', e.target.value)}
               />
-              <input
-                type="text"
-                className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
-                placeholder="Merchant Name"
-                value={item.name}
-                onChange={(e) => onUpdate(idx, 'name', e.target.value)}
-              />
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  type="text"
+                  className="bg-transparent border-b border-white/10 text-sm font-medium flex-1 py-1 focus:outline-none focus:border-primary placeholder:text-white/20"
+                  placeholder="Merchant Name"
+                  value={item.name}
+                  onChange={(e) => onUpdate(idx, 'name', e.target.value)}
+                />
+                {item.isRuleApplied && (
+                  <Sparkles size={14} className="text-purple-400 animate-pulse" title="Applied your custom rule" />
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
