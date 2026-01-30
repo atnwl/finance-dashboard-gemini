@@ -12,7 +12,8 @@ export default {
         background: '#0F1115',
         card: '#161B21',
         primary: '#8DAA7F', // Moss Green (high pigment)
-        secondary: '#3B82F6', // Blue accent for some elements
+        secondary: '#88A0AF', // Steel Blue
+        danger: '#D67C7C', // Terracotta
         text: '#E5E7EB',
         muted: '#9CA3AF',
         border: '#1F2937',
