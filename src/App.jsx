@@ -942,14 +942,9 @@ export default function App() {
                         {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
-                    {/* Placeholder Toggles */}
-                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
-                      <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD_A</div>
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD_B</div>
-                    </div>
                   </div>
 
-                  <div className="mt-4 text-center">
+                  <div className="mt-8 text-center">
                     <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
                     <p className="text-5xl font-display font-bold mt-1">
                       ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -958,11 +953,13 @@ export default function App() {
                 </div>
 
                 {/* TBD Actions */}
-                <div className="grid grid-cols-2 gap-px bg-black/5 mt-auto">
-                  <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
+                  <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
+                    <ArrowUpRight size={16} />
                     <span>TBD</span>
                   </button>
-                  <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                  <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
+                    <ArrowDownLeft size={16} />
                     <span>TBD</span>
                   </button>
                 </div>
