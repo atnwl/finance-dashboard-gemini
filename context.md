@@ -13,6 +13,8 @@ FinBoard is a personal finance dashboard built with:
 - **Supabase** for auth & encrypted cloud sync
 - **Vercel** for deployment
 
+> **📱 Mobile Platform:** The primary user is on **Android**. All mobile-specific improvements should target Android Chrome/PWA first.
+
 ---
 
 ## 📊 Data Model

@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -19,6 +19,12 @@ import { encryptData, decryptData } from './utils/crypto';
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+
+const formatAccounting = (val) => {
+  const isNeg = val < 0;
+  const absVal = Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return isNeg ? `-$${absVal}` : `$${absVal}`;
+};
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -297,9 +303,23 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (window.confirm('Clear chat history?')) {
+                  setMessages([{ role: 'model', text: "History cleared. How can I help?" }]);
+                  localStorage.removeItem('chatHistory');
+                }
+              }}
+              className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-danger warning transition-colors mr-1"
+              title="Clear History"
+            >
+              <Trash2 size={18} />
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
+              <X size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -386,6 +406,41 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Handle Android Back Gesture / Browser History
+  useEffect(() => {
+    // Handle initial load
+    const currentHash = window.location.hash.replace('#', '');
+    if (currentHash && ['dashboard', 'transactions', 'subscriptions', 'statements'].includes(currentHash)) {
+      setActiveTab(currentHash);
+    }
+
+    const handlePopState = (event) => {
+      // If state exists, use it. Otherwise rely on hash or fallback to dashboard.
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+      } else {
+        // Fallback for direct hash navigation or empty state
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+          setActiveTab(hash);
+        } else {
+          setActiveTab('dashboard');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigation = (tabName) => {
+    if (activeTab === tabName) return;
+    setActiveTab(tabName);
+    window.history.pushState({ tab: tabName }, '', `#${tabName}`);
+  };
+
+  const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -399,6 +454,65 @@ export default function App() {
   const [pendingStatement, setPendingStatement] = useState(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Demo Mode State
+  const [demoFinancials, setDemoFinancials] = useState(null);
+  const [demoToggle, setDemoToggle] = useState(false); // Alternates between positive/negative
+
+  const toggleDemo = (forceRefresh = false) => {
+    if (demoFinancials && !forceRefresh) {
+      setDemoFinancials(null);
+    } else {
+      const nextShouldBeNegative = !demoToggle;
+      setDemoToggle(nextShouldBeNegative);
+
+      let income, expenses;
+      if (nextShouldBeNegative) {
+        // Force Negative: Expenses > Income
+        income = Math.floor(Math.random() * 2000) + 2000;
+        expenses = income + Math.floor(Math.random() * 1000) + 500;
+      } else {
+        // Force Positive: Income > Expenses
+        income = Math.floor(Math.random() * 3000) + 4000;
+        expenses = income - Math.floor(Math.random() * 2000) - 1000;
+      }
+
+      const subs = Math.floor(Math.random() * 200) + 50;
+      const count = Math.floor(Math.random() * 7) + 3;
+      const cc = Math.floor(Math.random() * 1000) + 200;
+      const recurring = Math.floor(expenses * 0.6);
+
+      const yearlyData = MONTHS.map((m, i) => {
+        // Use forced values for the currently selected month, random for others
+        const mInc = (i === selectedMonth) ? income : (Math.floor(Math.random() * 4000) + 2000);
+        const mExp = (i === selectedMonth) ? expenses : (Math.floor(Math.random() * 3500) + 1500);
+
+        return {
+          name: m.slice(0, 3),
+          year: selectedYear,
+          income: mInc,
+          expenses: mExp,
+          net: mInc - mExp,
+          hasData: true,
+          byCategory: {
+            'Housing': mExp * 0.4,
+            'Transport': mExp * 0.15,
+            'Food': mExp * 0.2,
+            'Utilities': mExp * 0.1,
+            'Entertainment': mExp * 0.15
+          }
+        };
+      });
+
+      setDemoFinancials({
+        totalSubscriptionsCost: subs,
+        activeSubscriptionCount: count,
+        totalCcPayments: cc,
+        yearlyData,
+        totalRecurringExpenses: recurring,
+      });
+    }
+  };
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
 
@@ -493,7 +607,7 @@ export default function App() {
     return amt * (map[frequency] || 0);
   };
 
-  const financials = useMemo(() => {
+  const calculatedFinancials = useMemo(() => {
     // Filter data by selected Month and Year
     const filterByDate = (item) => {
       if (!item.date) return false; // Should have date from migration, but safety first
@@ -633,6 +747,20 @@ export default function App() {
     return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
+  const financials = useMemo(() => {
+    if (!demoFinancials) return calculatedFinancials;
+
+    // In demo mode, select the current month's data from yearlyData
+    const monthData = demoFinancials.yearlyData[selectedMonth];
+    return {
+      ...demoFinancials,
+      totalIncome: monthData.income,
+      totalExpenses: monthData.expenses,
+      net: monthData.net,
+      byCategory: monthData.byCategory
+    };
+  }, [demoFinancials, calculatedFinancials, selectedMonth]);
+
   // Handlers
   const handleDelete = (type, id) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
@@ -645,6 +773,7 @@ export default function App() {
   const handleSave = (item) => {
     // Remove transient UI flags
     const cleanItem = { ...item };
+
     const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
@@ -879,314 +1008,394 @@ export default function App() {
   };
 
   // Renderers
-  const renderDashboard = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Primary Highlights */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
-        {/* Net Cash Flow - Full Width Hero on Mobile, Standard on Desktop */}
-        <Card className="col-span-2 md:col-span-2 lg:col-span-1 p-4 md:p-6 relative overflow-hidden bg-gradient-to-br from-card to-card/50">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Wallet size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Net Cash Flow</h3>
-          <p className={cn(
-            "text-3xl font-bold mt-2",
-            financials.net >= 0 ? "text-primary" : "text-danger"
-          )}>
-            ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="mt-4 text-xs text-muted">
-            Available
-          </div>
-        </Card>
+  const renderDashboard = () => {
+    const chartData = financials.yearlyData;
+    const spendingByCat = Object.entries(financials.byCategory)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
 
-        {/* Income Card */}
-        <Card
-          onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
-          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp size={48} />
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setViewMode('cashflow')}
+              className={cn(
+                "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                viewMode === 'cashflow'
+                  ? "bg-primary text-black shadow-lg shadow-primary/20"
+                  : "bg-card border border-white/10 text-muted hover:bg-white/5"
+              )}
+            >
+              Cash Flow
+            </button>
+            <button
+              onClick={() => setViewMode('credit')}
+              className={cn(
+                "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                viewMode === 'credit'
+                  ? "bg-secondary text-black shadow-lg shadow-secondary/20"
+                  : "bg-card border border-white/10 text-muted hover:bg-white/5"
+              )}
+            >
+              Credit
+            </button>
           </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Income</h3>
-          <p className="text-xl md:text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-[10px] md:text-xs text-primary/80 flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
-          </div>
-        </Card>
 
-        {/* Expenses Card */}
-        <Card
-          onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
-          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingDown size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-xl md:text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
-            Excl. CC Payments
-          </div>
-        </Card>
-
-        {/* Subscriptions Card - Full width mobile */}
-        <Card
-          onClick={() => setActiveTab('subscriptions')}
-          className="col-span-2 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Activity size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Subscriptions</h3>
-          <p className="text-3xl font-bold mt-2 text-white">
-            ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
-            {financials.activeSubscriptionCount} active services
-          </div>
-        </Card>
-      </div>
-
-      {/* Secondary / Credit & Debt Tier */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div
-          onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
-          className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50"
-        >
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
-            <p className="text-2xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-          <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
-
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
-            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
-          </div>
-          <Activity size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
-
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-purple-500/30 transition-colors">
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Balance Transfers</h4>
-            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
-          </div>
-          <TrendingDown size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 min-h-[400px]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Financial Overview</h3>
-
-            {/* Date Filters */}
-            <div className="flex gap-2">
-              <span className="text-xs text-muted flex items-center px-2">
-                Select bar to filter
-              </span>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
+          <div className="flex items-center gap-2">
+            {demoFinancials && (
+              <button
+                onClick={() => toggleDemo(true)}
+                className="p-2 bg-white/5 border border-white/10 rounded-full text-muted hover:text-white hover:bg-white/10 transition-all active:rotate-180 duration-500"
+                title="Refresh Demo Data"
               >
-                {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
-                <Plus size={22} />
-              </Button>
-            </div>
+                <RefreshCcw size={14} />
+              </button>
+            )}
+            <button
+              onClick={() => toggleDemo(false)}
+              className={cn(
+                "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider",
+                demoFinancials
+                  ? "bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20"
+                  : "bg-white/5 text-muted border-white/10 hover:bg-white/10"
+              )}
+            >
+              {demoFinancials ? "Demo Active" : "Demo"}
+            </button>
           </div>
-          <div className="h-[300px] w-full" style={{ outline: 'none' }}>
-            <style>{`
+        </div>
+        <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
+
+          {viewMode === 'cashflow' && (
+            <>
+              {/* New Hero Card - Cash Flow Style */}
+              {(() => {
+                const isNegative = financials.net < 0;
+                return (
+                  <Card className={cn(
+                    "col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
+                    isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary"
+                  )}>
+                    <div className="p-5 flex-1 relative z-10">
+                      <div className="flex justify-between items-center mb-2 relative">
+                        <div className="z-20">
+                          <span className="text-xl font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                            {MONTHS[selectedMonth]}
+                          </span>
+                        </div>
+
+                        {/* Centered Title */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
+                          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
+                        </div>
+
+                        {/* Placeholder Toggles */}
+                        <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
+                          <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-50">TBD</div>
+                          <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
+                        <p className="text-6xl font-display font-bold tracking-tight">
+                          {formatAccounting(financials.net)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* TBD Actions */}
+                    <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
+                      <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
+                        <span>TBD</span>
+                      </button>
+                      <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
+                        <span>TBD</span>
+                      </button>
+                    </div>
+
+                    {/* Background Decor */}
+                    <ArrowRightLeft size={160} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors text-black/5" />
+                  </Card>
+                );
+              })()}
+
+              {/* Income Card */}
+              <Card
+                onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
+                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+              >
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <ArrowDownLeft size={40} />
+                </div>
+                <h3 className="text-muted text-xs font-medium">Income</h3>
+                <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </Card>
+
+              {/* Expenses Card */}
+              <Card
+                onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
+                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+              >
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <ArrowUpRight size={40} />
+                </div>
+                <h3 className="text-muted text-xs font-medium">Expenses</h3>
+                <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </Card>
+
+              {/* Subscriptions Card (reusing existing styling logic from original code) */}
+              <Card
+                onClick={() => handleNavigation('subscriptions')}
+                className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+              >
+                <div>
+                  <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
+                  <p className="text-xl font-bold mt-1 text-white">
+                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <Calendar size={24} className="text-warning opacity-50" />
+              </Card>
+            </>
+          )}
+
+          {viewMode === 'credit' && (
+            <>
+              <div
+                onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
+                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
+              >
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
+                  <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+
+              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
+                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                </div>
+                <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+
+              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Transfers</h4>
+                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                </div>
+                <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Charts Section - Visible on Dashboard mainly */}
+        <h3 className="text-lg font-semibold px-2">Analytics</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-base font-medium text-muted">Income vs Expenses</h3>
+              {/* Chart controls (year/month) - Simplified for mobile */}
+              <div className="flex gap-2">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
+                >
+                  {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="h-[300px] w-full" style={{ outline: 'none' }}>
+              <style>{`
               .recharts-wrapper { outline: none !important; }
               .recharts-surface:focus { outline: none !important; }
             `}</style>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                className="outline-none focus:outline-none"
-                data={financials.yearlyData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onClick={(e) => {
-                  if (e) {
-                    if (e.activeTooltipIndex !== undefined) {
-                      setSelectedMonth(Number(e.activeTooltipIndex));
-                    } else if (e.activeLabel) {
-                      // Fallback: find index by name
-                      const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
-                      if (index !== -1) setSelectedMonth(index);
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  className="outline-none focus:outline-none"
+                  data={financials.yearlyData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  onClick={(e) => {
+                    if (e) {
+                      if (e.activeTooltipIndex !== undefined) {
+                        setSelectedMonth(Number(e.activeTooltipIndex));
+                      } else if (e.activeLabel) {
+                        // Fallback: find index by name
+                        const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
+                        if (index !== -1) setSelectedMonth(index);
+                      }
                     }
-                  }
-                }}
-                cursor="pointer"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#9CA3AF', fontSize: 11 }}
-                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
-                />
-                <Tooltip
-                  cursor={{ fill: 'transparent' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
+                  }}
+                  cursor="pointer"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
+                            <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
+                            {payload.map((entry, index) => (
+                              <div key={index} className="flex justify-between gap-4 text-sm">
+                                <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
+                                  {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
+                                </span>
+                                <span className="font-bold text-gray-200">
+                                  ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <ReferenceLine
+                    y={financials.totalRecurringExpenses}
+                    stroke="#D4A373"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                      fill: "#D4A373",
+                      fontSize: 10,
+                      position: "insideTopRight"
+                    }}
+                  />
+                  <Bar
+                    key={`income-${selectedMonth}`}
+                    dataKey="income"
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
+                    isAnimationActive={false}
+                  >
+                    {financials.yearlyData.map((entry, index) => {
+                      const today = new Date();
+                      const currentMonth = today.getMonth();
+                      const currentYear = today.getFullYear();
+
+                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                      const isCurrent = selectedYear === currentYear && index === currentMonth;
+                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+
+                      const isSelected = index === selectedMonth;
+
                       return (
-                        <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
-                          <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
-                          {payload.map((entry, index) => (
-                            <div key={index} className="flex justify-between gap-4 text-sm">
-                              <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
-                                {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
-                              </span>
-                              <span className="font-bold text-gray-200">
-                                ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
+                          stroke={isSelected ? "#ffffff" : "none"}
+                          strokeWidth={isSelected ? 2 : 0}
+                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                        />
                       );
-                    }
-                    return null;
-                  }}
-                />
-                <ReferenceLine
-                  y={financials.totalRecurringExpenses}
-                  stroke="#D4A373"
-                  strokeDasharray="3 3"
-                  label={{
-                    value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                    fill: "#D4A373",
-                    fontSize: 10,
-                    position: "insideTopRight"
-                  }}
-                />
-                <Bar
-                  key={`income-${selectedMonth}`}
-                  dataKey="income"
-                  radius={[4, 4, 0, 0]}
-                  barSize={30}
-                  isAnimationActive={false}
-                >
-                  {financials.yearlyData.map((entry, index) => {
-                    const today = new Date();
-                    const currentMonth = today.getMonth();
-                    const currentYear = today.getFullYear();
+                    })}
+                  </Bar>
+                  <Bar
+                    key={`expenses-${selectedMonth}`}
+                    dataKey="expenses"
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
+                    isAnimationActive={false}
+                  >
+                    {financials.yearlyData.map((entry, index) => {
+                      const today = new Date();
+                      const currentMonth = today.getMonth();
+                      const currentYear = today.getFullYear();
 
-                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                    const isCurrent = selectedYear === currentYear && index === currentMonth;
-                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                      const isCurrent = selectedYear === currentYear && index === currentMonth;
+                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
 
-                    const isSelected = index === selectedMonth;
+                      const isSelected = index === selectedMonth;
 
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
-                        stroke={isSelected ? "#ffffff" : "none"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                      />
-                    );
-                  })}
-                </Bar>
-                <Bar
-                  key={`expenses-${selectedMonth}`}
-                  dataKey="expenses"
-                  radius={[4, 4, 0, 0]}
-                  barSize={30}
-                  isAnimationActive={false}
-                >
-                  {financials.yearlyData.map((entry, index) => {
-                    const today = new Date();
-                    const currentMonth = today.getMonth();
-                    const currentYear = today.getFullYear();
-
-                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                    const isCurrent = selectedYear === currentYear && index === currentMonth;
-                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
-
-                    const isSelected = index === selectedMonth;
-
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
-                        stroke={isSelected ? "#ffffff" : "none"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                      />
-                    );
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="min-h-[400px]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Expense Breakdown</h3>
-          </div>
-          <div className="h-[300px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={Object.entries(financials.byCategory)
-                    .map(([name, value]) => ({ name, value }))
-                    .sort((a, b) => b.value - a.value)}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {Object.entries(financials.byCategory).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
-                  itemStyle={{ color: '#E5E7EB' }}
-                  formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <span className="text-xs text-muted">Total</span>
-              <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
+                          stroke={isSelected ? "#ffffff" : "none"}
+                          strokeWidth={isSelected ? 2 : 0}
+                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            {Object.entries(financials.byCategory)
-              .sort(([, a], [, b]) => b - a)
-              .map(([name, value], idx) => (
-                <div key={name} className="flex items-center gap-2 group relative cursor-help">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                  <span className="text-muted truncate flex-1">{name}</span>
-                  <span className="text-white font-medium shrink-0">
-                    {Math.round(value / financials.totalExpenses * 100)}%
-                  </span>
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
-                    <p className="text-[10px] text-muted mb-0.5">{name}</p>
-                    <p className="text-sm font-bold text-white">
-                      ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </p>
+          </Card>
+
+          <Card className="min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+            </div>
+            <div className="h-[300px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={Object.entries(financials.byCategory)
+                      .map(([name, value]) => ({ name, value }))
+                      .sort((a, b) => b.value - a.value)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {Object.entries(financials.byCategory).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
+                    itemStyle={{ color: '#E5E7EB' }}
+                    formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                <span className="text-xs text-muted">Total</span>
+                <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              {Object.entries(financials.byCategory)
+                .sort(([, a], [, b]) => b - a)
+                .map(([name, value], idx) => (
+                  <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                    <span className="text-muted truncate flex-1">{name}</span>
+                    <span className="text-white font-medium shrink-0">
+                      {Math.round(value / financials.totalExpenses * 100)}%
+                    </span>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                      <p className="text-[10px] text-muted mb-0.5">{name}</p>
+                      <p className="text-sm font-bold text-white">
+                        ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+                ))}
+            </div>
+          </Card>
+        </div>
+      </div >
+    );
+  };
 
   // --- Virtual Transactions Helper ---
 
@@ -1336,132 +1545,111 @@ export default function App() {
     }
 
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Card className="p-0 overflow-hidden border-border/50">
-          <div className="p-4 border-b border-white/5 flex justify-between items-center">
-            <h2 className="font-semibold text-lg flex items-center gap-2">
-              {isSearchActive ? (
-                <>
-                  Search Results for "{searchQuery}"
-                  <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full"><X size={14} /></button>
-                </>
-              ) : isSubView ? 'Subscriptions' : transactionFilter ? (
-                <>
-                  {transactionFilter === 'income' ? 'Income Transactions' :
-                    transactionFilter === 'expenses' ? 'Monthly Expenses' :
-                      'Credit Card Payments'} ({MONTHS[Number(selectedMonth)]} {selectedYear})
-                  <button onClick={() => setTransactionFilter(null)} className="p-1.5 hover:bg-white/10 rounded-full text-muted hover:text-white" title="Clear Filter">
-                    <X size={16} />
-                  </button>
-                </>
-              ) : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
-            </h2>
-            {!isSubView && !isSearchActive && (
-              <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
-                {isFutureMonth ? 'Projected' : selectedMonth === currentMonth && selectedYear === currentYear ? 'Current' : 'Historic'}
-              </span>
-            )}
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
+        <Card className="p-0 overflow-hidden border-border/50 bg-background md:bg-card border-none md:border">
+          {/* Header */}
+          <div className="px-4 py-6 border-b border-white/5 flex items-center justify-between sticky top-16 z-30 bg-background/95 backdrop-blur-md md:static md:bg-transparent">
+            <div className="flex items-center gap-3">
+              {(transactionFilter || activeTab === 'transactions') && (
+                <button
+                  onClick={() => {
+                    handleNavigation('dashboard');
+                    setTransactionFilter(null);
+                  }}
+                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
+                >
+                  <ChevronRight size={20} className="rotate-180" />
+                </button>
+              )}
+              <h2 className="font-bold text-xl">Transaction History</h2>
+            </div>
+            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-muted hover:text-white transition-colors">
+              <Settings size={20} />
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
-                <tr>
-                  <th className="px-6 py-4 text-left">Transaction</th>
-                  <th className="px-6 py-4 text-left">{isSubView ? 'Expected Day' : 'Date'}</th>
-                  {isSubView && <th className="px-6 py-4 text-left">Frequency</th>}
-                  <th className="px-6 py-4 text-left">Category</th>
-                  <th className="px-6 py-4 text-left">Amount</th>
-                  <th className="px-6 py-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                    className={cn(
-                      "group transition-colors hover:bg-white/5 cursor-pointer",
-                      item.isVirtual && isFutureMonth && "opacity-50 italic" // Virtual Style ONLY for Future
-                    )}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
-                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
-                        )}>
-                          {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-text">{item.name} {item.isVirtual && <span className="text-[10px] ml-1 border border-border px-1 rounded">Monthly</span>}</p>
-                          <p className="text-xs text-muted capitalize">{item.type || 'Income'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {(() => {
-                        const [y, m, d] = item.date.split('-').map(Number);
-                        const dateObj = new Date(y, m - 1, d);
 
-                        if (isSubView) {
-                          const j = d % 10, k = d % 100;
-                          if (j === 1 && k !== 11) return d + "st";
-                          if (j === 2 && k !== 12) return d + "nd";
-                          if (j === 3 && k !== 13) return d + "rd";
-                          return d + "th";
-                        }
+          {/* Filter Pills */}
+          {!isSubView && !isSearchActive && (
+            <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setTransactionFilter(null)}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                All Index
+              </button>
+              <button
+                onClick={() => setTransactionFilter('expenses')}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                Expenses
+              </button>
+              <button
+                onClick={() => setTransactionFilter('income')}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                Income
+              </button>
+            </div>
+          )}
 
-                        return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-                      })()}
-                    </td>
-                    {isSubView && (
-                      <td className="px-6 py-4 text-sm">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-xs font-medium border whitespace-nowrap capitalize",
-                          (item.frequency === 'annual' || item.frequency === 'yearly') ? "bg-warning/10 text-warning border-warning/20" :
-                            (item.frequency === 'weekly' || item.frequency === 'biweekly') ? "bg-danger/10 text-danger border-danger/20" :
-                              (item.frequency === 'quarterly') ? "bg-primary/10 text-primary border-primary/20" :
-                                "bg-secondary/10 text-secondary border-secondary/20" // Default (Monthly)
-                        )}>
-                          {item.frequency || 'Monthly'}
+          {/* List View */}
+          <div className="space-y-px bg-white/5">
+            {items.map((item) => {
+              const [y, m, d] = item.date.split('-').map(Number);
+              const dateObj = new Date(y, m - 1, d);
+              const isIncome = item._type === 'income';
+              const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
+              const sourceText = sourceStatement
+                ? `${sourceStatement.provider} ****${sourceStatement.last4}`
+                : (isIncome ? 'Income' : 'Expense');
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Icon Circle */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
+                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white" // Bright Green/Red per mock
+                    )}>
+                      {isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />}
+                    </div>
+
+                    {/* Text Info */}
+                    <div>
+                      <h4 className="font-bold text-base text-white">{item.name}</h4>
+                      <p className="text-xs text-muted font-medium mt-0.5 flex items-center gap-1.5">
+                        <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                        •
+                        <span className="capitalize flex items-center gap-1">
+                          {sourceText}
                         </span>
-                      </td>
-                    )}
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5 whitespace-nowrap">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-primary" : "text-text")}>
-                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItem(item);
-                            setIsFormOpen(true);
-                          }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-secondary transition-colors"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item._type, item.id);
-                          }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-danger transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <div className={cn(
+                    "text-right font-bold text-base",
+                    isIncome ? "text-[#34D399]" : "text-[#F87171]" // Matching mock colors explicitly
+                  )}>
+                    {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -1478,17 +1666,16 @@ export default function App() {
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="bg-primary p-1.5 rounded-lg">
-              <Wallet className="text-black" size={20} />
+            <div className="bg-primary p-2 rounded-xl">
+              <Wallet className="text-black" size={28} />
             </div>
-            <span className="text-lg font-bold tracking-tight font-display">Gus</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
@@ -1691,17 +1878,17 @@ export default function App() {
       <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="pointer-events-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center text-black shadow-2xl shadow-primary/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
+          className="pointer-events-auto w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
         >
-          <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75"></div>
-          <span className="relative z-10"><Bot size={32} /></span>
+          <div className="absolute inset-0 rounded-full bg-purple-500/30 animate-ping opacity-75"></div>
+          <span className="relative z-10"><Bot size={40} /></span>
         </button>
       </div>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
-          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={ArrowRightLeft} label="Txns" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
 
           <button
             onClick={openAddModal}
@@ -1710,8 +1897,8 @@ export default function App() {
             <Plus size={28} strokeWidth={3} />
           </button>
 
-          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
         </div>
       </div>
       <ChatWindow
@@ -1904,6 +2091,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
+      statementId: null,
       date: (() => {
         const d = new Date();
         const offset = d.getTimezoneOffset() * 60000;
@@ -2255,33 +2443,26 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   };
 
   const handleBulkImport = () => {
-    // Generate statement ID early so we can link transactions
-    const pendingStmtId = pendingStatement ? Math.random().toString(36).substr(2, 9) : null;
+    // 1. Resolve Statement ID
+    let finalStmtId = null;
 
-    bulkItems.forEach(item => {
-      // Safe duplicate check
-      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
-        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
-
-      if (!exists) {
-        // Link transaction to statement
-        onSave({ ...item, statementId: pendingStmtId });
-      }
-    });
-    setBulkItems([]);
-    if (pendingStatement && pendingStmtId) {
-      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0];
+    if (pendingStatement) {
+      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || pendingStatement.date || new Date().toISOString().split('T')[0];
       const stmtLast4 = pendingStatement.last4 || '????';
       const stmtProvider = pendingStatement.provider || 'Unknown Provider';
 
-      // Check for duplicate statement (same provider + last4 + date)
-      const isDuplicateStatement = (data?.statements || []).some(
+      // Check if this statement already exists
+      const existingStmt = (data?.statements || []).find(
         s => s.provider === stmtProvider && s.last4 === stmtLast4 && s.date === stmtDate
       );
 
-      if (!isDuplicateStatement) {
+      if (existingStmt) {
+        finalStmtId = existingStmt.id;
+      } else {
+        // Create new statement
+        finalStmtId = Math.random().toString(36).substr(2, 9);
         const newStmt = {
-          id: pendingStmtId, // Use the same ID
+          id: finalStmtId,
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
@@ -2290,8 +2471,34 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         };
         onSaveStatement(newStmt);
       }
-      setPendingStatement(null);
     }
+
+    // 2. Save Transactions linked to that ID (or update orphaned ones)
+    let savedCount = 0;
+    let updatedCount = 0;
+    bulkItems.forEach(item => {
+      // Check if this transaction already exists
+      const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
+      const matchingIncome = (data?.income || []).find(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+      const existingItem = matchingExpense || matchingIncome;
+
+      if (!existingItem) {
+        // New transaction - save it
+        const itemToSave = { ...item, statementId: finalStmtId };
+        onSave(itemToSave);
+        savedCount++;
+      } else if (!existingItem.statementId && finalStmtId) {
+        // Existing transaction WITHOUT statementId - UPDATE it to add the link
+        const updatedItem = { ...existingItem, statementId: finalStmtId, isIncome: !!matchingIncome };
+        onSave(updatedItem);
+        updatedCount++;
+      }
+      // If existingItem already has a statementId, we truly skip it
+    });
+    console.log(`Import complete: ${savedCount} new, ${updatedCount} updated with statementId`);
+
+    setBulkItems([]);
+    setPendingStatement(null);
     if (onCancel) onCancel();
   };
 
@@ -2299,6 +2506,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     return (
       <BulkReviewView
         items={bulkItems}
+        pendingStatement={pendingStatement}
+        setPendingStatement={setPendingStatement}
         onUpdate={handleBulkUpdate}
         onRemove={handleBulkRemove}
         onCancel={() => { setBulkItems([]); }} // Go back to single add
@@ -2438,7 +2647,6 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           label="Category" name="category" value={formData.category} onChange={handleChange} options={
             (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
           } />
-
         {!formData.isIncome && (
           <Select
             className={aiClass}
@@ -2505,15 +2713,57 @@ const ReviewAmountInput = ({ value, onChange }) => {
 };
 
 // HELPER: Bulk Review UI
-const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
+const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
+  // Ensure we have a defined object to edit
+  const stmt = pendingStatement || { provider: '', last4: '', date: new Date().toISOString().split('T')[0] };
+
+  const updateStmt = (field, val) => {
+    setPendingStatement({ ...stmt, [field]: val });
+  };
+
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
-      <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#0D1117] z-10 py-2">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Upload size={18} className="text-primary" />
-          Review Import ({items.length})
-        </h3>
-        <span className="text-xs text-muted">Check details before importing</span>
+      <div className="flex flex-col gap-3 mb-4 sticky top-0 bg-[#0D1117] z-10 py-2 border-b border-white/5">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Upload size={18} className="text-primary" />
+            Review Import ({items.length})
+          </h3>
+          <span className="text-xs text-muted">Check details before importing</span>
+        </div>
+
+        {/* Statement Metadata Editor */}
+        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-3 gap-2">
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
+            <input
+              type="text"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="Bank Name"
+              value={stmt.provider || ''}
+              onChange={(e) => updateStmt('provider', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
+            <input
+              type="text"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="1234"
+              value={stmt.last4 || ''}
+              onChange={(e) => updateStmt('last4', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Closing Date</label>
+            <input
+              type="date"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-gray-400"
+              value={stmt.statementEndDate || stmt.statementDate || stmt.date || ''}
+              onChange={(e) => updateStmt('date', e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="overflow-y-auto flex-1 pr-2 space-y-3">
