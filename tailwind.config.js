@@ -18,6 +18,9 @@ export default {
         text: '#E5E7EB',
         muted: '#9CA3AF',
         border: '#1F2937',
+      },
+      fontFamily: {
+        display: ['Space Grotesk', 'sans-serif'],
       }
     },
   },
