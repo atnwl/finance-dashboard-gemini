@@ -970,13 +970,18 @@ export default function App() {
               {/* New Hero Card - Cash Flow Style */}
               <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
                 <div className="p-5 flex-1 relative z-10">
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-2 relative">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-black/60 text-sm font-bold uppercase tracking-wider">Cash Flow</h3>
                       <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
                         {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
+
+                    {/* Centered Title */}
+                    <div className="absolute left-1/2 -translate-x-1/2 top-1">
+                      <h3 className="text-black/60 text-sm font-bold uppercase tracking-wider">Cash Flow</h3>
+                    </div>
+
                     {/* Placeholder Toggles */}
                     <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
                       <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD</div>
