@@ -1414,6 +1414,9 @@ export default function App() {
             <div className="relative w-full max-w-[200px] hidden sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
+                type="search"
+                name="search"
+                autoComplete="off"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1479,14 +1482,25 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Inline Password */}
+                        {/* Inline Password with Trap for Autofill */}
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex-1 relative">
+                            {/* Trap: Invisible username field so Bitwarden fills this instead of Search */}
+                            <input
+                              type="text"
+                              name="username"
+                              value={user?.email || ''}
+                              readOnly
+                              autoComplete="username"
+                              style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }}
+                            />
                             <input
                               type="password"
+                              name="sync_password"
                               placeholder="Encryption password..."
                               value={syncPassword}
                               onChange={(e) => setSyncPassword(e.target.value)}
+                              autoComplete="current-password"
                               className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
                             />
                           </div>
