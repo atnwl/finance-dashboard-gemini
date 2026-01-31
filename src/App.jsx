@@ -1635,6 +1635,9 @@ export default function App() {
                         <span className="capitalize flex items-center gap-1">
                           {sourceText}
                         </span>
+                        <span className="text-[8px] text-purple-400 opacity-50">
+                          [sid:{item.statementId || 'null'} / stmts:{(data.statements || []).length}]
+                        </span>
                       </p>
                     </div>
                   </div>
