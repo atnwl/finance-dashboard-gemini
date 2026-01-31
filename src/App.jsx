@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -30,7 +30,7 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
+  'Alcohol', 'Amazon', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
 ];
 
@@ -40,7 +40,7 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
+    'Amazon': '📦', 'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Gas': '⛽', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
@@ -386,11 +386,13 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [data, setData] = useState({ income: [], expenses: [] });
+  const [data, setData] = useState({ income: [], expenses: [], statements: [] });
 
   // Date Filtering State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingStatement, setPendingStatement] = useState(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [user, setUser] = useState(null);
@@ -423,7 +425,7 @@ export default function App() {
     const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
     if (!hasWiped) {
       localStorage.removeItem('financeData');
-      setData({ income: [], expenses: [] }); // Reset state
+      setData({ income: [], expenses: [], statements: [] }); // Reset state
       localStorage.setItem('hasWipedLegacyData_v2', 'true');
       console.log("Legacy data wiped for fresh start.");
     } else {
@@ -431,7 +433,7 @@ export default function App() {
       const saved = localStorage.getItem('financeData');
       if (saved) {
         try {
-          setData(JSON.parse(saved));
+          setData({ income: [], expenses: [], statements: [], ...JSON.parse(saved) });
         } catch (e) {
           console.error("Failed to load data", e);
         }
@@ -667,6 +669,32 @@ export default function App() {
 
     setIsFormOpen(false);
     setEditingItem(null);
+  };
+
+  const handleSaveStatement = (stmt) => {
+    setData(prev => ({ ...prev, statements: [...(prev.statements || []), stmt] }));
+  };
+
+  const handleDeleteStatement = (id, includeTransactions = false) => {
+    const msg = includeTransactions
+      ? "WARNING: This will delete the statement record AND all transactions imported from it.\n\nAre you sure you want to proceed?"
+      : "Remove this statement record? \n\nNote: This only removes the entry from this list. Imported transactions will be KEPT in your dashboard.";
+
+    if (window.confirm(msg)) {
+      setData(prev => {
+        const next = {
+          ...prev,
+          statements: prev.statements.filter(s => s.id !== id)
+        };
+
+        if (includeTransactions) {
+          next.income = prev.income.filter(i => i.statementId !== id);
+          next.expenses = prev.expenses.filter(i => i.statementId !== id);
+        }
+
+        return next;
+      });
+    }
   };
 
   // --- Auth & Sync Handlers ---
@@ -1159,13 +1187,74 @@ export default function App() {
   // --- Render Functions ---
 
   const renderContent = () => {
-    if (activeTab === 'dashboard') return renderDashboard();
+    const isSearchActive = searchQuery.length >= 2;
+    if (!isSearchActive && activeTab === 'dashboard') return renderDashboard();
 
-    // Transactions / Subscriptions Views
+    if (!isSearchActive && activeTab === 'statements') {
+      // Group by unique account (provider + last4)
+      const grouped = (data.statements || []).reduce((acc, s) => {
+        const key = `${s.provider}-${s.last4 || 'unknown'}`;
+        acc[key] = acc[key] || { provider: s.provider, last4: s.last4, statements: [] };
+        acc[key].statements.push(s);
+        return acc;
+      }, {});
+
+      // Sort accounts by most recent upload
+      const sortedAccounts = Object.values(grouped).sort((a, b) => {
+        const latestA = Math.max(...a.statements.map(s => new Date(s.uploadDate)));
+        const latestB = Math.max(...b.statements.map(s => new Date(s.uploadDate)));
+        return latestB - latestA;
+      });
+
+      return (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="font-semibold text-lg">Accounts & Statements</h2>
+            <button
+              onClick={() => {
+                setEditingItem(null);
+                setIsFormOpen(true);
+              }}
+              className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors border border-primary/20"
+            >
+              <Upload size={14} className="mr-2" />
+              Upload Statement
+            </button>
+          </div>
+          {sortedAccounts.length === 0 ? (
+            <div className="text-center py-12 text-muted">No statements uploaded yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {sortedAccounts.map((account) => (
+                <AccountCard
+                  key={`${account.provider}-${account.last4}`}
+                  account={account}
+                  onDelete={handleDeleteStatement}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Transactions / Subscriptions / Search Views
     const isSubView = activeTab === 'subscriptions';
-    const items = isSubView
+    // isSearchActive defined at top
+
+    const searchItems = isSearchActive ? [
+      ...data.income.map(i => ({ ...i, _type: 'income' })),
+      ...data.expenses.map(e => ({ ...e, _type: 'expenses' }))
+    ].filter(item => {
+      const q = searchQuery.toLowerCase();
+      const matchesName = item.name.toLowerCase().includes(q);
+      const matchesAmount = !isNaN(parseFloat(searchQuery)) && Math.abs(parseFloat(item.amount) - parseFloat(searchQuery)) < 0.01;
+      return matchesName || matchesAmount;
+    }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
+
+    const items = isSearchActive ? searchItems : (isSubView
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => parseInt(a.date.split('-')[2]) - parseInt(b.date.split('-')[2]))
-      : getMonthlyItems;
+      : getMonthlyItems);
 
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -1191,10 +1280,15 @@ export default function App() {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
         <Card className="p-0 overflow-hidden border-border/50">
           <div className="p-4 border-b border-white/5 flex justify-between items-center">
-            <h2 className="font-semibold text-lg">
-              {isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
+            <h2 className="font-semibold text-lg flex items-center gap-2">
+              {isSearchActive ? (
+                <>
+                  Search Results for "{searchQuery}"
+                  <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full"><X size={14} /></button>
+                </>
+              ) : isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
             </h2>
-            {!isSubView && (
+            {!isSubView && !isSearchActive && (
               <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
                 {isFutureMonth ? 'Projected' : selectedMonth === currentMonth && selectedYear === currentYear ? 'Current' : 'Historic'}
               </span>
@@ -1312,14 +1406,20 @@ export default function App() {
             <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
             <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
             <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
             <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
           <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
             <div className="relative w-full max-w-[200px] hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
+                type="search"
+                name="search"
+                autoComplete="off"
                 placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-card/50 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary h-9 transition-all"
               />
             </div>
@@ -1382,14 +1482,25 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Inline Password */}
+                        {/* Inline Password with Trap for Autofill */}
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex-1 relative">
+                            {/* Trap: Invisible username field so Bitwarden fills this instead of Search */}
+                            <input
+                              type="text"
+                              name="username"
+                              value={user?.email || ''}
+                              readOnly
+                              autoComplete="username"
+                              style={{ position: 'absolute', opacity: 0, height: 0, width: 0, zIndex: -1 }}
+                            />
                             <input
                               type="password"
+                              name="sync_password"
                               placeholder="Encryption password..."
                               value={syncPassword}
                               onChange={(e) => setSyncPassword(e.target.value)}
+                              autoComplete="current-password"
                               className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
                             />
                           </div>
@@ -1504,6 +1615,7 @@ export default function App() {
             <Plus size={28} />
           </button>
           <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
+          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
           <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
         </div>
       </div>
@@ -1532,6 +1644,10 @@ export default function App() {
 
             <TransactionForm
               initialData={editingItem}
+              data={data}
+              setPendingStatement={setPendingStatement}
+              pendingStatement={pendingStatement}
+              onSaveStatement={handleSaveStatement}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
@@ -1587,7 +1703,95 @@ function MobileNavItem({ icon: Icon, label, active, onClick }) {
   );
 }
 
-function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
+function AccountCard({ account, onDelete }) {
+  const [expanded, setExpanded] = useState(false);
+  const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const latest = sortedStmts[0];
+  const history = sortedStmts.slice(1);
+
+  // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  return (
+    <Card className="p-4 border-border/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <CreditCard size={20} />
+          </div>
+          <div>
+            <h3 className="font-semibold">{account.provider}</h3>
+            <p className="text-xs text-muted">Ending in ••••{account.last4 || '????'}</p>
+          </div>
+        </div>
+        <div className="text-right flex flex-col items-end">
+          <div className="flex items-center gap-1">
+            <p className="text-sm font-medium mr-1">Latest: {formatDate(latest.date)}</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
+              className="text-muted hover:text-orange-400 transition-colors p-1"
+              title="Remove record only (Keep transactions)"
+            >
+              <Trash2 size={14} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
+              className="text-muted hover:text-red-500 transition-colors p-1"
+              title="Delete record AND transactions"
+            >
+              <FileX size={14} />
+            </button>
+          </div>
+          {latest.transactionCount !== undefined && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
+        </div>
+      </div>
+
+      {history.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-muted hover:text-white flex items-center gap-1 transition-colors"
+          >
+            <ChevronRight size={14} className={cn("transition-transform", expanded && "rotate-90")} />
+            Statement History ({history.length} more)
+          </button>
+          {expanded && (
+            <div className="mt-2 space-y-1 pl-5">
+              {history.map(s => (
+                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
+                  <span>{formatDate(s.date)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, false); }}
+                      className="text-muted hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Remove record only (Keep transactions)"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, true); }}
+                      className="text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      title="Delete record AND transactions"
+                    >
+                      <FileX size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData || {
       name: '',
@@ -1796,11 +2000,26 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
     USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
     ${knownRules || 'No custom rules set yet.'}
 
-    Return STRICT JSON Array: 
-    [
-      {"name": "Merchant", "date": "2024-01-01", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
-      ...
-    ]
+    Return STRICT JSON Object: 
+    {
+      "metadata": {
+        "provider": "Chase",
+        "last4": "1234",
+        "statementEndDate": "2026-01-24"
+      },
+      "transactions": [
+        {"name": "Merchant", "date": "2026-01-15", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
+        ...
+      ]
+    }
+    
+    IMPORTANT for metadata:
+    - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
+    - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
+    - statementEndDate: Look for "Opening/Closing Date", "Statement Period", or "Closing Date".
+      Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
+      CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
+      Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
     `;
 
           const result = await model.generateContent([
@@ -1815,7 +2034,18 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
 
           const responseText = result.response.text().replace(/```json|```/g, '').trim();
           const parsed = JSON.parse(responseText);
-          const rawItems = Array.isArray(parsed) ? parsed : [parsed];
+
+          let rawItems = [];
+          let metadata = null;
+
+          if (Array.isArray(parsed)) {
+            rawItems = parsed;
+          } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+            rawItems = parsed.transactions;
+            metadata = parsed.metadata;
+          } else {
+            rawItems = [parsed];
+          }
 
           // Apply local cache as a secondary "Guarantee" layer
           const items = rawItems.map(item => {
@@ -1863,6 +2093,11 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
             triggerAiFlash();
           } else {
             // Bulk Mode
+            if (metadata) {
+              setPendingStatement(metadata);
+            } else {
+              setPendingStatement(null);
+            }
             setBulkItems(items.map(i => ({
               ...i,
               id: Math.random().toString(36).substr(2, 9),
@@ -1914,10 +2149,43 @@ function TransactionForm({ initialData, onSave, onCancel, onOpenSettings }) {
   };
 
   const handleBulkImport = () => {
+    // Generate statement ID early so we can link transactions
+    const pendingStmtId = pendingStatement ? Math.random().toString(36).substr(2, 9) : null;
+
     bulkItems.forEach(item => {
-      onSave(item);
+      // Safe duplicate check
+      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
+        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+
+      if (!exists) {
+        // Link transaction to statement
+        onSave({ ...item, statementId: pendingStmtId });
+      }
     });
     setBulkItems([]);
+    if (pendingStatement && pendingStmtId) {
+      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0];
+      const stmtLast4 = pendingStatement.last4 || '????';
+      const stmtProvider = pendingStatement.provider || 'Unknown Provider';
+
+      // Check for duplicate statement (same provider + last4 + date)
+      const isDuplicateStatement = (data?.statements || []).some(
+        s => s.provider === stmtProvider && s.last4 === stmtLast4 && s.date === stmtDate
+      );
+
+      if (!isDuplicateStatement) {
+        const newStmt = {
+          id: pendingStmtId, // Use the same ID
+          provider: stmtProvider,
+          last4: stmtLast4,
+          date: stmtDate,
+          uploadDate: new Date().toISOString(),
+          transactionCount: bulkItems.length
+        };
+        onSaveStatement(newStmt);
+      }
+      setPendingStatement(null);
+    }
     if (onCancel) onCancel();
   };
 
