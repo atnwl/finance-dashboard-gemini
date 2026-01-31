@@ -1347,8 +1347,16 @@ export default function App() {
                       })()}
                     </td>
                     {isSubView && (
-                      <td className="px-6 py-4 text-sm text-gray-400 capitalize">
-                        {item.frequency || 'Monthly'}
+                      <td className="px-6 py-4 text-sm">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-xs font-medium border whitespace-nowrap capitalize",
+                          (item.frequency === 'annual' || item.frequency === 'yearly') ? "bg-warning/10 text-warning border-warning/20" :
+                            (item.frequency === 'weekly' || item.frequency === 'biweekly') ? "bg-danger/10 text-danger border-danger/20" :
+                              (item.frequency === 'quarterly') ? "bg-primary/10 text-primary border-primary/20" :
+                                "bg-secondary/10 text-secondary border-secondary/20" // Default (Monthly)
+                        )}>
+                          {item.frequency || 'Monthly'}
+                        </span>
                       </td>
                     )}
                     <td className="px-6 py-4">
