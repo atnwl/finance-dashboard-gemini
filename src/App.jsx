@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1000,7 +1000,7 @@ export default function App() {
 
                 {/* Background Decor */}
                 <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                  <Wallet size={120} className="text-black" />
+                  <ArrowRightLeft size={120} className="text-black" />
                 </div>
               </Card>
 
