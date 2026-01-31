@@ -1300,6 +1300,7 @@ export default function App() {
                 <tr>
                   <th className="px-6 py-4 text-left">Transaction</th>
                   <th className="px-6 py-4 text-left">{isSubView ? 'Expected Day' : 'Date'}</th>
+                  {isSubView && <th className="px-6 py-4 text-left">Frequency</th>}
                   <th className="px-6 py-4 text-left">Category</th>
                   <th className="px-6 py-4 text-left">Amount</th>
                   <th className="px-6 py-4 text-center">Action</th>
@@ -1319,7 +1320,7 @@ export default function App() {
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
-                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-secondary/20 text-secondary"
+                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
                         )}>
                           {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
                         </div>
@@ -1345,6 +1346,11 @@ export default function App() {
                         return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
                       })()}
                     </td>
+                    {isSubView && (
+                      <td className="px-6 py-4 text-sm text-gray-400 capitalize">
+                        {item.frequency || 'Monthly'}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5 whitespace-nowrap">
                         {item.category}
@@ -1793,7 +1799,10 @@ function AccountCard({ account, onDelete }) {
 
 function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
-    initialData || {
+    initialData ? {
+      frequency: (initialData.type === 'subscription' || initialData.type === 'bill') ? 'monthly' : 'one-time',
+      ...initialData
+    } : {
       name: '',
       amount: '',
       category: 'Groceries', // Updated default
