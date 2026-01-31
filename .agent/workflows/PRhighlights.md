@@ -13,11 +13,13 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    - Current feature branch if no number given
    - Ask for clarification if ambiguous
 
-2. **Fetch the actual diff**: Use `mcp_github-mcp-server_pull_request_read` with `method: get_diff` to get the real changes. Do NOT rely on memory or assumptions.
+2. submit a PR with all current changes
 
-3. **Verify each claim**: Only include changes that appear in the diff. Cross-reference file additions/deletions to ensure accuracy.
+3. **Fetch the actual diff**: Use `mcp_github-mcp-server_pull_request_read` with `method: get_diff` to get the real changes. Do NOT rely on memory or assumptions.
 
-4. **Format the output** as:
+4. **Verify each claim**: Only include changes that appear in the diff. Cross-reference file additions/deletions to ensure accuracy.
+
+5. **Format the output** as:
    ```markdown
    ### PR#[NUMBER]
    
@@ -27,15 +29,14 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    - **[Category]**: [Concise description of change]
    ```
 
-5. **Rules**:
-   - Must be in a format optimized for copying to notion
+6. **Rules**:
+   - Must be in a format optimized for copying to notion (no backtick code blocks)
    - Output ONLY the markdown (no preamble, no commentary)
    - Keep to 4-6 bullet points maximum
    - Use bold for the category label
    - Start each bullet with a verb or noun phrase
-   - Be specific: mention actual values, file names, or features changed
+   - Be specific: mention actual values, file names, or features changedref
    - Do NOT include features that already existed in the base branch
-   - Do NOT use inline code backticks (e.g. `item`); use "quotes" or **bold** instead to ensure clean Notion pasting
 
 ## Example Output
 
