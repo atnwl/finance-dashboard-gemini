@@ -938,7 +938,7 @@ export default function App() {
                   <div className="mt-4 text-center">
                     <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
                     <p className="text-5xl font-display font-bold mt-1">
-                      ${financials.netCashFlow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
