@@ -2494,10 +2494,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     // 2. Save Transactions linked to that ID
     let savedCount = 0;
     let skippedCount = 0;
+    let firstDuplicate = null;
     bulkItems.forEach(item => {
       // Safe duplicate check
-      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
-        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+      const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
+      const matchingIncome = (data?.income || []).find(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+      const exists = matchingExpense || matchingIncome;
 
       if (!exists) {
         const itemToSave = { ...item, statementId: finalStmtId };
@@ -2505,10 +2507,13 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         onSave(itemToSave);
         savedCount++;
       } else {
+        if (!firstDuplicate) {
+          firstDuplicate = exists;
+        }
         skippedCount++;
       }
     });
-    alert(`DEBUG: Saved ${savedCount} items, Skipped ${skippedCount} duplicates`);
+    alert(`DEBUG: Saved ${savedCount} items, Skipped ${skippedCount} duplicates.\nFirst dup found: ${firstDuplicate ? JSON.stringify({ name: firstDuplicate.name, date: firstDuplicate.date, sid: firstDuplicate.statementId }) : 'none'}`);
 
     setBulkItems([]);
     setPendingStatement(null);
