@@ -771,12 +771,8 @@ export default function App() {
   };
 
   const handleSave = (item) => {
-    // DEBUG - Alert for mobile
-    alert("handleSave received statementId: " + (item.statementId || 'UNDEFINED'));
-
     // Remove transient UI flags
     const cleanItem = { ...item };
-    console.log("cleanItem.statementId after spread:", cleanItem.statementId);
 
     const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
@@ -1640,9 +1636,6 @@ export default function App() {
                         <span className="capitalize flex items-center gap-1">
                           {sourceText}
                         </span>
-                        <span className="text-[8px] text-purple-400 opacity-50">
-                          [sid:{item.statementId || 'null'} / stmts:{(data.statements || []).length}]
-                        </span>
                       </p>
                     </div>
                   </div>
@@ -2450,12 +2443,6 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   };
 
   const handleBulkImport = () => {
-    // DEBUG: Log what we have (visible on-screen for mobile debugging)
-    const debugInfo = `pendingStatement: ${pendingStatement ? JSON.stringify(pendingStatement) : 'NULL'}`;
-    console.log("=== handleBulkImport ===");
-    console.log(debugInfo);
-    alert("DEBUG: " + debugInfo);
-
     // 1. Resolve Statement ID
     let finalStmtId = null;
 
@@ -2470,13 +2457,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       );
 
       if (existingStmt) {
-        console.log("Linking to existing statement:", existingStmt.id);
         finalStmtId = existingStmt.id;
-        alert("DEBUG: Found existing stmt, using ID: " + finalStmtId);
       } else {
         // Create new statement
         finalStmtId = Math.random().toString(36).substr(2, 9);
-        alert("DEBUG: Creating new stmt with ID: " + finalStmtId);
         const newStmt = {
           id: finalStmtId,
           provider: stmtProvider,
@@ -2489,31 +2473,29 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       }
     }
 
-    alert("DEBUG: finalStmtId to assign to transactions: " + finalStmtId);
-
-    // 2. Save Transactions linked to that ID
+    // 2. Save Transactions linked to that ID (or update orphaned ones)
     let savedCount = 0;
-    let skippedCount = 0;
-    let firstDuplicate = null;
+    let updatedCount = 0;
     bulkItems.forEach(item => {
-      // Safe duplicate check
+      // Check if this transaction already exists
       const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
       const matchingIncome = (data?.income || []).find(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
-      const exists = matchingExpense || matchingIncome;
+      const existingItem = matchingExpense || matchingIncome;
 
-      if (!exists) {
+      if (!existingItem) {
+        // New transaction - save it
         const itemToSave = { ...item, statementId: finalStmtId };
-        console.log("Saving item with statementId:", itemToSave);
         onSave(itemToSave);
         savedCount++;
-      } else {
-        if (!firstDuplicate) {
-          firstDuplicate = exists;
-        }
-        skippedCount++;
+      } else if (!existingItem.statementId && finalStmtId) {
+        // Existing transaction WITHOUT statementId - UPDATE it to add the link
+        const updatedItem = { ...existingItem, statementId: finalStmtId, isIncome: !!matchingIncome };
+        onSave(updatedItem);
+        updatedCount++;
       }
+      // If existingItem already has a statementId, we truly skip it
     });
-    alert(`DEBUG: Saved ${savedCount} items, Skipped ${skippedCount} duplicates.\nFirst dup found: ${firstDuplicate ? JSON.stringify({ name: firstDuplicate.name, date: firstDuplicate.date, sid: firstDuplicate.statementId }) : 'none'}`);
+    console.log(`Import complete: ${savedCount} new, ${updatedCount} updated with statementId`);
 
     setBulkItems([]);
     setPendingStatement(null);
