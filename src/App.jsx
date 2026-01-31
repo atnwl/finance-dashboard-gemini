@@ -1502,7 +1502,7 @@ export default function App() {
               const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
               const sourceText = sourceStatement
                 ? `${sourceStatement.provider} ****${sourceStatement.last4}`
-                : (isIncome ? 'Received' : 'Send');
+                : (isIncome ? 'Income' : 'Expense');
 
               return (
                 <div
