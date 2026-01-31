@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -130,15 +130,21 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
   const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Auto-scroll on open AND on new messages
   useEffect(() => {
-    localStorage.setItem('chatHistory', JSON.stringify(messages));
+    if (isOpen) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 0);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSaveKey = (key) => {
-    localStorage.setItem('geminiApiKey', key);
-    setApiKey(key);
-    setShowSettings(false);
+  const handleCopy = (text) => {
+    navigator.clipboard.writeText(text);
   };
 
   const handleSend = async () => {
@@ -291,40 +297,27 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setShowSettings(!showSettings)} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
-            <Settings size={18} />
-          </button>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Settings Overlay */}
-      {/* Settings Overlay */}
-      {showSettings && (
-        <div className="absolute inset-0 bg-card/95 backdrop-blur z-20 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-          <Settings size={32} className="text-muted mb-4" />
-          <h3 className="font-bold text-lg mb-2">Settings Moved</h3>
-          <p className="text-sm text-muted mb-6 max-w-[250px]">
-            API keys and sync options are now available in the <strong>user menu</strong> (top-right avatar).
-          </p>
-          <Button variant="ghost" className="w-full" onClick={() => setShowSettings(false)}>Got it</Button>
-        </div>
-      )}
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
-          <div key={idx} className={cn("flex gap-3", msg.role === 'user' ? "flex-row-reverse" : "")}>
+          <div key={idx} className={cn("flex gap-2 items-end group", msg.role === 'user' ? "flex-row-reverse" : "")}>
+            {/* Avatar */}
             <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+              "w-7 h-7 rounded-full flex items-center justify-center shrink-0 self-start mt-1",
               msg.role === 'user' ? "bg-muted text-black" : "bg-primary/20 text-primary"
             )}>
               {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
             </div>
+
+            {/* Message Bubble */}
             <div className={cn(
-              "p-3 rounded-2xl text-sm max-w-[80%]",
+              "p-3 rounded-2xl text-sm max-w-[75%]",
               msg.role === 'user' ? "bg-primary text-black rounded-tr-sm" : "bg-border/50 text-text rounded-tl-sm"
             )}>
               <ReactMarkdown
@@ -338,6 +331,15 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
                 {msg.text}
               </ReactMarkdown>
             </div>
+
+            {/* Copy Button (Outside Bubble, Bottom-Aligned) */}
+            <button
+              onClick={() => handleCopy(msg.text)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted hover:text-white shrink-0 mb-1"
+              title="Copy to clipboard"
+            >
+              <Copy size={14} />
+            </button>
           </div>
         ))}
         {isLoading && (
@@ -374,7 +376,8 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           </button>
         </form>
       </div>
-    </div>
+    </div >
+
   );
 };
 
@@ -384,6 +387,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [transactionFilter, setTransactionFilter] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [data, setData] = useState({ income: [], expenses: [], statements: [] });
@@ -554,9 +558,33 @@ export default function App() {
 
 
 
-    const totalCcPayments = data.expenses
+    // CC Payments: Deduplicate by amount + date proximity
+    // When importing from multiple sources (e.g., Fold bank + Chase card), the same payment
+    // appears on both statements. We dedupe by grouping same amounts within 5 days.
+    const ccPaymentItems = data.expenses
       .filter(e => e.category === 'Credit Card Payment' && filterByDate(e))
-      .reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const seenPayments = []; // { amount, date }
+    const uniqueCcPayments = ccPaymentItems.filter(item => {
+      const amt = parseFloat(item.amount);
+      const itemDate = new Date(item.date);
+
+      // Check if we've already seen this amount within 5 days
+      const isDuplicate = seenPayments.some(seen => {
+        if (Math.abs(seen.amount - amt) > 0.01) return false; // Different amount
+        const daysDiff = Math.abs(itemDate - seen.date) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 5; // Same amount within 5 days = duplicate
+      });
+
+      if (!isDuplicate) {
+        seenPayments.push({ amount: amt, date: itemDate });
+        return true;
+      }
+      return false;
+    });
+
+    const totalCcPayments = uniqueCcPayments.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
     // Group expenses by category
     const byCategory = effectiveExpenses.reduce((acc, item) => {
@@ -853,7 +881,10 @@ export default function App() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Primary Highlights */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10">
+        <Card
+          onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
+          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingUp size={48} />
           </div>
@@ -864,7 +895,10 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10">
+        <Card
+          onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
+          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <TrendingDown size={48} />
           </div>
@@ -888,7 +922,10 @@ export default function App() {
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5">
+        <Card
+          onClick={() => setActiveTab('subscriptions')}
+          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg"
+        >
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={48} />
           </div>
@@ -904,7 +941,10 @@ export default function App() {
 
       {/* Secondary / Credit & Debt Tier */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
+        <div
+          onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
+          className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50"
+        >
           <div>
             <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
             <p className="text-2xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -1252,9 +1292,19 @@ export default function App() {
       return matchesName || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
-    const items = isSearchActive ? searchItems : (isSubView
+    let items = isSearchActive ? searchItems : (isSubView
       ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => parseInt(a.date.split('-')[2]) - parseInt(b.date.split('-')[2]))
       : getMonthlyItems);
+
+    if (transactionFilter && !isSearchActive && !isSubView) {
+      if (transactionFilter === 'income') {
+        items = items.filter(i => i._type === 'income');
+      } else if (transactionFilter === 'expenses') {
+        items = items.filter(i => i._type === 'expenses' && i.category !== 'Credit Card Payment');
+      } else if (transactionFilter === 'cc-payments') {
+        items = items.filter(i => i.category === 'Credit Card Payment');
+      }
+    }
 
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -1286,7 +1336,16 @@ export default function App() {
                   Search Results for "{searchQuery}"
                   <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full"><X size={14} /></button>
                 </>
-              ) : isSubView ? 'Subscriptions' : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
+              ) : isSubView ? 'Subscriptions' : transactionFilter ? (
+                <>
+                  {transactionFilter === 'income' ? 'Income Transactions' :
+                    transactionFilter === 'expenses' ? 'Monthly Expenses' :
+                      'Credit Card Payments'} ({MONTHS[Number(selectedMonth)]} {selectedYear})
+                  <button onClick={() => setTransactionFilter(null)} className="p-1.5 hover:bg-white/10 rounded-full text-muted hover:text-white" title="Clear Filter">
+                    <X size={16} />
+                  </button>
+                </>
+              ) : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
             </h2>
             {!isSubView && !isSearchActive && (
               <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
@@ -1417,10 +1476,10 @@ export default function App() {
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
-            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
-            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
+            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
@@ -1620,16 +1679,16 @@ export default function App() {
       {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
-          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} />
-          <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} />
+          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
           <button
             onClick={openAddModal}
             className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
           >
             <Plus size={28} />
           </button>
-          <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => setActiveTab('subscriptions')} />
-          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => setActiveTab('statements')} />
+          <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
           <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
         </div>
       </div>
@@ -1685,15 +1744,19 @@ export default function App() {
 
 // --- Sub-components ---
 
-function NavTab({ label, active, onClick, icon: Icon }) {
+// --- Sub-components ---
+
+function NavTab({ label, active, onClick, icon: Icon, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className={cn(
         "px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
         active
           ? "bg-white text-black shadow-sm"
-          : "text-muted hover:text-white hover:bg-white/5"
+          : "text-muted hover:text-white hover:bg-white/5",
+        disabled && "opacity-30 cursor-not-allowed hover:bg-transparent hover:text-muted"
       )}
     >
       {Icon && <Icon size={16} />}
@@ -1702,13 +1765,15 @@ function NavTab({ label, active, onClick, icon: Icon }) {
   );
 }
 
-function MobileNavItem({ icon: Icon, label, active, onClick }) {
+function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       className={cn(
         "flex-1 flex flex-col items-center justify-center gap-1 h-full",
-        active ? "text-primary" : "text-muted hover:text-text"
+        active ? "text-primary" : "text-muted hover:text-text",
+        disabled && "opacity-30 cursor-not-allowed hover:text-muted text-muted"
       )}
     >
       <Icon size={20} />
@@ -2000,7 +2065,9 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
       - Charges/purchases = EXPENSES (isIncome: false)
-      - Payments/credits TO the card = mark as category "Credit Card Payment", isIncome: false (NOT income!)
+      - Payments/credits TO the card = SKIP THESE ENTIRELY (do NOT include in transactions array)
+        Why: These are just the receiving end of payments that originated from a bank account.
+        The actual CC payment will be captured when importing the bank statement.
     - If this is a BANK STATEMENT:
       - Deposits = INCOME (isIncome: true)
       - Withdrawals/debits = EXPENSES (isIncome: false)
