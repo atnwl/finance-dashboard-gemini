@@ -1038,7 +1038,7 @@ export default function App() {
 
               {/* Subscriptions Card (reusing existing styling logic from original code) */}
               <Card
-                onClick={() => setActiveTab('subscriptions')}
+                onClick={() => handleNavigation('subscriptions')}
                 className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
               >
                 <div>
@@ -1055,7 +1055,7 @@ export default function App() {
           {viewMode === 'credit' && (
             <>
               <div
-                onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
+                onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
                 className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
               >
                 <div>
