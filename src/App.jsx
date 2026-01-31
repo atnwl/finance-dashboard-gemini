@@ -1609,7 +1609,7 @@ export default function App() {
               const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
               const sourceText = sourceStatement
                 ? `${sourceStatement.provider} ****${sourceStatement.last4}`
-                : (isIncome ? 'Income' : 'Expense');
+                : (item.account || (isIncome ? 'Income' : 'Expense'));
 
               return (
                 <div
@@ -2091,6 +2091,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       type: 'variable',
       isIncome: false,
       statementId: null,
+      account: '',
       date: (() => {
         const d = new Date();
         const offset = d.getTimezoneOffset() * 60000;
@@ -2638,6 +2639,16 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               label: `${s.provider} ****${s.last4}`
             }))
           ]}
+        />
+      </div>
+
+      <div className="grid grid-cols-1">
+        <Input
+          label="Account Source (Optional)"
+          name="account"
+          value={formData.account || ''}
+          onChange={handleChange}
+          placeholder="e.g. Fidelity ****2346"
         />
       </div>
 
