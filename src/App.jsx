@@ -1775,7 +1775,7 @@ export default function App() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
           <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={ArrowRightLeft} label="Txns" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
 
           <button
             onClick={openAddModal}
