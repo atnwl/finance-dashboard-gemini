@@ -386,6 +386,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -881,114 +882,157 @@ export default function App() {
   // Renderers
   const renderDashboard = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Primary Highlights */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
-        {/* Net Cash Flow - Full Width Hero on Mobile, Standard on Desktop */}
-        <Card className="col-span-2 md:col-span-2 lg:col-span-1 p-4 md:p-6 relative overflow-hidden bg-gradient-to-br from-card to-card/50">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Wallet size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Net Cash Flow</h3>
-          <p className={cn(
-            "text-3xl font-bold mt-2",
-            financials.net >= 0 ? "text-primary" : "text-danger"
-          )}>
-            ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="mt-4 text-xs text-muted">
-            Available
-          </div>
-        </Card>
-
-        {/* Income Card */}
-        <Card
-          onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
-          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10"
+      {/* View Mode Pills (Segments) - Improved Style */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
+        <button
+          onClick={() => setViewMode('cashflow')}
+          className={cn(
+            "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+            viewMode === 'cashflow'
+              ? "bg-primary text-black shadow-lg shadow-primary/20"
+              : "bg-card border border-white/10 text-muted hover:bg-white/5"
+          )}
         >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Income</h3>
-          <p className="text-xl md:text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-[10px] md:text-xs text-primary/80 flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
-          </div>
-        </Card>
-
-        {/* Expenses Card */}
-        <Card
-          onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
-          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10"
+          Cash Flow
+        </button>
+        <button
+          onClick={() => setViewMode('credit')}
+          className={cn(
+            "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+            viewMode === 'credit'
+              ? "bg-secondary text-black shadow-lg shadow-secondary/20"
+              : "bg-card border border-white/10 text-muted hover:bg-white/5"
+          )}
         >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingDown size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-xl md:text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
-            Excl. CC Payments
-          </div>
-        </Card>
-
-        {/* Subscriptions Card - Full width mobile */}
-        <Card
-          onClick={() => setActiveTab('subscriptions')}
-          className="col-span-2 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Activity size={48} />
-          </div>
-          <h3 className="text-muted text-xs md:text-sm font-medium">Subscriptions</h3>
-          <p className="text-3xl font-bold mt-2 text-white">
-            ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
-            {financials.activeSubscriptionCount} active services
-          </div>
-        </Card>
+          Credit
+        </button>
       </div>
 
-      {/* Secondary / Credit & Debt Tier */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div
-          onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
-          className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50"
-        >
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Payments</h4>
-            <p className="text-2xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-          <CreditCard size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
+      {/* Primary Highlights - Conditional Grid */}
+      <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
 
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-secondary/30 transition-colors">
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Credit Card Balances</h4>
-            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
-          </div>
-          <Activity size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
+        {viewMode === 'cashflow' && (
+          <>
+            {/* New Hero Card - Cash Flow Style */}
+            <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
+              <div className="p-5 flex-1 relative z-10">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                      {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  {/* Placeholder Toggles */}
+                  <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
+                    <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD_A</div>
+                    <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD_B</div>
+                  </div>
+                </div>
 
-        <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex items-center justify-between group hover:border-purple-500/30 transition-colors">
-          <div>
-            <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">Balance Transfers</h4>
-            <p className="text-2xl font-bold text-white/40 italic text-sm">Coming Soon</p>
-          </div>
-          <TrendingDown size={28} className="text-muted opacity-20 group-hover:opacity-40 transition-opacity" />
-        </div>
+                <div className="mt-4 text-center">
+                  <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
+                  <p className="text-5xl font-display font-bold mt-1">
+                    ${financials.netCashFlow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+
+              {/* TBD Actions */}
+              <div className="grid grid-cols-2 gap-px bg-black/5 mt-auto">
+                <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                  <span>TBD</span>
+                </button>
+                <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                  <span>TBD</span>
+                </button>
+              </div>
+
+              {/* Background Decor */}
+              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                <Wallet size={120} className="text-black" />
+              </div>
+            </Card>
+
+            {/* Income Card */}
+            <Card
+              onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
+              className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <TrendingUp size={40} />
+              </div>
+              <h3 className="text-muted text-xs font-medium">Income</h3>
+              <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </Card>
+
+            {/* Expenses Card */}
+            <Card
+              onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
+              className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <TrendingDown size={40} />
+              </div>
+              <h3 className="text-muted text-xs font-medium">Expenses</h3>
+              <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </Card>
+
+            {/* Subscriptions Card (reusing existing styling logic from original code) */}
+            <Card
+              onClick={() => setActiveTab('subscriptions')}
+              className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+            >
+              <div>
+                <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
+                <p className="text-xl font-bold mt-1 text-white">
+                  ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <Activity size={24} className="text-warning opacity-50" />
+            </Card>
+          </>
+        )}
+
+        {viewMode === 'credit' && (
+          <>
+            <div
+              onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
+              className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
+            >
+              <div>
+                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
+                <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+              <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+            </div>
+
+            <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
+              <div>
+                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
+                <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+              </div>
+              <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+            </div>
+
+            <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
+              <div>
+                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Transfers</h4>
+                <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+              </div>
+              <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Charts Section */}
+      {/* Charts Section - Visible on Dashboard mainly */}
+      <h3 className="text-lg font-semibold px-2">Analytics</h3>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 min-h-[400px]">
+        <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Financial Overview</h3>
-
-            {/* Date Filters */}
+            <h3 className="text-base font-medium text-muted">Income vs Expenses</h3>
+            {/* Chart controls (year/month) - Simplified for mobile */}
             <div className="flex gap-2">
-              <span className="text-xs text-muted flex items-center px-2">
-                Select bar to filter
-              </span>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -1478,10 +1522,9 @@ export default function App() {
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="bg-primary p-1.5 rounded-lg">
-              <Wallet className="text-black" size={20} />
+            <div className="bg-primary p-2 rounded-xl">
+              <Wallet className="text-black" size={28} />
             </div>
-            <span className="text-lg font-bold tracking-tight font-display">Gus</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
