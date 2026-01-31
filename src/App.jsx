@@ -880,357 +880,364 @@ export default function App() {
   };
 
   // Renderers
-  const renderDashboard = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* View Mode Pills (Segments) - Improved Style */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-        <button
-          onClick={() => setViewMode('cashflow')}
-          className={cn(
-            "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-            viewMode === 'cashflow'
-              ? "bg-primary text-black shadow-lg shadow-primary/20"
-              : "bg-card border border-white/10 text-muted hover:bg-white/5"
-          )}
-        >
-          Cash Flow
-        </button>
-        <button
-          onClick={() => setViewMode('credit')}
-          className={cn(
-            "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-            viewMode === 'credit'
-              ? "bg-secondary text-black shadow-lg shadow-secondary/20"
-              : "bg-card border border-white/10 text-muted hover:bg-white/5"
-          )}
-        >
-          Credit
-        </button>
-      </div>
+  const renderDashboard = () => {
+    const chartData = financials.yearlyData;
+    const spendingByCat = Object.entries(financials.byCategory)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
 
-      {/* Primary Highlights - Conditional Grid */}
-      <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        {/* View Mode Pills (Segments) - Improved Style */}
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
+          <button
+            onClick={() => setViewMode('cashflow')}
+            className={cn(
+              "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+              viewMode === 'cashflow'
+                ? "bg-primary text-black shadow-lg shadow-primary/20"
+                : "bg-card border border-white/10 text-muted hover:bg-white/5"
+            )}
+          >
+            Cash Flow
+          </button>
+          <button
+            onClick={() => setViewMode('credit')}
+            className={cn(
+              "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+              viewMode === 'credit'
+                ? "bg-secondary text-black shadow-lg shadow-secondary/20"
+                : "bg-card border border-white/10 text-muted hover:bg-white/5"
+            )}
+          >
+            Credit
+          </button>
+        </div>
 
-        {viewMode === 'cashflow' && (
-          <>
-            {/* New Hero Card - Cash Flow Style */}
-            <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
-              <div className="p-5 flex-1 relative z-10">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                      {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
+        {/* Primary Highlights - Conditional Grid */}
+        <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
+
+          {viewMode === 'cashflow' && (
+            <>
+              {/* New Hero Card - Cash Flow Style */}
+              <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
+                <div className="p-5 flex-1 relative z-10">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    {/* Placeholder Toggles */}
+                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
+                      <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD_A</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD_B</div>
+                    </div>
                   </div>
-                  {/* Placeholder Toggles */}
-                  <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
-                    <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD_A</div>
-                    <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD_B</div>
-                  </div>
-                </div>
 
-                <div className="mt-4 text-center">
-                  <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
-                  <p className="text-5xl font-display font-bold mt-1">
-                    ${financials.netCashFlow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-              </div>
-
-              {/* TBD Actions */}
-              <div className="grid grid-cols-2 gap-px bg-black/5 mt-auto">
-                <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
-                  <span>TBD</span>
-                </button>
-                <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
-                  <span>TBD</span>
-                </button>
-              </div>
-
-              {/* Background Decor */}
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                <Wallet size={120} className="text-black" />
-              </div>
-            </Card>
-
-            {/* Income Card */}
-            <Card
-              onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
-              className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
-            >
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                <TrendingUp size={40} />
-              </div>
-              <h3 className="text-muted text-xs font-medium">Income</h3>
-              <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </Card>
-
-            {/* Expenses Card */}
-            <Card
-              onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
-              className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
-            >
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                <TrendingDown size={40} />
-              </div>
-              <h3 className="text-muted text-xs font-medium">Expenses</h3>
-              <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            </Card>
-
-            {/* Subscriptions Card (reusing existing styling logic from original code) */}
-            <Card
-              onClick={() => setActiveTab('subscriptions')}
-              className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
-            >
-              <div>
-                <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
-                <p className="text-xl font-bold mt-1 text-white">
-                  ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </div>
-              <Activity size={24} className="text-warning opacity-50" />
-            </Card>
-          </>
-        )}
-
-        {viewMode === 'credit' && (
-          <>
-            <div
-              onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
-              className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
-            >
-              <div>
-                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
-                <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </div>
-              <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
-            </div>
-
-            <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
-              <div>
-                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
-                <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
-              </div>
-              <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
-            </div>
-
-            <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
-              <div>
-                <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Transfers</h4>
-                <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
-              </div>
-              <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Charts Section - Visible on Dashboard mainly */}
-      <h3 className="text-lg font-semibold px-2">Analytics</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-base font-medium text-muted">Income vs Expenses</h3>
-            {/* Chart controls (year/month) - Simplified for mobile */}
-            <div className="flex gap-2">
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
-              >
-                {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-              <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
-                <Plus size={22} />
-              </Button>
-            </div>
-          </div>
-          <div className="h-[300px] w-full" style={{ outline: 'none' }}>
-            <style>{`
-              .recharts-wrapper { outline: none !important; }
-              .recharts-surface:focus { outline: none !important; }
-            `}</style>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                className="outline-none focus:outline-none"
-                data={financials.yearlyData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                onClick={(e) => {
-                  if (e) {
-                    if (e.activeTooltipIndex !== undefined) {
-                      setSelectedMonth(Number(e.activeTooltipIndex));
-                    } else if (e.activeLabel) {
-                      // Fallback: find index by name
-                      const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
-                      if (index !== -1) setSelectedMonth(index);
-                    }
-                  }
-                }}
-                cursor="pointer"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#9CA3AF', fontSize: 11 }}
-                  tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
-                />
-                <Tooltip
-                  cursor={{ fill: 'transparent' }}
-                  content={({ active, payload, label }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
-                          <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
-                          {payload.map((entry, index) => (
-                            <div key={index} className="flex justify-between gap-4 text-sm">
-                              <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
-                                {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
-                              </span>
-                              <span className="font-bold text-gray-200">
-                                ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <ReferenceLine
-                  y={financials.totalRecurringExpenses}
-                  stroke="#D4A373"
-                  strokeDasharray="3 3"
-                  label={{
-                    value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                    fill: "#D4A373",
-                    fontSize: 10,
-                    position: "insideTopRight"
-                  }}
-                />
-                <Bar
-                  key={`income-${selectedMonth}`}
-                  dataKey="income"
-                  radius={[4, 4, 0, 0]}
-                  barSize={30}
-                  isAnimationActive={false}
-                >
-                  {financials.yearlyData.map((entry, index) => {
-                    const today = new Date();
-                    const currentMonth = today.getMonth();
-                    const currentYear = today.getFullYear();
-
-                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                    const isCurrent = selectedYear === currentYear && index === currentMonth;
-                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
-
-                    const isSelected = index === selectedMonth;
-
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
-                        stroke={isSelected ? "#ffffff" : "none"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                      />
-                    );
-                  })}
-                </Bar>
-                <Bar
-                  key={`expenses-${selectedMonth}`}
-                  dataKey="expenses"
-                  radius={[4, 4, 0, 0]}
-                  barSize={30}
-                  isAnimationActive={false}
-                >
-                  {financials.yearlyData.map((entry, index) => {
-                    const today = new Date();
-                    const currentMonth = today.getMonth();
-                    const currentYear = today.getFullYear();
-
-                    const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                    const isCurrent = selectedYear === currentYear && index === currentMonth;
-                    const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
-
-                    const isSelected = index === selectedMonth;
-
-                    return (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
-                        stroke={isSelected ? "#ffffff" : "none"}
-                        strokeWidth={isSelected ? 2 : 0}
-                        fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                      />
-                    );
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        <Card className="min-h-[400px]">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold">Expense Breakdown</h3>
-          </div>
-          <div className="h-[300px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={Object.entries(financials.byCategory)
-                    .map(([name, value]) => ({ name, value }))
-                    .sort((a, b) => b.value - a.value)}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {Object.entries(financials.byCategory).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
-                  itemStyle={{ color: '#E5E7EB' }}
-                  formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <span className="text-xs text-muted">Total</span>
-              <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            {Object.entries(financials.byCategory)
-              .sort(([, a], [, b]) => b - a)
-              .map(([name, value], idx) => (
-                <div key={name} className="flex items-center gap-2 group relative cursor-help">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                  <span className="text-muted truncate flex-1">{name}</span>
-                  <span className="text-white font-medium shrink-0">
-                    {Math.round(value / financials.totalExpenses * 100)}%
-                  </span>
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
-                    <p className="text-[10px] text-muted mb-0.5">{name}</p>
-                    <p className="text-sm font-bold text-white">
-                      ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <div className="mt-4 text-center">
+                    <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
+                    <p className="text-5xl font-display font-bold mt-1">
+                      ${financials.netCashFlow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
-              ))}
-          </div>
-        </Card>
+
+                {/* TBD Actions */}
+                <div className="grid grid-cols-2 gap-px bg-black/5 mt-auto">
+                  <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                    <span>TBD</span>
+                  </button>
+                  <button className="py-3 hover:bg-black/5 transition-colors text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2">
+                    <span>TBD</span>
+                  </button>
+                </div>
+
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                  <Wallet size={120} className="text-black" />
+                </div>
+              </Card>
+
+              {/* Income Card */}
+              <Card
+                onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
+                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+              >
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <TrendingUp size={40} />
+                </div>
+                <h3 className="text-muted text-xs font-medium">Income</h3>
+                <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </Card>
+
+              {/* Expenses Card */}
+              <Card
+                onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
+                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+              >
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <TrendingDown size={40} />
+                </div>
+                <h3 className="text-muted text-xs font-medium">Expenses</h3>
+                <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </Card>
+
+              {/* Subscriptions Card (reusing existing styling logic from original code) */}
+              <Card
+                onClick={() => setActiveTab('subscriptions')}
+                className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+              >
+                <div>
+                  <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
+                  <p className="text-xl font-bold mt-1 text-white">
+                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <Activity size={24} className="text-warning opacity-50" />
+              </Card>
+            </>
+          )}
+
+          {viewMode === 'credit' && (
+            <>
+              <div
+                onClick={() => { setTransactionFilter('cc-payments'); setActiveTab('transactions'); }}
+                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
+              >
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
+                  <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+
+              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
+                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                </div>
+                <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+
+              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
+                <div>
+                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Transfers</h4>
+                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                </div>
+                <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Charts Section - Visible on Dashboard mainly */}
+        <h3 className="text-lg font-semibold px-2">Analytics</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-base font-medium text-muted">Income vs Expenses</h3>
+              {/* Chart controls (year/month) - Simplified for mobile */}
+              <div className="flex gap-2">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-background border border-border text-xs rounded-lg px-2 py-1 outline-none focus:border-primary"
+                >
+                  {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
+                  <Plus size={22} />
+                </Button>
+              </div>
+            </div>
+            <div className="h-[300px] w-full" style={{ outline: 'none' }}>
+              <style>{`
+              .recharts-wrapper { outline: none !important; }
+              .recharts-surface:focus { outline: none !important; }
+            `}</style>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  className="outline-none focus:outline-none"
+                  data={financials.yearlyData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  onClick={(e) => {
+                    if (e) {
+                      if (e.activeTooltipIndex !== undefined) {
+                        setSelectedMonth(Number(e.activeTooltipIndex));
+                      } else if (e.activeLabel) {
+                        // Fallback: find index by name
+                        const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
+                        if (index !== -1) setSelectedMonth(index);
+                      }
+                    }
+                  }}
+                  cursor="pointer"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                    tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
+                            <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
+                            {payload.map((entry, index) => (
+                              <div key={index} className="flex justify-between gap-4 text-sm">
+                                <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
+                                  {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
+                                </span>
+                                <span className="font-bold text-gray-200">
+                                  ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <ReferenceLine
+                    y={financials.totalRecurringExpenses}
+                    stroke="#D4A373"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                      fill: "#D4A373",
+                      fontSize: 10,
+                      position: "insideTopRight"
+                    }}
+                  />
+                  <Bar
+                    key={`income-${selectedMonth}`}
+                    dataKey="income"
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
+                    isAnimationActive={false}
+                  >
+                    {financials.yearlyData.map((entry, index) => {
+                      const today = new Date();
+                      const currentMonth = today.getMonth();
+                      const currentYear = today.getFullYear();
+
+                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                      const isCurrent = selectedYear === currentYear && index === currentMonth;
+                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+
+                      const isSelected = index === selectedMonth;
+
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
+                          stroke={isSelected ? "#ffffff" : "none"}
+                          strokeWidth={isSelected ? 2 : 0}
+                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                        />
+                      );
+                    })}
+                  </Bar>
+                  <Bar
+                    key={`expenses-${selectedMonth}`}
+                    dataKey="expenses"
+                    radius={[4, 4, 0, 0]}
+                    barSize={30}
+                    isAnimationActive={false}
+                  >
+                    {financials.yearlyData.map((entry, index) => {
+                      const today = new Date();
+                      const currentMonth = today.getMonth();
+                      const currentYear = today.getFullYear();
+
+                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
+                      const isCurrent = selectedYear === currentYear && index === currentMonth;
+                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+
+                      const isSelected = index === selectedMonth;
+
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
+                          stroke={isSelected ? "#ffffff" : "none"}
+                          strokeWidth={isSelected ? 2 : 0}
+                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                        />
+                      );
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card className="min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+            </div>
+            <div className="h-[300px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={Object.entries(financials.byCategory)
+                      .map(([name, value]) => ({ name, value }))
+                      .sort((a, b) => b.value - a.value)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {Object.entries(financials.byCategory).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
+                    itemStyle={{ color: '#E5E7EB' }}
+                    formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                <span className="text-xs text-muted">Total</span>
+                <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              {Object.entries(financials.byCategory)
+                .sort(([, a], [, b]) => b - a)
+                .map(([name, value], idx) => (
+                  <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                    <span className="text-muted truncate flex-1">{name}</span>
+                    <span className="text-white font-medium shrink-0">
+                      {Math.round(value / financials.totalExpenses * 100)}%
+                    </span>
+                    {/* Tooltip on hover */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                      <p className="text-[10px] text-muted mb-0.5">{name}</p>
+                      <p className="text-sm font-bold text-white">
+                        ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // --- Virtual Transactions Helper ---
 
