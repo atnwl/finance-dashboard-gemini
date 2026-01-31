@@ -771,8 +771,13 @@ export default function App() {
   };
 
   const handleSave = (item) => {
+    // DEBUG - Alert for mobile
+    alert("handleSave received statementId: " + (item.statementId || 'UNDEFINED'));
+
     // Remove transient UI flags
     const cleanItem = { ...item };
+    console.log("cleanItem.statementId after spread:", cleanItem.statementId);
+
     const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
