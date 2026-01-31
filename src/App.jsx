@@ -2467,9 +2467,11 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       if (existingStmt) {
         console.log("Linking to existing statement:", existingStmt.id);
         finalStmtId = existingStmt.id;
+        alert("DEBUG: Found existing stmt, using ID: " + finalStmtId);
       } else {
         // Create new statement
         finalStmtId = Math.random().toString(36).substr(2, 9);
+        alert("DEBUG: Creating new stmt with ID: " + finalStmtId);
         const newStmt = {
           id: finalStmtId,
           provider: stmtProvider,
@@ -2482,6 +2484,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       }
     }
 
+    alert("DEBUG: finalStmtId to assign to transactions: " + finalStmtId);
+
     // 2. Save Transactions linked to that ID
     bulkItems.forEach(item => {
       // Safe duplicate check
@@ -2489,7 +2493,9 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
 
       if (!exists) {
-        onSave({ ...item, statementId: finalStmtId });
+        const itemToSave = { ...item, statementId: finalStmtId };
+        console.log("Saving item with statementId:", itemToSave);
+        onSave(itemToSave);
       }
     });
 
