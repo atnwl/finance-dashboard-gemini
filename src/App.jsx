@@ -2619,16 +2619,13 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           ]} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Select
           className={aiClass}
           label="Category" name="category" value={formData.category} onChange={handleChange} options={
             (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
           } />
-      </div>
-
-      {!formData.isIncome && (
-        <div className="grid grid-cols-1">
+        {!formData.isIncome && (
           <Select
             className={aiClass}
             label="Expense Type" name="type" value={formData.type} onChange={handleChange} options={[
@@ -2636,8 +2633,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               { value: 'bill', label: 'Bill' },
               { value: 'subscription', label: 'Subscription' },
             ]} />
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="pt-4 flex gap-3">
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
