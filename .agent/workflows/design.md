@@ -27,7 +27,7 @@ A high-pigment, muted palette designed for sophisticated dark mode interfaces.
 - **Navigation**: Pill-based segmented controls for view toggles (e.g., Cash Flow vs Credit).
 
 ## Special UI States
-- **Financial Accounting**: Negative values must be formatted with parentheses, e.g., `($1,234.56)`, rather than a minus sign.
+- **Financial Formatting**: Negative values are formatted with a negative sign, e.g., `-$1,234.56`, rather than parentheses.
 - **Hero Card Dynamics**: The main cash flow card dynamically transitions between `bg-primary` (positive) and `bg-danger` (negative) with a `500ms` transition.
 - **Demo Mode**: Active demo state is represented by a Purple (`bg-purple-500`) toggle pill and a `RefreshCcw` icon for re-randomization.
 

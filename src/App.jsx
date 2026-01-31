@@ -23,7 +23,7 @@ function cn(...inputs) {
 const formatAccounting = (val) => {
   const isNeg = val < 0;
   const absVal = Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return isNeg ? `($${absVal})` : `$${absVal}`;
+  return isNeg ? `-$${absVal}` : `$${absVal}`;
 };
 
 const MONTHS = [
