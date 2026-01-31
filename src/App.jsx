@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1474,7 +1474,7 @@ export default function App() {
             <div className="bg-primary p-1.5 rounded-lg">
               <Wallet className="text-black" size={20} />
             </div>
-            <span className="text-lg font-bold tracking-tight hidden sm:block">FinBoard</span>
+            <span className="text-lg font-bold tracking-tight">Gus</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
@@ -1679,19 +1679,29 @@ export default function App() {
       </main>
 
       {/* Mobile Bottom Navigation */}
+
+      {/* AI Floating Action Button */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="md:hidden fixed bottom-20 right-4 z-50 w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 hover:scale-110 transition-transform active:scale-95"
+      >
+        <Bot size={28} />
+      </button>
+
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
           <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+
           <button
             onClick={openAddModal}
-            className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
+            className="w-14 h-14 bg-card border border-border rounded-full flex items-center justify-center text-white shadow-lg -translate-y-5 hover:scale-110 transition-transform active:scale-95"
           >
             <Plus size={28} />
           </button>
-          <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+
+          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
           <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
         </div>
       </div>
       <ChatWindow
@@ -1778,8 +1788,8 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
         disabled && "opacity-30 cursor-not-allowed hover:text-muted text-muted"
       )}
     >
-      <Icon size={20} />
-      <span className="text-[10px] font-medium">{label}</span>
+      <Icon size={24} />
+      {/* <span className="text-[10px] font-medium">{label}</span> */}
     </button>
   );
 }
