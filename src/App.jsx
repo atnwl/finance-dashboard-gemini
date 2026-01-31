@@ -1010,7 +1010,7 @@ export default function App() {
                 className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <TrendingUp size={40} />
+                  <ArrowDownLeft size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Income</h3>
                 <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -1022,7 +1022,7 @@ export default function App() {
                 className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <TrendingDown size={40} />
+                  <ArrowUpRight size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Expenses</h3>
                 <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
