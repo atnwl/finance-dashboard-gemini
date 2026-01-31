@@ -13,7 +13,7 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    - Current feature branch if no number given
    - Ask for clarification if ambiguous
 
-2. submit a PR with all current changes
+2. submit a PR with all current changes (only if no args are passed; if a number is passed, then skip this step)
 
 3. **Fetch the actual diff**: Use `mcp_github-mcp-server_pull_request_read` with `method: get_diff` to get the real changes. Do NOT rely on memory or assumptions.
 
