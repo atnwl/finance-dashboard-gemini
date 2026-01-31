@@ -448,6 +448,53 @@ export default function App() {
   const [pendingStatement, setPendingStatement] = useState(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Demo Mode State
+  const [demoFinancials, setDemoFinancials] = useState(null);
+
+  const toggleDemo = () => {
+    if (demoFinancials) {
+      setDemoFinancials(null);
+    } else {
+      const income = Math.floor(Math.random() * 5000) + 3000;
+      const expenses = Math.floor(Math.random() * 4000) + 1000;
+      const subs = Math.floor(Math.random() * 200) + 50;
+      const count = Math.floor(Math.random() * 7) + 3;
+      const cc = Math.floor(Math.random() * 1000) + 200;
+      const recurring = Math.floor(expenses * 0.6);
+
+      const yearlyData = MONTHS.map((m, i) => {
+        const mInc = Math.floor(Math.random() * 4000) + 2000;
+        const mExp = Math.floor(Math.random() * 3500) + 1500;
+        return {
+          name: m.slice(0, 3),
+          year: selectedYear,
+          income: mInc,
+          expenses: mExp,
+          net: mInc - mExp,
+          hasData: true
+        };
+      });
+
+      setDemoFinancials({
+        totalIncome: income,
+        totalExpenses: expenses,
+        net: income - expenses,
+        totalSubscriptionsCost: subs,
+        activeSubscriptionCount: count,
+        totalCcPayments: cc,
+        yearlyData,
+        totalRecurringExpenses: recurring,
+        byCategory: {
+          'Housing': expenses * 0.4,
+          'Transport': expenses * 0.15,
+          'Food': expenses * 0.2,
+          'Utilities': expenses * 0.1,
+          'Entertainment': expenses * 0.15
+        }
+      });
+    }
+  };
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState('');
 
@@ -542,7 +589,7 @@ export default function App() {
     return amt * (map[frequency] || 0);
   };
 
-  const financials = useMemo(() => {
+  const calculatedFinancials = useMemo(() => {
     // Filter data by selected Month and Year
     const filterByDate = (item) => {
       if (!item.date) return false; // Should have date from migration, but safety first
@@ -681,6 +728,8 @@ export default function App() {
 
     return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
+
+  const financials = demoFinancials || calculatedFinancials;
 
   // Handlers
   const handleDelete = (type, id) => {
@@ -963,6 +1012,20 @@ export default function App() {
         </div>
 
         {/* Primary Highlights - Conditional Grid */}
+        <div className="flex justify-between items-end mb-3">
+          <h2 className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">Overview</h2>
+          <button
+            onClick={toggleDemo}
+            className={cn(
+              "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider",
+              demoFinancials
+                ? "bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20"
+                : "bg-white/5 text-muted border-white/10 hover:bg-white/10"
+            )}
+          >
+            {demoFinancials ? "Demo Active" : "Demo"}
+          </button>
+        </div>
         <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
 
           {viewMode === 'cashflow' && (
