@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -452,8 +452,8 @@ export default function App() {
   // Demo Mode State
   const [demoFinancials, setDemoFinancials] = useState(null);
 
-  const toggleDemo = () => {
-    if (demoFinancials) {
+  const toggleDemo = (forceRefresh = false) => {
+    if (demoFinancials && !forceRefresh) {
       setDemoFinancials(null);
     } else {
       const income = Math.floor(Math.random() * 5000) + 3000;
@@ -985,46 +985,54 @@ export default function App() {
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
-        {/* View Mode Pills (Segments) - Improved Style */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:hidden">
-          <button
-            onClick={() => setViewMode('cashflow')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-              viewMode === 'cashflow'
-                ? "bg-primary text-black shadow-lg shadow-primary/20"
-                : "bg-card border border-white/10 text-muted hover:bg-white/5"
-            )}
-          >
-            Cash Flow
-          </button>
-          <button
-            onClick={() => setViewMode('credit')}
-            className={cn(
-              "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
-              viewMode === 'credit'
-                ? "bg-secondary text-black shadow-lg shadow-secondary/20"
-                : "bg-card border border-white/10 text-muted hover:bg-white/5"
-            )}
-          >
-            Credit
-          </button>
-        </div>
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setViewMode('cashflow')}
+              className={cn(
+                "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                viewMode === 'cashflow'
+                  ? "bg-primary text-black shadow-lg shadow-primary/20"
+                  : "bg-card border border-white/10 text-muted hover:bg-white/5"
+              )}
+            >
+              Cash Flow
+            </button>
+            <button
+              onClick={() => setViewMode('credit')}
+              className={cn(
+                "px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                viewMode === 'credit'
+                  ? "bg-secondary text-black shadow-lg shadow-secondary/20"
+                  : "bg-card border border-white/10 text-muted hover:bg-white/5"
+              )}
+            >
+              Credit
+            </button>
+          </div>
 
-        {/* Primary Highlights - Conditional Grid */}
-        <div className="flex justify-between items-end mb-3">
-          <h2 className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] ml-1">Overview</h2>
-          <button
-            onClick={toggleDemo}
-            className={cn(
-              "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider",
-              demoFinancials
-                ? "bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20"
-                : "bg-white/5 text-muted border-white/10 hover:bg-white/10"
+          <div className="flex items-center gap-2">
+            {demoFinancials && (
+              <button
+                onClick={() => toggleDemo(true)}
+                className="p-2 bg-white/5 border border-white/10 rounded-full text-muted hover:text-white hover:bg-white/10 transition-all active:rotate-180 duration-500"
+                title="Refresh Demo Data"
+              >
+                <RefreshCcw size={14} />
+              </button>
             )}
-          >
-            {demoFinancials ? "Demo Active" : "Demo"}
-          </button>
+            <button
+              onClick={() => toggleDemo(false)}
+              className={cn(
+                "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider",
+                demoFinancials
+                  ? "bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20"
+                  : "bg-white/5 text-muted border-white/10 hover:bg-white/10"
+              )}
+            >
+              {demoFinancials ? "Demo Active" : "Demo"}
+            </button>
+          </div>
         </div>
         <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
 
