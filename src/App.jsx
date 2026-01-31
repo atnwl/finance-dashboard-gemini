@@ -970,20 +970,20 @@ export default function App() {
               {/* New Hero Card - Cash Flow Style */}
               <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
                 <div className="p-5 flex-1 relative z-10">
-                  <div className="flex justify-between items-start mb-2 relative">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                        {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  <div className="flex justify-between items-center mb-2 relative">
+                    <div className="z-20">
+                      <span className="text-xl font-bold bg-black/10 px-4 py-1.5 rounded-full backdrop-blur-sm">
+                        {MONTHS[selectedMonth]}
                       </span>
                     </div>
 
                     {/* Centered Title */}
-                    <div className="absolute left-1/2 -translate-x-1/2 top-1">
-                      <h3 className="text-black/60 text-sm font-bold uppercase tracking-wider">Cash Flow</h3>
+                    <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
+                      <h3 className="text-black/60 text-[10px] font-bold uppercase tracking-[0.2em]">Cash Flow</h3>
                     </div>
 
                     {/* Placeholder Toggles */}
-                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
+                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md z-20">
                       <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD</div>
                       <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
                     </div>
@@ -1479,7 +1479,7 @@ export default function App() {
                   transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
                 )}
               >
-                Send
+                Expenses
               </button>
               <button
                 onClick={() => setTransactionFilter('income')}
@@ -1488,7 +1488,7 @@ export default function App() {
                   transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
                 )}
               >
-                Received
+                Income
               </button>
             </div>
           )}
@@ -1501,7 +1501,7 @@ export default function App() {
               const isIncome = item._type === 'income';
               const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
               const sourceText = sourceStatement
-                ? `${sourceStatement.provider} ••••${sourceStatement.last4}`
+                ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                 : (isIncome ? 'Received' : 'Send');
 
               return (
@@ -1983,6 +1983,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
+      statementId: null,
       date: (() => {
         const d = new Date();
         const offset = d.getTimezoneOffset() * 60000;
@@ -2518,7 +2519,23 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
           } />
 
-        {!formData.isIncome && (
+        <Select
+          label="Account"
+          name="statementId"
+          value={formData.statementId || ''}
+          onChange={handleChange}
+          options={[
+            { value: '', label: 'Generic (No Account)' },
+            ...(data.statements || []).map(s => ({
+              value: s.id,
+              label: `${s.provider} ****${s.last4}`
+            }))
+          ]}
+        />
+      </div>
+
+      {!formData.isIncome && (
+        <div className="grid grid-cols-1">
           <Select
             className={aiClass}
             label="Expense Type" name="type" value={formData.type} onChange={handleChange} options={[
@@ -2526,8 +2543,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               { value: 'bill', label: 'Bill' },
               { value: 'subscription', label: 'Subscription' },
             ]} />
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="pt-4 flex gap-3">
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
