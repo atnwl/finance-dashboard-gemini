@@ -457,13 +457,26 @@ export default function App() {
 
   // Demo Mode State
   const [demoFinancials, setDemoFinancials] = useState(null);
+  const [demoToggle, setDemoToggle] = useState(false); // Alternates between positive/negative
 
   const toggleDemo = (forceRefresh = false) => {
     if (demoFinancials && !forceRefresh) {
       setDemoFinancials(null);
     } else {
-      const income = Math.floor(Math.random() * 5000) + 3000;
-      const expenses = Math.floor(Math.random() * 4000) + 1000;
+      const nextShouldBeNegative = !demoToggle;
+      setDemoToggle(nextShouldBeNegative);
+
+      let income, expenses;
+      if (nextShouldBeNegative) {
+        // Force Negative: Expenses > Income
+        income = Math.floor(Math.random() * 2000) + 2000;
+        expenses = income + Math.floor(Math.random() * 1000) + 500;
+      } else {
+        // Force Positive: Income > Expenses
+        income = Math.floor(Math.random() * 3000) + 4000;
+        expenses = income - Math.floor(Math.random() * 2000) - 1000;
+      }
+
       const subs = Math.floor(Math.random() * 200) + 50;
       const count = Math.floor(Math.random() * 7) + 3;
       const cc = Math.floor(Math.random() * 1000) + 200;
