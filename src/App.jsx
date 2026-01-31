@@ -297,9 +297,23 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                if (window.confirm('Clear chat history?')) {
+                  setMessages([{ role: 'model', text: "History cleared. How can I help?" }]);
+                  localStorage.removeItem('chatHistory');
+                }
+              }}
+              className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-danger warning transition-colors mr-1"
+              title="Clear History"
+            >
+              <Trash2 size={18} />
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-text transition-colors">
+              <X size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1387,132 +1401,107 @@ export default function App() {
     }
 
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Card className="p-0 overflow-hidden border-border/50">
-          <div className="p-4 border-b border-white/5 flex justify-between items-center">
-            <h2 className="font-semibold text-lg flex items-center gap-2">
-              {isSearchActive ? (
-                <>
-                  Search Results for "{searchQuery}"
-                  <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full"><X size={14} /></button>
-                </>
-              ) : isSubView ? 'Subscriptions' : transactionFilter ? (
-                <>
-                  {transactionFilter === 'income' ? 'Income Transactions' :
-                    transactionFilter === 'expenses' ? 'Monthly Expenses' :
-                      'Credit Card Payments'} ({MONTHS[Number(selectedMonth)]} {selectedYear})
-                  <button onClick={() => setTransactionFilter(null)} className="p-1.5 hover:bg-white/10 rounded-full text-muted hover:text-white" title="Clear Filter">
-                    <X size={16} />
-                  </button>
-                </>
-              ) : `Transactions - ${MONTHS[Number(selectedMonth)]} ${selectedYear}`}
-            </h2>
-            {!isSubView && !isSearchActive && (
-              <span className="text-xs text-muted bg-white/5 px-2 py-1 rounded">
-                {isFutureMonth ? 'Projected' : selectedMonth === currentMonth && selectedYear === currentYear ? 'Current' : 'Historic'}
-              </span>
-            )}
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
+        <Card className="p-0 overflow-hidden border-border/50 bg-background md:bg-card border-none md:border">
+          {/* Header */}
+          <div className="px-4 py-6 border-b border-white/5 flex items-center justify-between sticky top-16 z-30 bg-background/95 backdrop-blur-md md:static md:bg-transparent">
+            <div className="flex items-center gap-3">
+              {(transactionFilter || activeTab === 'transactions') && (
+                <button
+                  onClick={() => {
+                    setActiveTab('dashboard');
+                    setTransactionFilter(null);
+                  }}
+                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
+                >
+                  <ChevronRight size={20} className="rotate-180" />
+                </button>
+              )}
+              <h2 className="font-bold text-xl">Transaction History</h2>
+            </div>
+            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-muted hover:text-white transition-colors">
+              <Settings size={20} />
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-card/50 text-xs uppercase text-muted font-medium border-b border-white/5">
-                <tr>
-                  <th className="px-6 py-4 text-left">Transaction</th>
-                  <th className="px-6 py-4 text-left">{isSubView ? 'Expected Day' : 'Date'}</th>
-                  {isSubView && <th className="px-6 py-4 text-left">Frequency</th>}
-                  <th className="px-6 py-4 text-left">Category</th>
-                  <th className="px-6 py-4 text-left">Amount</th>
-                  <th className="px-6 py-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {items.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                    className={cn(
-                      "group transition-colors hover:bg-white/5 cursor-pointer",
-                      item.isVirtual && isFutureMonth && "opacity-50 italic" // Virtual Style ONLY for Future
-                    )}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-sm border border-white/5",
-                          item._type === 'income' ? "bg-primary/20 text-primary" : "bg-danger/20 text-danger"
-                        )}>
-                          {item._type === 'income' ? '💰' : getCategoryIcon(item.category)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-text">{item.name} {item.isVirtual && <span className="text-[10px] ml-1 border border-border px-1 rounded">Monthly</span>}</p>
-                          <p className="text-xs text-muted capitalize">{item.type || 'Income'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">
-                      {(() => {
-                        const [y, m, d] = item.date.split('-').map(Number);
-                        const dateObj = new Date(y, m - 1, d);
 
-                        if (isSubView) {
-                          const j = d % 10, k = d % 100;
-                          if (j === 1 && k !== 11) return d + "st";
-                          if (j === 2 && k !== 12) return d + "nd";
-                          if (j === 3 && k !== 13) return d + "rd";
-                          return d + "th";
-                        }
+          {/* Filter Pills */}
+          {!isSubView && !isSearchActive && (
+            <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setTransactionFilter(null)}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                All Index
+              </button>
+              <button
+                onClick={() => setTransactionFilter('expenses')}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                Send
+              </button>
+              <button
+                onClick={() => setTransactionFilter('income')}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                )}
+              >
+                Received
+              </button>
+            </div>
+          )}
 
-                        return dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-                      })()}
-                    </td>
-                    {isSubView && (
-                      <td className="px-6 py-4 text-sm">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-xs font-medium border whitespace-nowrap capitalize",
-                          (item.frequency === 'annual' || item.frequency === 'yearly') ? "bg-warning/10 text-warning border-warning/20" :
-                            (item.frequency === 'weekly' || item.frequency === 'biweekly') ? "bg-danger/10 text-danger border-danger/20" :
-                              (item.frequency === 'quarterly') ? "bg-primary/10 text-primary border-primary/20" :
-                                "bg-secondary/10 text-secondary border-secondary/20" // Default (Monthly)
-                        )}>
-                          {item.frequency || 'Monthly'}
+          {/* List View */}
+          <div className="space-y-px bg-white/5">
+            {items.map((item) => {
+              const [y, m, d] = item.date.split('-').map(Number);
+              const dateObj = new Date(y, m - 1, d);
+              const isIncome = item._type === 'income';
+
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Icon Circle */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
+                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white" // Bright Green/Red per mock
+                    )}>
+                      {isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />}
+                    </div>
+
+                    {/* Text Info */}
+                    <div>
+                      <h4 className="font-bold text-base text-white">{item.name}</h4>
+                      <p className="text-xs text-muted font-medium mt-0.5 flex items-center gap-1.5">
+                        <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                        •
+                        <span className="capitalize flex items-center gap-1">
+                          {isIncome ? 'Received' : 'Send'}
                         </span>
-                      </td>
-                    )}
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/5 text-gray-400 border border-white/5 whitespace-nowrap">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className={cn("px-6 py-4 text-right font-medium", item._type === 'income' ? "text-primary" : "text-text")}>
-                      {item._type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItem(item);
-                            setIsFormOpen(true);
-                          }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-secondary transition-colors"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item._type, item.id);
-                          }}
-                          className="p-1.5 hover:bg-white/10 rounded-lg text-danger transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <div className={cn(
+                    "text-right font-bold text-base",
+                    isIncome ? "text-[#34D399]" : "text-[#F87171]" // Matching mock colors explicitly
+                  )}>
+                    {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>
