@@ -1463,6 +1463,10 @@ export default function App() {
               const [y, m, d] = item.date.split('-').map(Number);
               const dateObj = new Date(y, m - 1, d);
               const isIncome = item._type === 'income';
+              const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
+              const sourceText = sourceStatement
+                ? `${sourceStatement.provider} ••••${sourceStatement.last4}`
+                : (isIncome ? 'Received' : 'Send');
 
               return (
                 <div
@@ -1486,7 +1490,7 @@ export default function App() {
                         <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
                         •
                         <span className="capitalize flex items-center gap-1">
-                          {isIncome ? 'Received' : 'Send'}
+                          {sourceText}
                         </span>
                       </p>
                     </div>
