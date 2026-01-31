@@ -2442,33 +2442,27 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   };
 
   const handleBulkImport = () => {
-    // Generate statement ID early so we can link transactions
-    const pendingStmtId = pendingStatement ? Math.random().toString(36).substr(2, 9) : null;
+    // 1. Resolve Statement ID
+    let finalStmtId = null;
 
-    bulkItems.forEach(item => {
-      // Safe duplicate check
-      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
-        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
-
-      if (!exists) {
-        // Link transaction to statement
-        onSave({ ...item, statementId: pendingStmtId });
-      }
-    });
-    setBulkItems([]);
-    if (pendingStatement && pendingStmtId) {
-      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || new Date().toISOString().split('T')[0];
+    if (pendingStatement) {
+      const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || pendingStatement.date || new Date().toISOString().split('T')[0];
       const stmtLast4 = pendingStatement.last4 || '????';
       const stmtProvider = pendingStatement.provider || 'Unknown Provider';
 
-      // Checked, need to look elsewhere.nt (same provider + last4 + date)
-      const isDuplicateStatement = (data?.statements || []).some(
+      // Check if this statement already exists
+      const existingStmt = (data?.statements || []).find(
         s => s.provider === stmtProvider && s.last4 === stmtLast4 && s.date === stmtDate
       );
 
-      if (!isDuplicateStatement) {
+      if (existingStmt) {
+        console.log("Linking to existing statement:", existingStmt.id);
+        finalStmtId = existingStmt.id;
+      } else {
+        // Create new statement
+        finalStmtId = Math.random().toString(36).substr(2, 9);
         const newStmt = {
-          id: pendingStmtId, // Use the same ID
+          id: finalStmtId,
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
@@ -2477,8 +2471,21 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         };
         onSaveStatement(newStmt);
       }
-      setPendingStatement(null);
     }
+
+    // 2. Save Transactions linked to that ID
+    bulkItems.forEach(item => {
+      // Safe duplicate check
+      const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
+        (data?.income || []).some(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+
+      if (!exists) {
+        onSave({ ...item, statementId: finalStmtId });
+      }
+    });
+
+    setBulkItems([]);
+    setPendingStatement(null);
     if (onCancel) onCancel();
   };
 
