@@ -976,6 +976,11 @@ export default function App() {
                         {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
+                    {/* Placeholder Toggles */}
+                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md">
+                      <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
+                    </div>
                   </div>
 
                   <div className="mt-8 text-center">
@@ -989,11 +994,9 @@ export default function App() {
                 {/* TBD Actions */}
                 <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
                   <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
-                    <ArrowUpRight size={16} />
                     <span>TBD</span>
                   </button>
                   <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
-                    <ArrowDownLeft size={16} />
                     <span>TBD</span>
                   </button>
                 </div>
@@ -1091,9 +1094,6 @@ export default function App() {
                 >
                   {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <Button onClick={() => setEditingItem(null) || setIsFormOpen(true)} className="w-10 h-10 !p-0 rounded-full flex items-center justify-center bg-primary text-black hover:scale-110 shadow-lg shadow-primary/25 ml-2">
-                  <Plus size={22} />
-                </Button>
               </div>
             </div>
             <div className="h-[300px] w-full" style={{ outline: 'none' }}>
@@ -2348,7 +2348,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       const stmtLast4 = pendingStatement.last4 || '????';
       const stmtProvider = pendingStatement.provider || 'Unknown Provider';
 
-      // Check for duplicate statement (same provider + last4 + date)
+      // Checked, need to look elsewhere.nt (same provider + last4 + date)
       const isDuplicateStatement = (data?.statements || []).some(
         s => s.provider === stmtProvider && s.last4 === stmtLast4 && s.date === stmtDate
       );
