@@ -972,6 +972,7 @@ export default function App() {
                 <div className="p-5 flex-1 relative z-10">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
+                      <h3 className="text-black/60 text-sm font-bold uppercase tracking-wider">Cash Flow</h3>
                       <span className="text-xl font-medium bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">
                         {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
@@ -983,9 +984,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="mt-8 text-center">
-                    <h3 className="text-black/60 text-sm font-medium uppercase tracking-wider">Cash Flow</h3>
-                    <p className="text-5xl font-display font-bold mt-1">
+                  <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
+                    <p className="text-6xl font-display font-bold tracking-tight">
                       ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
@@ -1765,10 +1765,10 @@ export default function App() {
       <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="pointer-events-auto w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
+          className="pointer-events-auto w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
         >
           <div className="absolute inset-0 rounded-full bg-purple-500/30 animate-ping opacity-75"></div>
-          <span className="relative z-10"><Bot size={32} /></span>
+          <span className="relative z-10"><Bot size={40} /></span>
         </button>
       </div>
 
