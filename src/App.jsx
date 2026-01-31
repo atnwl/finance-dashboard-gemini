@@ -1050,7 +1050,7 @@ export default function App() {
                 return (
                   <Card className={cn(
                     "col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500",
-                    isNegative ? "bg-red-500 text-white shadow-xl shadow-red-500/20" : "bg-primary text-black"
+                    isNegative ? "bg-danger text-white shadow-xl shadow-danger/20" : "bg-primary text-black"
                   )}>
                     <div className="p-5 flex-1 relative z-10">
                       <div className="flex justify-between items-center mb-2 relative">
