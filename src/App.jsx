@@ -20,6 +20,12 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+const formatAccounting = (val) => {
+  const isNeg = val < 0;
+  const absVal = Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return isNeg ? `($${absVal})` : `$${absVal}`;
+};
+
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -1039,49 +1045,73 @@ export default function App() {
           {viewMode === 'cashflow' && (
             <>
               {/* New Hero Card - Cash Flow Style */}
-              <Card className="col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden bg-primary text-black border-none min-h-[220px] flex flex-col justify-between">
-                <div className="p-5 flex-1 relative z-10">
-                  <div className="flex justify-between items-center mb-2 relative">
-                    <div className="z-20">
-                      <span className="text-xl font-bold bg-black/10 px-4 py-1.5 rounded-full backdrop-blur-sm">
-                        {MONTHS[selectedMonth]}
-                      </span>
+              {(() => {
+                const isNegative = financials.net < 0;
+                return (
+                  <Card className={cn(
+                    "col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500",
+                    isNegative ? "bg-red-500 text-white shadow-xl shadow-red-500/20" : "bg-primary text-black"
+                  )}>
+                    <div className="p-5 flex-1 relative z-10">
+                      <div className="flex justify-between items-center mb-2 relative">
+                        <div className="z-20">
+                          <span className={cn(
+                            "text-xl font-bold px-4 py-1.5 rounded-full backdrop-blur-sm",
+                            isNegative ? "bg-white/20" : "bg-black/10"
+                          )}>
+                            {MONTHS[selectedMonth]}
+                          </span>
+                        </div>
+
+                        {/* Centered Title */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
+                          <h3 className={cn(
+                            "text-[10px] font-bold uppercase tracking-[0.2em]",
+                            isNegative ? "text-white/60" : "text-black/60"
+                          )}>Cash Flow</h3>
+                        </div>
+
+                        {/* Placeholder Toggles */}
+                        <div className={cn(
+                          "flex rounded-full p-0.5 backdrop-blur-md z-20",
+                          isNegative ? "bg-white/10" : "bg-black/10"
+                        )}>
+                          <div className={cn("px-3 py-1 rounded-full text-[10px] font-bold opacity-50", isNegative ? "bg-white/10" : "bg-black/10")}>TBD</div>
+                          <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
+                        <p className="text-6xl font-display font-bold tracking-tight">
+                          {formatAccounting(financials.net)}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Centered Title */}
-                    <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
-                      <h3 className="text-black/60 text-[10px] font-bold uppercase tracking-[0.2em]">Cash Flow</h3>
+                    {/* TBD Actions */}
+                    <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
+                      <button className={cn(
+                        "py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border",
+                        isNegative ? "bg-white/10 hover:bg-white/20 border-white/10" : "bg-black/10 hover:bg-black/20 border-black/5"
+                      )}>
+                        <span>TBD</span>
+                      </button>
+                      <button className={cn(
+                        "py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border",
+                        isNegative ? "bg-white/10 hover:bg-white/20 border-white/10" : "bg-black/10 hover:bg-black/20 border-black/5"
+                      )}>
+                        <span>TBD</span>
+                      </button>
                     </div>
 
-                    {/* Placeholder Toggles */}
-                    <div className="flex bg-black/10 rounded-full p-0.5 backdrop-blur-md z-20">
-                      <div className="px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold opacity-50">TBD</div>
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
-                    <p className="text-6xl font-display font-bold tracking-tight">
-                      ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* TBD Actions */}
-                <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
-                  <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
-                    <span>TBD</span>
-                  </button>
-                  <button className="py-3 bg-black/10 hover:bg-black/20 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border border-black/5">
-                    <span>TBD</span>
-                  </button>
-                </div>
-
-                {/* Background Decor */}
-                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                  <ArrowRightLeft size={120} className="text-black" />
-                </div>
-              </Card>
+                    {/* Background Decor */}
+                    <ArrowRightLeft size={160} className={cn(
+                      "absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors",
+                      isNegative ? "text-white/5" : "text-black/5"
+                    )} />
+                  </Card>
+                );
+              })()}
 
               {/* Income Card */}
               <Card
@@ -1356,7 +1386,7 @@ export default function App() {
             </div>
           </Card>
         </div>
-      </div>
+      </div >
     );
   };
 
