@@ -28,12 +28,14 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    ```
 
 5. **Rules**:
+   - Must be in a format optimized for copying to notion
    - Output ONLY the markdown (no preamble, no commentary)
    - Keep to 4-6 bullet points maximum
    - Use bold for the category label
    - Start each bullet with a verb or noun phrase
    - Be specific: mention actual values, file names, or features changed
    - Do NOT include features that already existed in the base branch
+   - Do NOT use inline code backticks (e.g. `item`); use "quotes" or **bold** instead to ensure clean Notion pasting
 
 ## Example Output
 

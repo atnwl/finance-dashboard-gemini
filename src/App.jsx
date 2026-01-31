@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -53,8 +53,8 @@ const getCategoryIcon = (category) => {
 
 // --- Components ---
 
-const Card = ({ children, className }) => (
-  <div className={cn("bg-card border border-border rounded-2xl p-6 shadow-sm", className)}>
+const Card = ({ children, className, ...props }) => (
+  <div className={cn("bg-card border border-border rounded-2xl p-6 shadow-sm", className)} {...props}>
     {children}
   </div>
 );
@@ -553,7 +553,9 @@ export default function App() {
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
-    const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    // Use deduplicated active recurring + one-time expenses for consistency with chart
+    const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+    const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
     const net = totalIncome - totalExpenses;
 
 
@@ -880,60 +882,67 @@ export default function App() {
   const renderDashboard = () => (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Primary Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card
-          onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
-          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp size={48} />
-          </div>
-          <h3 className="text-muted text-sm font-medium">Monthly Income</h3>
-          <p className="text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-xs text-primary/80 flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
-          </div>
-        </Card>
-
-        <Card
-          onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
-          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10"
-        >
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingDown size={48} />
-          </div>
-          <h3 className="text-muted text-sm font-medium">Monthly Expenses</h3>
-          <p className="text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="mt-4 text-xs text-muted flex items-center gap-1">
-            Excl. CC Payments
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+        {/* Net Cash Flow - Full Width Hero on Mobile, Standard on Desktop */}
+        <Card className="col-span-2 md:col-span-2 lg:col-span-1 p-4 md:p-6 relative overflow-hidden bg-gradient-to-br from-card to-card/50">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
             <Wallet size={48} />
           </div>
-          <h3 className="text-muted text-sm font-medium">Net Cash Flow</h3>
-          <p className={cn("text-3xl font-bold mt-2", financials.net >= 0 ? "text-primary" : "text-danger")}>
+          <h3 className="text-muted text-xs md:text-sm font-medium">Net Cash Flow</h3>
+          <p className={cn(
+            "text-3xl font-bold mt-2",
+            financials.net >= 0 ? "text-primary" : "text-danger"
+          )}>
             ${financials.net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <div className="mt-4 text-xs text-muted flex items-center gap-1">
+          <div className="mt-4 text-xs text-muted">
             Available
           </div>
         </Card>
 
+        {/* Income Card */}
+        <Card
+          onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
+          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <TrendingUp size={48} />
+          </div>
+          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Income</h3>
+          <p className="text-xl md:text-3xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="mt-4 text-[10px] md:text-xs text-primary/80 flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" /> Income
+          </div>
+        </Card>
+
+        {/* Expenses Card */}
+        <Card
+          onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
+          className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <TrendingDown size={48} />
+          </div>
+          <h3 className="text-muted text-xs md:text-sm font-medium">Monthly Expenses</h3>
+          <p className="text-xl md:text-3xl font-bold mt-2 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
+            Excl. CC Payments
+          </div>
+        </Card>
+
+        {/* Subscriptions Card - Full width mobile */}
         <Card
           onClick={() => setActiveTab('subscriptions')}
-          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg"
+          className="col-span-2 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10"
         >
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={48} />
           </div>
-          <h3 className="text-muted text-sm font-medium">Subscriptions</h3>
+          <h3 className="text-muted text-xs md:text-sm font-medium">Subscriptions</h3>
           <p className="text-3xl font-bold mt-2 text-white">
             ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <div className="mt-4 text-xs text-muted flex items-center gap-1">
+          <div className="mt-4 text-[10px] md:text-xs text-muted flex items-center gap-1">
             {financials.activeSubscriptionCount} active services
           </div>
         </Card>
@@ -1032,7 +1041,7 @@ export default function App() {
                           <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
                           {payload.map((entry, index) => (
                             <div key={index} className="flex justify-between gap-4 text-sm">
-                              <span style={{ color: entry.fill }}>
+                              <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
                                 {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
                               </span>
                               <span className="font-bold text-gray-200">
@@ -1472,7 +1481,7 @@ export default function App() {
             <div className="bg-primary p-1.5 rounded-lg">
               <Wallet className="text-black" size={20} />
             </div>
-            <span className="text-lg font-bold tracking-tight hidden sm:block">FinBoard</span>
+            <span className="text-lg font-bold tracking-tight font-display">Gus</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
@@ -1677,19 +1686,32 @@ export default function App() {
       </main>
 
       {/* Mobile Bottom Navigation */}
+
+      {/* AI Floating Action Button */}
+      <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="pointer-events-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center text-black shadow-2xl shadow-primary/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
+        >
+          <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75"></div>
+          <span className="relative z-10"><Bot size={32} /></span>
+        </button>
+      </div>
+
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
           <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={CreditCard} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+
           <button
             onClick={openAddModal}
-            className="w-14 h-14 bg-primary rounded-full flex items-center justify-center text-black shadow-lg shadow-primary/30 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
+            className="w-14 h-14 bg-white rounded-full flex items-center justify-center text-black shadow-lg shadow-white/10 -translate-y-5 border-4 border-background hover:scale-110 transition-transform active:scale-95"
           >
-            <Plus size={28} />
+            <Plus size={28} strokeWidth={3} />
           </button>
-          <MobileNavItem icon={Activity} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+
+          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
           <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={Bot} label="AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} />
         </div>
       </div>
       <ChatWindow
@@ -1776,8 +1798,8 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
         disabled && "opacity-30 cursor-not-allowed hover:text-muted text-muted"
       )}
     >
-      <Icon size={20} />
-      <span className="text-[10px] font-medium">{label}</span>
+      <Icon size={24} />
+      {/* <span className="text-[10px] font-medium">{label}</span> */}
     </button>
   );
 }
