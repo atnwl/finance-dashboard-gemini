@@ -2619,26 +2619,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           ]} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <Select
           className={aiClass}
           label="Category" name="category" value={formData.category} onChange={handleChange} options={
             (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
           } />
-
-        <Select
-          label="Account"
-          name="statementId"
-          value={formData.statementId || ''}
-          onChange={handleChange}
-          options={[
-            { value: '', label: 'Generic (No Account)' },
-            ...(data.statements || []).map(s => ({
-              value: s.id,
-              label: `${s.provider} ****${s.last4}`
-            }))
-          ]}
-        />
       </div>
 
       {!formData.isIncome && (
