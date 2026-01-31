@@ -2492,6 +2492,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     alert("DEBUG: finalStmtId to assign to transactions: " + finalStmtId);
 
     // 2. Save Transactions linked to that ID
+    let savedCount = 0;
+    let skippedCount = 0;
     bulkItems.forEach(item => {
       // Safe duplicate check
       const exists = (data?.expenses || []).some(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01) ||
@@ -2501,8 +2503,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         const itemToSave = { ...item, statementId: finalStmtId };
         console.log("Saving item with statementId:", itemToSave);
         onSave(itemToSave);
+        savedCount++;
+      } else {
+        skippedCount++;
       }
     });
+    alert(`DEBUG: Saved ${savedCount} items, Skipped ${skippedCount} duplicates`);
 
     setBulkItems([]);
     setPendingStatement(null);
