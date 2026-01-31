@@ -2486,6 +2486,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     return (
       <BulkReviewView
         items={bulkItems}
+        pendingStatement={pendingStatement}
+        setPendingStatement={setPendingStatement}
         onUpdate={handleBulkUpdate}
         onRemove={handleBulkRemove}
         onCancel={() => { setBulkItems([]); }} // Go back to single add
@@ -2691,15 +2693,57 @@ const ReviewAmountInput = ({ value, onChange }) => {
 };
 
 // HELPER: Bulk Review UI
-const BulkReviewView = ({ items, onUpdate, onRemove, onCancel, onImport }) => {
+const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
+  // Ensure we have a defined object to edit
+  const stmt = pendingStatement || { provider: '', last4: '', date: new Date().toISOString().split('T')[0] };
+
+  const updateStmt = (field, val) => {
+    setPendingStatement({ ...stmt, [field]: val });
+  };
+
   return (
     <div className="flex flex-col h-full max-h-[80vh]">
-      <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#0D1117] z-10 py-2">
-        <h3 className="text-lg font-bold flex items-center gap-2">
-          <Upload size={18} className="text-primary" />
-          Review Import ({items.length})
-        </h3>
-        <span className="text-xs text-muted">Check details before importing</span>
+      <div className="flex flex-col gap-3 mb-4 sticky top-0 bg-[#0D1117] z-10 py-2 border-b border-white/5">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <Upload size={18} className="text-primary" />
+            Review Import ({items.length})
+          </h3>
+          <span className="text-xs text-muted">Check details before importing</span>
+        </div>
+
+        {/* Statement Metadata Editor */}
+        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-3 gap-2">
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
+            <input
+              type="text"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="Bank Name"
+              value={stmt.provider || ''}
+              onChange={(e) => updateStmt('provider', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
+            <input
+              type="text"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="1234"
+              value={stmt.last4 || ''}
+              onChange={(e) => updateStmt('last4', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Closing Date</label>
+            <input
+              type="date"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-gray-400"
+              value={stmt.statementEndDate || stmt.statementDate || stmt.date || ''}
+              onChange={(e) => updateStmt('date', e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="overflow-y-auto flex-1 pr-2 space-y-3">
