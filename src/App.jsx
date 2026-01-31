@@ -53,8 +53,8 @@ const getCategoryIcon = (category) => {
 
 // --- Components ---
 
-const Card = ({ children, className }) => (
-  <div className={cn("bg-card border border-border rounded-2xl p-6 shadow-sm", className)}>
+const Card = ({ children, className, ...props }) => (
+  <div className={cn("bg-card border border-border rounded-2xl p-6 shadow-sm", className)} {...props}>
     {children}
   </div>
 );
@@ -553,7 +553,9 @@ export default function App() {
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
     const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
-    const totalExpenses = effectiveExpenses.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    // Use deduplicated active recurring + one-time expenses for consistency with chart
+    const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+    const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
     const net = totalIncome - totalExpenses;
 
 
@@ -924,7 +926,7 @@ export default function App() {
 
         <Card
           onClick={() => setActiveTab('subscriptions')}
-          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-white/5 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg"
+          className="bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10"
         >
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Activity size={48} />
@@ -1032,7 +1034,7 @@ export default function App() {
                           <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
                           {payload.map((entry, index) => (
                             <div key={index} className="flex justify-between gap-4 text-sm">
-                              <span style={{ color: entry.fill }}>
+                              <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
                                 {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
                               </span>
                               <span className="font-bold text-gray-200">
