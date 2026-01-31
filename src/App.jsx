@@ -2445,10 +2445,11 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   };
 
   const handleBulkImport = () => {
-    // DEBUG: Log what we have
+    // DEBUG: Log what we have (visible on-screen for mobile debugging)
+    const debugInfo = `pendingStatement: ${pendingStatement ? JSON.stringify(pendingStatement) : 'NULL'}`;
     console.log("=== handleBulkImport ===");
-    console.log("pendingStatement:", pendingStatement);
-    console.log("bulkItems count:", bulkItems.length);
+    console.log(debugInfo);
+    alert("DEBUG: " + debugInfo);
 
     // 1. Resolve Statement ID
     let finalStmtId = null;
