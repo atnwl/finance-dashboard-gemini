@@ -1,5 +1,5 @@
 ---
-description: Generate a concise PR summary in 4-6 bullet points
+description: Submit PR if no args are passed - If arg is passed, only generate a concise PR summary in 4-6 bullet points
 ---
 
 # PRhighlights Agent

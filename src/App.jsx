@@ -483,34 +483,33 @@ export default function App() {
       const recurring = Math.floor(expenses * 0.6);
 
       const yearlyData = MONTHS.map((m, i) => {
-        const mInc = Math.floor(Math.random() * 4000) + 2000;
-        const mExp = Math.floor(Math.random() * 3500) + 1500;
+        // Use forced values for the currently selected month, random for others
+        const mInc = (i === selectedMonth) ? income : (Math.floor(Math.random() * 4000) + 2000);
+        const mExp = (i === selectedMonth) ? expenses : (Math.floor(Math.random() * 3500) + 1500);
+
         return {
           name: m.slice(0, 3),
           year: selectedYear,
           income: mInc,
           expenses: mExp,
           net: mInc - mExp,
-          hasData: true
+          hasData: true,
+          byCategory: {
+            'Housing': mExp * 0.4,
+            'Transport': mExp * 0.15,
+            'Food': mExp * 0.2,
+            'Utilities': mExp * 0.1,
+            'Entertainment': mExp * 0.15
+          }
         };
       });
 
       setDemoFinancials({
-        totalIncome: income,
-        totalExpenses: expenses,
-        net: income - expenses,
         totalSubscriptionsCost: subs,
         activeSubscriptionCount: count,
         totalCcPayments: cc,
         yearlyData,
         totalRecurringExpenses: recurring,
-        byCategory: {
-          'Housing': expenses * 0.4,
-          'Transport': expenses * 0.15,
-          'Food': expenses * 0.2,
-          'Utilities': expenses * 0.1,
-          'Entertainment': expenses * 0.15
-        }
       });
     }
   };
@@ -748,7 +747,19 @@ export default function App() {
     return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
-  const financials = demoFinancials || calculatedFinancials;
+  const financials = useMemo(() => {
+    if (!demoFinancials) return calculatedFinancials;
+
+    // In demo mode, select the current month's data from yearlyData
+    const monthData = demoFinancials.yearlyData[selectedMonth];
+    return {
+      ...demoFinancials,
+      totalIncome: monthData.income,
+      totalExpenses: monthData.expenses,
+      net: monthData.net,
+      byCategory: monthData.byCategory
+    };
+  }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
   // Handlers
   const handleDelete = (type, id) => {
