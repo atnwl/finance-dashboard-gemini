@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -400,6 +400,40 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Handle Android Back Gesture / Browser History
+  useEffect(() => {
+    // Handle initial load
+    const currentHash = window.location.hash.replace('#', '');
+    if (currentHash && ['dashboard', 'transactions', 'subscriptions', 'statements'].includes(currentHash)) {
+      setActiveTab(currentHash);
+    }
+
+    const handlePopState = (event) => {
+      // If state exists, use it. Otherwise rely on hash or fallback to dashboard.
+      if (event.state && event.state.tab) {
+        setActiveTab(event.state.tab);
+      } else {
+        // Fallback for direct hash navigation or empty state
+        const hash = window.location.hash.replace('#', '');
+        if (hash) {
+          setActiveTab(hash);
+        } else {
+          setActiveTab('dashboard');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleNavigation = (tabName) => {
+    if (activeTab === tabName) return;
+    setActiveTab(tabName);
+    window.history.pushState({ tab: tabName }, '', `#${tabName}`);
+  };
+
   const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
@@ -972,7 +1006,7 @@ export default function App() {
 
               {/* Income Card */}
               <Card
-                onClick={() => { setTransactionFilter('income'); setActiveTab('transactions'); }}
+                onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
                 className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -984,7 +1018,7 @@ export default function App() {
 
               {/* Expenses Card */}
               <Card
-                onClick={() => { setTransactionFilter('expenses'); setActiveTab('transactions'); }}
+                onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
                 className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -1005,7 +1039,7 @@ export default function App() {
                     ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <Activity size={24} className="text-warning opacity-50" />
+                <Calendar size={24} className="text-warning opacity-50" />
               </Card>
             </>
           )}
@@ -1406,7 +1440,7 @@ export default function App() {
               {(transactionFilter || activeTab === 'transactions') && (
                 <button
                   onClick={() => {
-                    setActiveTab('dashboard');
+                    handleNavigation('dashboard');
                     setTransactionFilter(null);
                   }}
                   className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
@@ -1525,10 +1559,10 @@ export default function App() {
           </div>
 
           <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+            <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
@@ -1731,17 +1765,17 @@ export default function App() {
       <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
-          className="pointer-events-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center text-black shadow-2xl shadow-primary/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
+          className="pointer-events-auto w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
         >
-          <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75"></div>
+          <div className="absolute inset-0 rounded-full bg-purple-500/30 animate-ping opacity-75"></div>
           <span className="relative z-10"><Bot size={32} /></span>
         </button>
       </div>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
-          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { setActiveTab('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={Activity} label="Txns" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
 
           <button
             onClick={openAddModal}
@@ -1750,8 +1784,8 @@ export default function App() {
             <Plus size={28} strokeWidth={3} />
           </button>
 
-          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { setActiveTab('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { setActiveTab('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={Calendar} label="Subs" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
+          <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
         </div>
       </div>
       <ChatWindow
