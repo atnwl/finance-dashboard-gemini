@@ -1050,6 +1050,51 @@ export default function App() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
+    // --- Credit Card Balances Data Preparation ---
+    const creditCardAccounts = (data.statements || []).reduce((acc, s) => {
+      const key = `${s.provider}-${s.last4 || 'unknown'}`;
+      if (!acc[key]) {
+        acc[key] = { provider: s.provider, last4: s.last4, latestDate: s.date, latestBalance: s.balance };
+      } else {
+        // Update if this statement is newer
+        if (new Date(s.date) > new Date(acc[key].latestDate)) {
+          acc[key].latestDate = s.date;
+          acc[key].latestBalance = s.balance;
+        }
+      }
+      return acc;
+    }, {});
+
+    const accountList = Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+    const totalCreditBalance = accountList.reduce((sum, acc) => sum + (parseFloat(acc.latestBalance) || 0), 0);
+
+    const renderAccountList = () => {
+      if (accountList.length === 0) {
+        return <p className="text-sm text-muted italic mt-2">No active credit accounts.</p>;
+      }
+      return (
+        <div className="space-y-2 mt-3">
+          {accountList.map((acc, idx) => (
+            <div key={idx} className="flex justify-between items-center text-xs border-b border-white/5 pb-1 last:border-0 last:pb-0">
+              <span className="text-muted">{acc.provider} <span className="opacity-50">••{acc.last4?.slice(-2)}</span></span>
+              <span className={cn(
+                "font-mono font-bold",
+                (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
+              )}>
+                {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
+              </span>
+            </div>
+          ))}
+          <div className="flex justify-between items-center text-xs border-t border-white/10 pt-2 mt-2 font-bold text-white">
+            <span>Total</span>
+            <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
+              {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
+            </span>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="flex justify-between items-center mb-8">
@@ -1209,11 +1254,20 @@ export default function App() {
             <p className="text-2xl font-display font-bold mt-2 text-secondary tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
-          {/* Row 3: Credit Card Balances - Coming Soon */}
-          <Card className="col-span-3 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
-            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Balances</h3>
-            <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
-            <Activity size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
+          {/* Row 3: Credit Card Balances */}
+          <Card
+            onClick={() => { setViewMode('statements'); handleNavigation('statements'); }} // Navigate to statements tab
+            className="col-span-3 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
+          >
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide flex items-center gap-2">
+              Credit Card Balances
+              <Activity size={14} className="text-muted" />
+            </h3>
+
+            {/* List of Balances */}
+            {renderAccountList()}
+
+            <Activity size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-5 rotate-[-15deg] pointer-events-none" />
           </Card>
 
           {/* Row 3: Balance Transfers - Coming Soon */}
@@ -1324,10 +1378,30 @@ export default function App() {
                 <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
 
-              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
+              <div
+                onClick={() => { setViewMode('statements'); handleNavigation('statements'); }}
+                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px] cursor-pointer">
                 <div>
                   <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
-                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                  {/* Mobile List View */}
+                  {accountList.length === 0 ? (
+                    <p className="text-lg font-bold text-white/40 italic">No Data</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {accountList.slice(0, 3).map((acc, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs">
+                          <span className="text-muted">{acc.provider}</span>
+                          <span className={cn(
+                            "font-mono font-bold",
+                            (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
+                          )}>
+                            {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
+                          </span>
+                        </div>
+                      ))}
+                      {accountList.length > 3 && <p className="text-[10px] text-muted italic mt-1">+ {accountList.length - 3} more</p>}
+                    </div>
+                  )}
                 </div>
                 <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
