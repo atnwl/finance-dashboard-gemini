@@ -6,7 +6,8 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw,
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -55,6 +56,36 @@ const getCategoryIcon = (category) => {
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
+};
+
+const getBrandIcon = (name) => {
+  const n = name.toLowerCase();
+  if (n.includes('netflix')) return <Tv size={24} />;
+  if (n.includes('spotify') || n.includes('music') || n.includes('audio') || n.includes('pandora') || n.includes('tidal')) return <Headphones size={24} />;
+  if (n.includes('youtube') || n.includes('google *youtube') || n.includes('video')) return <Youtube size={24} />;
+  if (n.includes('prime') || n.includes('amazon')) return <ShoppingBag size={24} />;
+  if (n.includes('apple') || n.includes('icloud') || n.includes('itunes')) return <Smartphone size={24} />;
+  if (n.includes('adobe') || n.includes('photoshop') || n.includes('creative cloud')) return <Image size={24} />;
+  if (n.includes('figma') || n.includes('design')) return <PenTool size={24} />;
+  if (n.includes('github') || n.includes('gitlab')) return <Github size={24} />;
+  if (n.includes('vercel') || n.includes('netlify')) return <Server size={24} />;
+  if (n.includes('heroku') || n.includes('digitalocean') || n.includes('aws') || n.includes('cloud')) return <Cloud size={24} />;
+  if (n.includes('hbo') || n.includes('hulu') || n.includes('disney') || n.includes('peacock') || n.includes('paramount') || n.includes('tv')) return <Film size={24} />;
+  if (n.includes('uber') || n.includes('lyft')) return <Car size={24} />;
+  if (n.includes('steam') || n.includes('game') || n.includes('nintendo') || n.includes('playstation') || n.includes('xbox')) return <Gamepad2 size={24} />;
+  if (n.includes('chatgpt') || n.includes('openai') || n.includes('notion') || n.includes('claude') || n.includes('ai ')) return <Sparkles size={24} />;
+  if (n.includes('google') || n.includes('gsuite') || n.includes('workspace')) return <Chrome size={24} />;
+  if (n.includes('twitter') || n.includes('x.com') || n.includes('x corp')) return <Twitter size={24} />;
+  if (n.includes('linkedin')) return <Linkedin size={24} />;
+  if (n.includes('facebook') || n.includes('meta')) return <Facebook size={24} />;
+  if (n.includes('instagram')) return <Instagram size={24} />;
+  if (n.includes('twitch')) return <Twitch size={24} />;
+  if (n.includes('starbucks') || n.includes('coffee')) return <Coffee size={24} />;
+  if (n.includes('internet') || n.includes('wifi') || n.includes('broadband')) return <Wifi size={24} />;
+  if (n.includes('electric') || n.includes('power') || n.includes('energy') || n.includes('utility')) return <Zap size={24} />;
+  if (n.includes('mobile') || n.includes('phone') || n.includes('cell') || n.includes('verizon') || n.includes('t-mobile') || n.includes('at&t')) return <Smartphone size={24} />;
+
+  return null;
 };
 
 // --- Components ---
@@ -125,7 +156,7 @@ const Select = ({ label, options, ...props }) => (
 );
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false }) => {
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -279,8 +310,13 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
   if (!isOpen) return null;
 
+  // Desktop panel vs mobile modal styling
+  const containerClass = isDesktopPanel
+    ? "fixed top-16 right-0 w-[420px] h-[calc(100vh-4rem)] bg-card border-l border-border flex flex-col z-30 animate-in slide-in-from-right-10 fade-in duration-300"
+    : "fixed bottom-4 right-4 w-[90vw] md:w-[400px] h-[600px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300";
+
   return (
-    <div className="fixed bottom-4 right-4 w-[90vw] md:w-[400px] h-[600px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+    <div className={containerClass}>
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center bg-card rounded-t-2xl">
         <div className="flex items-center gap-2">
@@ -1014,10 +1050,62 @@ export default function App() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
 
+    // --- Credit Card Balances Data Preparation ---
+    const creditCardAccounts = (data.statements || []).reduce((acc, s) => {
+      const key = `${s.provider}-${s.last4 || 'unknown'}`;
+      if (!acc[key]) {
+        acc[key] = { provider: s.provider, last4: s.last4, latestDate: s.date, latestBalance: s.balance };
+      } else {
+        // Update if this statement is newer
+        if (new Date(s.date) > new Date(acc[key].latestDate)) {
+          acc[key].latestDate = s.date;
+          acc[key].latestBalance = s.balance;
+        }
+      }
+      return acc;
+    }, {});
+
+    const accountList = Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+    const totalCreditBalance = accountList.reduce((sum, acc) => sum + (parseFloat(acc.latestBalance) || 0), 0);
+
+    const renderAccountList = () => {
+      // Filter to only accounts WITH balance data
+      const accountsWithBalance = accountList.filter(acc => acc.latestBalance !== undefined && acc.latestBalance !== null);
+
+      if (accountsWithBalance.length === 0) {
+        return <p className="text-[10px] text-muted/70 italic mt-1">Re-import statements to capture balances.</p>;
+      }
+      return (
+        <div className="space-y-0.5 mt-1.5">
+          {accountsWithBalance.slice(0, 4).map((acc, idx) => (
+            <div key={idx} className="flex justify-between items-center text-[11px]">
+              <span className="text-muted truncate max-w-[100px]">{acc.provider} <span className="opacity-40">••{acc.last4?.slice(-2)}</span></span>
+              <span className={cn(
+                "font-mono font-semibold",
+                (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
+              )}>
+                {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
+              </span>
+            </div>
+          ))}
+          {accountsWithBalance.length > 4 && <p className="text-[9px] text-muted/50 italic">+ {accountsWithBalance.length - 4} more</p>}
+          {accountsWithBalance.length > 1 && (
+            <div className="flex justify-between items-center text-[11px] border-t border-white/10 pt-1 mt-1 font-bold">
+              <span className="text-white/70">Total</span>
+              <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
+                {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="flex justify-between items-center mb-8">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {/* View Toggle - Hidden on desktop, all cards shown together */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide lg:hidden">
             <button
               onClick={() => setViewMode('cashflow')}
               className={cn(
@@ -1040,6 +1128,11 @@ export default function App() {
             >
               Credit
             </button>
+          </div>
+          {/* Desktop: Just show month label */}
+          <div className="hidden lg:flex items-center gap-4 w-full">
+            <h2 className="text-lg font-bold text-white tracking-wide shrink-0">{MONTHS[selectedMonth]} Overview</h2>
+            <div className="h-[2px] flex-1 bg-gradient-to-r from-primary/50 via-primary/10 to-transparent rounded-full" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -1065,16 +1158,141 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
+        {/* Desktop: Unified grid matching wireframe layout (8-col for equal widths) */}
+        <div className="hidden lg:grid grid-cols-8 grid-rows-[auto_auto_auto] gap-4 mb-8">
+          {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
+          {(() => {
+            const isNegative = financials.net < 0;
+            return (
+              <Card className={cn(
+                "col-span-4 row-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
+                isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary shadow-xl shadow-primary/20"
+              )}>
+                <div className="p-4 flex-1 relative z-10 flex flex-col">
+                  {/* Top Row: Month badge, centered title, TBD pills */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                      {MONTHS[selectedMonth]}
+                    </span>
+
+                    {/* Centered Title */}
+                    <h3 className="absolute left-1/2 -translate-x-1/2 text-sm font-bold uppercase tracking-[0.2em] text-black/50">
+                      Cash Flow
+                    </h3>
+
+                    {/* Small TBD Pills */}
+                    <div className="flex rounded-full p-0.5 backdrop-blur-md bg-black/10">
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-60">TBD</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">TBD</div>
+                    </div>
+                  </div>
+
+                  {/* Centered Amount */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-6xl font-display font-bold tracking-tight">
+                      {formatAccounting(financials.net)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bottom TBD Action Buttons */}
+                <div className="p-3 grid grid-cols-2 gap-2">
+                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
+                    <span>TBD</span>
+                  </button>
+                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
+                    <span>TBD</span>
+                  </button>
+                </div>
+
+                <ArrowRightLeft size={140} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none text-black/5" />
+              </Card>
+            );
+          })()}
+
+          {/* Row 1 Right: Income */}
+          <Card
+            onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
+            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ArrowDownLeft size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Income</h3>
+            <p className="text-2xl font-display font-bold mt-2 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 1 Right: Expenses - equal width with Income */}
+          <Card
+            onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
+            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ArrowUpRight size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Expenses</h3>
+            <p className="text-2xl font-display font-bold mt-2 text-danger tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
+          <Card
+            onClick={() => handleNavigation('subscriptions')}
+            className="col-span-4 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+          >
+            <div>
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
+              <p className="text-2xl font-display font-bold mt-2 text-warning tracking-tight">
+                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <Calendar size={28} className="text-warning opacity-40" />
+          </Card>
+
+          {/* Row 3: Credit Card Payments */}
+          <Card
+            onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
+            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <CreditCard size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Payments</h3>
+            <p className="text-2xl font-display font-bold mt-2 text-secondary tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 3: Credit Card Balances */}
+          <Card
+            onClick={() => { handleNavigation('statements'); }}
+            className="col-span-3 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
+          >
+            <h3 className="text-muted text-[10px] font-medium uppercase tracking-wide flex items-center gap-1.5">
+              <CreditCard size={12} className="text-muted" />
+              Card Balances
+            </h3>
+
+            {/* Compact List of Balances */}
+            {renderAccountList()}
+          </Card>
+
+          {/* Row 3: Balance Transfers - Coming Soon */}
+          <Card className="col-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Balance Transfers</h3>
+            <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
+            <TrendingDown size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
+          </Card>
+        </div>
+
+        {/* Mobile: Conditional view based on toggle */}
+        <div className={cn("lg:hidden grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2" : "grid-cols-1 md:grid-cols-3")}>
 
           {viewMode === 'cashflow' && (
             <>
-              {/* New Hero Card - Cash Flow Style */}
+              {/* Hero Card - Cash Flow Style */}
               {(() => {
                 const isNegative = financials.net < 0;
                 return (
                   <Card className={cn(
-                    "col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
+                    "col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
                     isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary"
                   )}>
                     <div className="p-5 flex-1 relative z-10">
@@ -1084,27 +1302,20 @@ export default function App() {
                             {MONTHS[selectedMonth]}
                           </span>
                         </div>
-
-                        {/* Centered Title */}
                         <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
                           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
                         </div>
-
-                        {/* Placeholder Toggles */}
                         <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-50">TBD</div>
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
                         </div>
                       </div>
-
                       <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
                         <p className="text-6xl font-display font-bold tracking-tight">
                           {formatAccounting(financials.net)}
                         </p>
                       </div>
                     </div>
-
-                    {/* TBD Actions */}
                     <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
                       <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
                         <span>TBD</span>
@@ -1113,8 +1324,6 @@ export default function App() {
                         <span>TBD</span>
                       </button>
                     </div>
-
-                    {/* Background Decor */}
                     <ArrowRightLeft size={160} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors text-black/5" />
                   </Card>
                 );
@@ -1123,35 +1332,35 @@ export default function App() {
               {/* Income Card */}
               <Card
                 onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+                className="col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                   <ArrowDownLeft size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Income</h3>
-                <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Expenses Card */}
               <Card
                 onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+                className="col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                   <ArrowUpRight size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Expenses</h3>
-                <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
-              {/* Subscriptions Card (reusing existing styling logic from original code) */}
+              {/* Subscriptions Card */}
               <Card
                 onClick={() => handleNavigation('subscriptions')}
-                className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+                className="col-span-2 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
               >
                 <div>
                   <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
-                  <p className="text-xl font-bold mt-1 text-white">
+                  <p className="text-xl font-display font-bold mt-1 text-white tracking-tight">
                     ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -1168,17 +1377,22 @@ export default function App() {
               >
                 <div>
                   <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
-                  <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-3xl font-display font-bold text-secondary/90 tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
 
-              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px]">
+              <div
+                onClick={() => { handleNavigation('statements'); }}
+                className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col group hover:border-secondary/30 transition-colors relative overflow-hidden cursor-pointer">
                 <div>
-                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
-                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+                  <h4 className="text-muted text-[10px] font-semibold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <CreditCard size={12} />
+                    Card Balances
+                  </h4>
+                  {/* Mobile List View - Only show if balance data exists */}
+                  {renderAccountList()}
                 </div>
-                <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
 
               <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
@@ -1193,7 +1407,10 @@ export default function App() {
         </div>
 
         {/* Charts Section - Visible on Dashboard mainly */}
-        <h3 className="text-lg font-semibold px-2">Analytics</h3>
+        <div className="flex items-center gap-4 px-2 mb-4 mt-2">
+          <h3 className="text-lg font-bold text-white tracking-wide shrink-0">Analytics</h3>
+          <div className="h-[2px] flex-1 bg-gradient-to-r from-primary/50 via-primary/10 to-transparent rounded-full" />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
             <div className="flex justify-between items-center mb-6">
@@ -1604,46 +1821,121 @@ export default function App() {
           {/* List View */}
           <div className="space-y-px bg-white/5">
             {items.map((item) => {
+              // Parse original date
               const [y, m, d] = item.date.split('-').map(Number);
-              const dateObj = new Date(y, m - 1, d);
+              const originalDateObj = new Date(y, m - 1, d);
+
+              let dateObj = originalDateObj;
+              let nextPaymentText = null;
+              let frequency = item.frequency; // e.g. 'monthly', 'weekly'
+
+              if (isSubView && frequency) {
+                // CALCULATE MOST RECENT & NEXT DATES
+                const today = new Date();
+                const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                // Calculate Most Recent Occurrence (<= Today)
+                let recent = new Date(originalDateObj);
+
+                if (frequency === 'monthly') {
+                  let candidate = new Date(current.getFullYear(), current.getMonth(), d);
+                  if (candidate > current) {
+                    candidate = new Date(current.getFullYear(), current.getMonth() - 1, d);
+                  }
+                  recent = candidate < originalDateObj ? originalDateObj : candidate;
+
+                } else if (frequency === 'weekly') {
+                  const oneDay = 86400000;
+                  const diff = Math.floor((current - originalDateObj) / oneDay);
+                  if (diff >= 0) {
+                    const weeks = Math.floor(diff / 7);
+                    recent = new Date(originalDateObj.getTime() + weeks * 7 * oneDay);
+                  }
+                } else if (frequency === 'annual' || frequency === 'annually') {
+                  let candidate = new Date(current.getFullYear(), m - 1, d);
+                  if (candidate > current) candidate = new Date(current.getFullYear() - 1, m - 1, d);
+                  recent = candidate < originalDateObj ? originalDateObj : candidate;
+                }
+
+                dateObj = recent;
+
+                // Calculate "Next" Text (e.g. "15th")
+                const day = d;
+                const suffix = (val) => {
+                  if (val > 3 && val < 21) return 'th';
+                  switch (val % 10) {
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
+                    default: return "th";
+                  }
+                };
+                nextPaymentText = `${day}${suffix(day)}`;
+              }
+
               const isIncome = item._type === 'income';
               const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
               const sourceText = sourceStatement
                 ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                 : (isIncome ? 'Income' : 'Expense');
 
+              // Determine frequency badge styling
+              let freqStyle = "bg-secondary/10 text-secondary border-secondary/20"; // Default (Monthly)
+              if (frequency) {
+                const f = frequency.toLowerCase();
+                if (f.includes('week')) freqStyle = "bg-warning/10 text-warning border-warning/20"; // High frequency -> Warm color
+                else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-primary/10 text-primary border-primary/20"; // Low frequency -> Green/Good
+              }
+
               return (
                 <div
                   key={item.id}
                   onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors"
+                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 overflow-hidden">
                     {/* Icon Circle */}
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
-                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white" // Bright Green/Red per mock
+                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white"
                     )}>
-                      {isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />}
+                      {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
                     </div>
 
                     {/* Text Info */}
-                    <div>
-                      <h4 className="font-bold text-base text-white">{item.name}</h4>
-                      <p className="text-xs text-muted font-medium mt-0.5 flex items-center gap-1.5">
-                        <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                        •
-                        <span className="capitalize flex items-center gap-1">
-                          {sourceText}
-                        </span>
-                      </p>
+                    <div className="min-w-[80px] shrink flex-1">
+                      <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+
+                      {isSubView ? (
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide",
+                            freqStyle
+                          )}>
+                            {item.frequency || 'Monthly'}
+                          </span>
+                          <span className="text-xs text-muted font-medium flex items-center gap-2">
+                            <span>on {nextPaymentText}</span>
+                            <span className="opacity-50">|</span>
+                            <span>last paid: {dateObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                          <span>•</span>
+                          <span className="capitalize truncate max-w-[120px]">
+                            {sourceText}
+                          </span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Amount */}
                   <div className={cn(
-                    "text-right font-bold text-base",
-                    isIncome ? "text-[#34D399]" : "text-[#F87171]" // Matching mock colors explicitly
+                    "text-right font-bold text-base shrink-0 min-w-[70px]",
+                    isIncome ? "text-[#34D399]" : "text-[#F87171]"
                   )}>
                     {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
@@ -1680,7 +1972,7 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
-            <div className="relative w-full max-w-[200px] hidden sm:block">
+            <div className="relative flex-1 max-w-[160px] sm:max-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
                 type="search"
@@ -1865,7 +2157,11 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500">
+      <main className={cn(
+        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500 transition-all duration-300",
+        "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
+        isChatOpen && "lg:pr-[440px]"
+      )}>
 
 
         {renderContent()}
@@ -1874,8 +2170,12 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
 
-      {/* AI Floating Action Button */}
-      <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
+      {/* AI Floating Action Button - Visible on all screen sizes */}
+      <div className={cn(
+        "fixed z-50 pointer-events-none transition-all duration-300",
+        "bottom-24 right-4 md:bottom-8 md:right-8",
+        isChatOpen && "lg:right-[440px]"
+      )}>
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
           className="pointer-events-auto w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
@@ -1885,6 +2185,7 @@ export default function App() {
         </button>
       </div>
 
+      {/* Mobile: Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
           <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
@@ -1901,19 +2202,41 @@ export default function App() {
           <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
         </div>
       </div>
-      <ChatWindow
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        data={data}
-        financials={financials}
-        onAddItem={handleSave}
-        user={user}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-        onSync={handleSync}
-        onRestore={handleRestore}
-        syncStatus={syncStatus}
-      />
+
+      {/* Mobile: Chat overlay modal */}
+      <div className="lg:hidden">
+        <ChatWindow
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          data={data}
+          financials={financials}
+          onAddItem={handleSave}
+          user={user}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onSync={handleSync}
+          onRestore={handleRestore}
+          syncStatus={syncStatus}
+        />
+      </div>
+
+      {/* Desktop: Slide-in right panel */}
+      <div className="hidden lg:block">
+        <ChatWindow
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          data={data}
+          financials={financials}
+          onAddItem={handleSave}
+          user={user}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onSync={handleSync}
+          onRestore={handleRestore}
+          syncStatus={syncStatus}
+          isDesktopPanel={true}
+        />
+      </div>
 
       {/* Transaction Modal */}
       {isFormOpen && (
@@ -1992,10 +2315,9 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
 }
 
 function AccountCard({ account, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
-  const history = sortedStmts.slice(1);
+  const history = sortedStmts; // Show all history including latest in the list? Or just history? Design shows list usage.
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -2004,77 +2326,93 @@ function AccountCard({ account, onDelete }) {
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const formatBalance = (val) => {
+    if (val === undefined || val === null || val === '') return '—';
+    const num = parseFloat(val);
+    const amount = `$${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return num < 0 ? `-${amount}` : amount;
+  };
+
   return (
     <Card className="p-4 border-border/50">
-      <div className="flex items-center justify-between">
+      {/* Header: Hero Balance & Name */}
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <CreditCard size={20} />
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <CreditCard size={24} />
           </div>
           <div>
-            <h3 className="font-semibold">{account.provider}</h3>
-            <p className="text-xs text-muted">Ending in ••••{account.last4 || '????'}</p>
+            <h3 className="font-bold text-lg">{account.provider}</h3>
+            <p className="text-sm text-muted">Ending in ••••{account.last4 || '????'}</p>
           </div>
         </div>
-        <div className="text-right flex flex-col items-end">
-          <div className="flex items-center gap-1">
-            <p className="text-sm font-medium mr-1">Latest: {formatDate(latest.date)}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
-              className="text-muted hover:text-orange-400 transition-colors p-1"
-              title="Remove record only (Keep transactions)"
-            >
-              <Trash2 size={14} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
-              className="text-muted hover:text-red-500 transition-colors p-1"
-              title="Delete record AND transactions"
-            >
-              <FileX size={14} />
-            </button>
+
+        {/* Only show balance hero if it's a credit card or has a balance */}
+        {latest.balance !== undefined && (
+          <div className="text-right">
+            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Current Balance</span>
+            <span className={cn(
+              "text-2xl font-bold",
+              parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]" // Red for debt, Light Green for credit/zero
+            )}>
+              {formatBalance(latest.balance)}
+            </span>
           </div>
-          {latest.transactionCount !== undefined && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
-        </div>
+        )}
       </div>
 
-      {history.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/5">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs text-muted hover:text-white flex items-center gap-1 transition-colors"
-          >
-            <ChevronRight size={14} className={cn("transition-transform", expanded && "rotate-90")} />
-            Statement History ({history.length} more)
-          </button>
-          {expanded && (
-            <div className="mt-2 space-y-1 pl-5">
-              {history.map(s => (
-                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
-                  <span>{formatDate(s.date)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+      {/* Ledger Table */}
+      <div className="bg-black/20 rounded-xl overflow-hidden border border-white/5">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/5 text-left text-[10px] text-muted uppercase tracking-wider font-semibold">
+              <th className="px-4 py-2 font-medium">Date</th>
+              <th className="px-4 py-2 font-medium text-right">Txns</th>
+              <th className="px-4 py-2 font-medium text-right">Balance</th>
+              <th className="px-2 py-2 w-8"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {history.slice(0, 5).map(s => (
+              <tr key={s.id} className="hover:bg-white/5 transition-colors group">
+                <td className="px-4 py-3 text-white">{formatDate(s.date)}</td>
+                <td className="px-4 py-3 text-right text-muted">{s.transactionCount || 0}</td>
+                <td className={cn(
+                  "px-4 py-3 text-right font-mono font-medium",
+                  s.balance !== undefined
+                    ? parseFloat(s.balance) > 0 ? "text-danger" : "text-[#E8F5E9]"
+                    : "text-muted"
+                )}>
+                  {formatBalance(s.balance)}
+                </td>
+                <td className="px-2 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(s.id, false); }}
-                      className="text-muted hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                      title="Remove record only (Keep transactions)"
+                      className="text-muted hover:text-orange-400 p-1"
+                      title="Remove record only"
                     >
                       <Trash2 size={12} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(s.id, true); }}
-                      className="text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      className="text-muted hover:text-red-500 p-1"
                       title="Delete record AND transactions"
                     >
                       <FileX size={12} />
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {history.length > 5 && (
+          <div className="px-4 py-2 text-center text-xs text-muted border-t border-white/5">
+            + {history.length - 5} older statements
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -2299,7 +2637,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       "metadata": {
         "provider": "Chase",
         "last4": "1234",
-        "statementEndDate": "2026-01-24"
+        "statementEndDate": "2026-01-24",
+        "balance": "1240.50"
       },
       "transactions": [
         {"name": "Merchant", "date": "2026-01-15", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
@@ -2314,6 +2653,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
       CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
       Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
+    - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
+      Credit Cards: Positive number = Owed debt. Negative number = Credit.
+      Bank Accounts: Positive number = Available funds.
+      Return as a pure number (no currency symbols).
     `;
 
           const result = await model.generateContent([
@@ -2397,7 +2740,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
               type: i.type || 'variable',
-              frequency: (i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time'
+              // PRESERVE cached frequency! Only default if no frequency exists.
+              frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
             })));
           }
 
@@ -2466,6 +2810,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
+          balance: pendingStatement.balance || null, // Save balance
           uploadDate: new Date().toISOString(),
           transactionCount: bulkItems.length
         };
@@ -2488,8 +2833,20 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         onSave(itemToSave);
         savedCount++;
       } else if (!existingItem.statementId && finalStmtId) {
-        // Existing transaction WITHOUT statementId - UPDATE it to add the link
-        const updatedItem = { ...existingItem, statementId: finalStmtId, isIncome: !!matchingIncome };
+        // Existing transaction WITHOUT statementId - UPDATE it.
+        // CRITICAL: We must apply the USER'S EDITS (category, frequency, etc.) from 'item' 
+        // effectively overwriting the stale existing data, while preserving the ID.
+        const updatedItem = {
+          ...existingItem,
+          // Apply edits from Bulk Review
+          category: item.category,
+          frequency: item.frequency,
+          type: item.type,
+          isIncome: item.isIncome,
+          name: item.name,
+          // Link statement
+          statementId: finalStmtId
+        };
         onSave(updatedItem);
         updatedCount++;
       }
@@ -2733,7 +3090,7 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
         </div>
 
         {/* Statement Metadata Editor */}
-        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-3 gap-2">
+        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-4 gap-2">
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
             <input
@@ -2752,6 +3109,17 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
               placeholder="1234"
               value={stmt.last4 || ''}
               onChange={(e) => updateStmt('last4', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Balance</label>
+            <input
+              type="number"
+              step="0.01"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="0.00"
+              value={stmt.balance || ''}
+              onChange={(e) => updateStmt('balance', e.target.value)}
             />
           </div>
           <div className="col-span-1">

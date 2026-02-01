@@ -21,7 +21,7 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
 
 5. **Format the output** as:
    ```markdown
-   ### PR#[NUMBER]
+   ### PR#[NUMBER] - [short list of app areas/views affected by PR]
    
    - **[Category]**: [Concise description of change]
    - **[Category]**: [Concise description of change]
@@ -30,23 +30,20 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    ```
 
 6. **Rules**:
-   - Must be in a format optimized for copying to notion (no backtick code blocks)
-   - Output ONLY the markdown (no preamble, no commentary)
+   - ⚠️ **NO BACKTICKS ANYWHERE** - no inline backticks, no code blocks, no triple backticks. Write code/file names in plain text or quotes.
+   - Output ONLY the markdown (no preamble, no commentary, no "Here's the summary:")
    - Keep to 4-6 bullet points maximum
    - Use bold for the category label
    - Start each bullet with a verb or noun phrase
-   - Be specific: mention actual values, file names, or features changedref
+   - Be specific: mention actual values, file names, or features changed
    - Do NOT include features that already existed in the base branch
+
+## ❌ BAD (includes backticks)
+- **Fix**: Updated `handleBulkImport` to link `statementId`
+
+## ✅ GOOD (no backticks)
+- **Fix**: Updated handleBulkImport to link statementId
 
 ## Example Output
 
 ```markdown
-### PR#6
-
-- **New Color Palette**: Updated theme to "Earthy Professional" with Moss Green primary, Steel Blue secondary, Terracotta danger, and Mustard warning tokens
-- **Category Updates**: Renamed "Global Entry / Travel" to "Travel"; added Taxes, Fees, and Apps/Software categories
-- **Pie Chart Refinements**: Sorted legend largest-to-smallest, display percentages only, and added hover tooltips showing dollar amounts
-- **Bulk Review Improvements**: Added comma-formatted amount inputs and Expense Type selector (Variable/Bill/Subscription) to the import review modal
-- **UI Polish**: Enlarged "Add Transaction" buttons on desktop and mobile for better usability
-- **AI Enhancement**: Updated Gemini prompt to predict and save expense type during receipt scanning
-```

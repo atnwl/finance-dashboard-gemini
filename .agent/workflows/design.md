@@ -30,8 +30,3 @@ A high-pigment, muted palette designed for sophisticated dark mode interfaces.
 - **Financial Formatting**: Negative values are formatted with a negative sign, e.g., `-$1,234.56`, rather than parentheses.
 - **Hero Card Dynamics**: The main cash flow card dynamically transitions between `bg-primary` (positive) and `bg-danger` (negative) with a `500ms` transition.
 - **Demo Mode**: Active demo state is represented by a Purple (`bg-purple-500`) toggle pill and a `RefreshCcw` icon for re-randomization.
-
-## Completed Migrations
-- [x] Update `tailwind.config.js` with Steel Blue and Terracotta tokens.
-- [x] Refactor `App.jsx` hero and card colors to use theme-aware logic.
-- [x] Implement accounting-style formatting for negative totals.
