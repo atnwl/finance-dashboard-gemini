@@ -30,13 +30,19 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
    ```
 
 6. **Rules**:
-   - Must be in a format optimized for copying to notion (no backtick code blocks)
-   - Output ONLY the markdown (no preamble, no commentary)
+   - ⚠️ **NO BACKTICKS ANYWHERE** - no inline backticks, no code blocks, no triple backticks. Write code/file names in plain text or quotes.
+   - Output ONLY the markdown (no preamble, no commentary, no "Here's the summary:")
    - Keep to 4-6 bullet points maximum
    - Use bold for the category label
    - Start each bullet with a verb or noun phrase
-   - Be specific: mention actual values, file names, or features changedref
+   - Be specific: mention actual values, file names, or features changed
    - Do NOT include features that already existed in the base branch
+
+## ❌ BAD (includes backticks)
+- **Fix**: Updated `handleBulkImport` to link `statementId`
+
+## ✅ GOOD (no backticks)
+- **Fix**: Updated handleBulkImport to link statementId
 
 ## Example Output
 

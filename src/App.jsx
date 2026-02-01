@@ -125,7 +125,7 @@ const Select = ({ label, options, ...props }) => (
 );
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false }) => {
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -279,8 +279,13 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
   if (!isOpen) return null;
 
+  // Desktop panel vs mobile modal styling
+  const containerClass = isDesktopPanel
+    ? "fixed top-16 right-0 w-[340px] h-[calc(100vh-4rem)] bg-card border-l border-border flex flex-col z-30 animate-in slide-in-from-right-10 fade-in duration-300"
+    : "fixed bottom-4 right-4 w-[90vw] md:w-[400px] h-[600px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300";
+
   return (
-    <div className="fixed bottom-4 right-4 w-[90vw] md:w-[400px] h-[600px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+    <div className={containerClass}>
       {/* Header */}
       <div className="p-4 border-b border-border flex justify-between items-center bg-card rounded-t-2xl">
         <div className="flex items-center gap-2">
@@ -1017,7 +1022,8 @@ export default function App() {
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
         <div className="flex justify-between items-center mb-8">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {/* View Toggle - Hidden on desktop, all cards shown together */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide lg:hidden">
             <button
               onClick={() => setViewMode('cashflow')}
               className={cn(
@@ -1040,6 +1046,10 @@ export default function App() {
             >
               Credit
             </button>
+          </div>
+          {/* Desktop: Just show month label */}
+          <div className="hidden lg:block">
+            <h2 className="text-lg font-semibold text-muted">{MONTHS[selectedMonth]} Overview</h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1065,16 +1075,134 @@ export default function App() {
             </button>
           </div>
         </div>
-        <div className={cn("grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-3")}>
+        {/* Desktop: Unified grid matching wireframe layout */}
+        <div className="hidden lg:grid grid-cols-6 grid-rows-[auto_auto_auto] gap-4 mb-8">
+          {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
+          {(() => {
+            const isNegative = financials.net < 0;
+            return (
+              <Card className={cn(
+                "col-span-3 row-span-2 p-0 relative overflow-hidden border-none min-h-[280px] flex flex-col justify-between transition-colors duration-500 text-black",
+                isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary shadow-xl shadow-primary/20"
+              )}>
+                <div className="p-6 flex-1 relative z-10 flex flex-col">
+                  {/* Top Row: Month badge, centered title, TBD pills */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                      {MONTHS[selectedMonth]}
+                    </span>
+
+                    {/* Centered Title */}
+                    <h3 className="absolute left-1/2 -translate-x-1/2 text-sm font-bold uppercase tracking-[0.2em] text-black/50">
+                      Cash Flow
+                    </h3>
+
+                    {/* Small TBD Pills */}
+                    <div className="flex rounded-full p-0.5 backdrop-blur-md bg-black/10">
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-60">TBD</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">TBD</div>
+                    </div>
+                  </div>
+
+                  {/* Centered Amount */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-6xl font-display font-bold tracking-tight">
+                      {formatAccounting(financials.net)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bottom TBD Action Buttons */}
+                <div className="p-4 grid grid-cols-2 gap-3">
+                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
+                    <span>TBD</span>
+                  </button>
+                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
+                    <span>TBD</span>
+                  </button>
+                </div>
+
+                <ArrowRightLeft size={140} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none text-black/5" />
+              </Card>
+            );
+          })()}
+
+          {/* Row 1 Right: Income */}
+          <Card
+            onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
+            className="col-span-1 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ArrowDownLeft size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Income</h3>
+            <p className="text-2xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 1 Right: Expenses */}
+          <Card
+            onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
+            className="col-span-2 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <ArrowUpRight size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Expenses</h3>
+            <p className="text-2xl font-bold mt-2 text-danger">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 2 Right: Subscriptions (full width of right side) */}
+          <Card
+            onClick={() => handleNavigation('subscriptions')}
+            className="col-span-3 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+          >
+            <div>
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
+              <p className="text-2xl font-bold mt-2 text-warning">
+                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <Calendar size={28} className="text-warning opacity-40" />
+          </Card>
+
+          {/* Row 3: Credit Card Payments */}
+          <Card
+            onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
+            className="col-span-2 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+              <CreditCard size={36} />
+            </div>
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Payments</h3>
+            <p className="text-2xl font-bold mt-2 text-secondary">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </Card>
+
+          {/* Row 3: Credit Card Balances - Coming Soon */}
+          <Card className="col-span-2 p-5 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Balances</h3>
+            <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
+            <Activity size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
+          </Card>
+
+          {/* Row 3: Balance Transfers - Coming Soon */}
+          <Card className="col-span-2 p-5 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
+            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Balance Transfers</h3>
+            <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
+            <TrendingDown size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
+          </Card>
+        </div>
+
+        {/* Mobile: Conditional view based on toggle */}
+        <div className={cn("lg:hidden grid gap-3 md:gap-4 mb-8", viewMode === 'cashflow' ? "grid-cols-2" : "grid-cols-1 md:grid-cols-3")}>
 
           {viewMode === 'cashflow' && (
             <>
-              {/* New Hero Card - Cash Flow Style */}
+              {/* Hero Card - Cash Flow Style */}
               {(() => {
                 const isNegative = financials.net < 0;
                 return (
                   <Card className={cn(
-                    "col-span-2 md:col-span-2 lg:col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
+                    "col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
                     isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary"
                   )}>
                     <div className="p-5 flex-1 relative z-10">
@@ -1084,27 +1212,20 @@ export default function App() {
                             {MONTHS[selectedMonth]}
                           </span>
                         </div>
-
-                        {/* Centered Title */}
                         <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
                           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
                         </div>
-
-                        {/* Placeholder Toggles */}
                         <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-50">TBD</div>
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
                         </div>
                       </div>
-
                       <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
                         <p className="text-6xl font-display font-bold tracking-tight">
                           {formatAccounting(financials.net)}
                         </p>
                       </div>
                     </div>
-
-                    {/* TBD Actions */}
                     <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
                       <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
                         <span>TBD</span>
@@ -1113,8 +1234,6 @@ export default function App() {
                         <span>TBD</span>
                       </button>
                     </div>
-
-                    {/* Background Decor */}
                     <ArrowRightLeft size={160} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors text-black/5" />
                   </Card>
                 );
@@ -1123,7 +1242,7 @@ export default function App() {
               {/* Income Card */}
               <Card
                 onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+                className="col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                   <ArrowDownLeft size={40} />
@@ -1135,7 +1254,7 @@ export default function App() {
               {/* Expenses Card */}
               <Card
                 onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-                className="col-span-1 lg:col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+                className="col-span-1 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                   <ArrowUpRight size={40} />
@@ -1144,10 +1263,10 @@ export default function App() {
                 <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
-              {/* Subscriptions Card (reusing existing styling logic from original code) */}
+              {/* Subscriptions Card */}
               <Card
                 onClick={() => handleNavigation('subscriptions')}
-                className="col-span-2 lg:col-span-4 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+                className="col-span-2 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
               >
                 <div>
                   <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
@@ -1680,7 +1799,7 @@ export default function App() {
           </nav>
 
           <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
-            <div className="relative w-full max-w-[200px] hidden sm:block">
+            <div className="relative flex-1 max-w-[160px] sm:max-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
                 type="search"
@@ -1865,7 +1984,11 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500">
+      <main className={cn(
+        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500 transition-all duration-300",
+        "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
+        isChatOpen && "lg:pr-[360px]"
+      )}>
 
 
         {renderContent()}
@@ -1874,8 +1997,12 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
 
-      {/* AI Floating Action Button */}
-      <div className="md:hidden fixed bottom-24 right-4 z-50 pointer-events-none">
+      {/* AI Floating Action Button - Visible on all screen sizes */}
+      <div className={cn(
+        "fixed z-50 pointer-events-none transition-all duration-300",
+        "bottom-24 right-4 md:bottom-8 md:right-8",
+        isChatOpen && "lg:right-[360px]"
+      )}>
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
           className="pointer-events-auto w-20 h-20 bg-purple-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-purple-500/40 active:scale-95 transition-all animate-in zoom-in slide-in-from-bottom-8 duration-500 hover:scale-105"
@@ -1885,6 +2012,7 @@ export default function App() {
         </button>
       </div>
 
+      {/* Mobile: Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-card/95 backdrop-blur-lg pb-safe z-40">
         <div className="flex justify-around items-center h-16">
           <MobileNavItem icon={LayoutDashboard} label="Home" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
@@ -1901,19 +2029,41 @@ export default function App() {
           <MobileNavItem icon={FileText} label="Docs" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
         </div>
       </div>
-      <ChatWindow
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        data={data}
-        financials={financials}
-        onAddItem={handleSave}
-        user={user}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-        onSync={handleSync}
-        onRestore={handleRestore}
-        syncStatus={syncStatus}
-      />
+
+      {/* Mobile: Chat overlay modal */}
+      <div className="lg:hidden">
+        <ChatWindow
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          data={data}
+          financials={financials}
+          onAddItem={handleSave}
+          user={user}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onSync={handleSync}
+          onRestore={handleRestore}
+          syncStatus={syncStatus}
+        />
+      </div>
+
+      {/* Desktop: Slide-in right panel */}
+      <div className="hidden lg:block">
+        <ChatWindow
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          data={data}
+          financials={financials}
+          onAddItem={handleSave}
+          user={user}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onSync={handleSync}
+          onRestore={handleRestore}
+          syncStatus={syncStatus}
+          isDesktopPanel={true}
+        />
+      </div>
 
       {/* Transaction Modal */}
       {isFormOpen && (
