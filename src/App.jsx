@@ -1069,28 +1069,34 @@ export default function App() {
     const totalCreditBalance = accountList.reduce((sum, acc) => sum + (parseFloat(acc.latestBalance) || 0), 0);
 
     const renderAccountList = () => {
-      if (accountList.length === 0) {
-        return <p className="text-sm text-muted italic mt-2">No active credit accounts.</p>;
+      // Filter to only accounts WITH balance data
+      const accountsWithBalance = accountList.filter(acc => acc.latestBalance !== undefined && acc.latestBalance !== null);
+
+      if (accountsWithBalance.length === 0) {
+        return <p className="text-[10px] text-muted/70 italic mt-1">Re-import statements to capture balances.</p>;
       }
       return (
-        <div className="space-y-2 mt-3">
-          {accountList.map((acc, idx) => (
-            <div key={idx} className="flex justify-between items-center text-xs border-b border-white/5 pb-1 last:border-0 last:pb-0">
-              <span className="text-muted">{acc.provider} <span className="opacity-50">••{acc.last4?.slice(-2)}</span></span>
+        <div className="space-y-0.5 mt-1.5">
+          {accountsWithBalance.slice(0, 4).map((acc, idx) => (
+            <div key={idx} className="flex justify-between items-center text-[11px]">
+              <span className="text-muted truncate max-w-[100px]">{acc.provider} <span className="opacity-40">••{acc.last4?.slice(-2)}</span></span>
               <span className={cn(
-                "font-mono font-bold",
+                "font-mono font-semibold",
                 (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
               )}>
                 {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
               </span>
             </div>
           ))}
-          <div className="flex justify-between items-center text-xs border-t border-white/10 pt-2 mt-2 font-bold text-white">
-            <span>Total</span>
-            <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
-              {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
-            </span>
-          </div>
+          {accountsWithBalance.length > 4 && <p className="text-[9px] text-muted/50 italic">+ {accountsWithBalance.length - 4} more</p>}
+          {accountsWithBalance.length > 1 && (
+            <div className="flex justify-between items-center text-[11px] border-t border-white/10 pt-1 mt-1 font-bold">
+              <span className="text-white/70">Total</span>
+              <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
+                {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
+              </span>
+            </div>
+          )}
         </div>
       );
     };
@@ -1256,18 +1262,16 @@ export default function App() {
 
           {/* Row 3: Credit Card Balances */}
           <Card
-            onClick={() => { setViewMode('statements'); handleNavigation('statements'); }} // Navigate to statements tab
-            className="col-span-3 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
+            onClick={() => { handleNavigation('statements'); }}
+            className="col-span-3 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
           >
-            <h3 className="text-muted text-xs font-medium uppercase tracking-wide flex items-center gap-2">
-              Credit Card Balances
-              <Activity size={14} className="text-muted" />
+            <h3 className="text-muted text-[10px] font-medium uppercase tracking-wide flex items-center gap-1.5">
+              <CreditCard size={12} className="text-muted" />
+              Card Balances
             </h3>
 
-            {/* List of Balances */}
+            {/* Compact List of Balances */}
             {renderAccountList()}
-
-            <Activity size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-5 rotate-[-15deg] pointer-events-none" />
           </Card>
 
           {/* Row 3: Balance Transfers - Coming Soon */}
@@ -1379,31 +1383,16 @@ export default function App() {
               </div>
 
               <div
-                onClick={() => { setViewMode('statements'); handleNavigation('statements'); }}
-                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-colors relative overflow-hidden min-h-[140px] cursor-pointer">
+                onClick={() => { handleNavigation('statements'); }}
+                className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col group hover:border-secondary/30 transition-colors relative overflow-hidden cursor-pointer">
                 <div>
-                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Card Balances</h4>
-                  {/* Mobile List View */}
-                  {accountList.length === 0 ? (
-                    <p className="text-lg font-bold text-white/40 italic">No Data</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {accountList.slice(0, 3).map((acc, idx) => (
-                        <div key={idx} className="flex justify-between items-center text-xs">
-                          <span className="text-muted">{acc.provider}</span>
-                          <span className={cn(
-                            "font-mono font-bold",
-                            (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
-                          )}>
-                            {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
-                          </span>
-                        </div>
-                      ))}
-                      {accountList.length > 3 && <p className="text-[10px] text-muted italic mt-1">+ {accountList.length - 3} more</p>}
-                    </div>
-                  )}
+                  <h4 className="text-muted text-[10px] font-semibold uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <CreditCard size={12} />
+                    Card Balances
+                  </h4>
+                  {/* Mobile List View - Only show if balance data exists */}
+                  {renderAccountList()}
                 </div>
-                <Activity size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
 
               <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
