@@ -1080,7 +1080,7 @@ export default function App() {
           </div>
           {/* Desktop: Just show month label */}
           <div className="hidden lg:block">
-            <h2 className="text-lg font-semibold text-muted">{MONTHS[selectedMonth]} Overview</h2>
+            <h2 className="text-lg font-bold text-white tracking-wide">{MONTHS[selectedMonth]} Overview</h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1167,7 +1167,7 @@ export default function App() {
               <ArrowDownLeft size={36} />
             </div>
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Income</h3>
-            <p className="text-2xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-display font-bold mt-2 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
           {/* Row 1 Right: Expenses - equal width with Income */}
@@ -1179,7 +1179,7 @@ export default function App() {
               <ArrowUpRight size={36} />
             </div>
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Expenses</h3>
-            <p className="text-2xl font-bold mt-2 text-danger">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-display font-bold mt-2 text-danger tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
           {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
@@ -1189,7 +1189,7 @@ export default function App() {
           >
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
-              <p className="text-2xl font-bold mt-2 text-warning">
+              <p className="text-2xl font-display font-bold mt-2 text-warning tracking-tight">
                 ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
@@ -1205,7 +1205,7 @@ export default function App() {
               <CreditCard size={36} />
             </div>
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Payments</h3>
-            <p className="text-2xl font-bold mt-2 text-secondary">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-display font-bold mt-2 text-secondary tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
           {/* Row 3: Credit Card Balances - Coming Soon */}
@@ -1279,7 +1279,7 @@ export default function App() {
                   <ArrowDownLeft size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Income</h3>
-                <p className="text-xl md:text-2xl font-bold mt-1 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Expenses Card */}
@@ -1291,7 +1291,7 @@ export default function App() {
                   <ArrowUpRight size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Expenses</h3>
-                <p className="text-xl md:text-2xl font-bold mt-1 text-secondary">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Subscriptions Card */}
@@ -1301,7 +1301,7 @@ export default function App() {
               >
                 <div>
                   <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
-                  <p className="text-xl font-bold mt-1 text-white">
+                  <p className="text-xl font-display font-bold mt-1 text-white tracking-tight">
                     ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
@@ -1318,7 +1318,7 @@ export default function App() {
               >
                 <div>
                   <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
-                  <p className="text-3xl font-bold text-secondary/90">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="text-3xl font-display font-bold text-secondary/90 tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
                 <CreditCard size={48} className="absolute bottom-[-10px] right-[-10px] text-secondary opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
               </div>
@@ -1343,7 +1343,7 @@ export default function App() {
         </div>
 
         {/* Charts Section - Visible on Dashboard mainly */}
-        <h3 className="text-lg font-semibold px-2">Analytics</h3>
+        <h3 className="text-lg font-bold text-white tracking-wide px-2">Analytics</h3>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
             <div className="flex justify-between items-center mb-6">

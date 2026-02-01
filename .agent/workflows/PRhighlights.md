@@ -21,7 +21,7 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
 
 5. **Format the output** as:
    ```markdown
-   ### PR#[NUMBER]
+   ### PR#[NUMBER] - [short list of app areas/views affected by PR]
    
    - **[Category]**: [Concise description of change]
    - **[Category]**: [Concise description of change]
@@ -47,12 +47,3 @@ Generate a verified, fact-checked summary of changes in a Pull Request. Output i
 ## Example Output
 
 ```markdown
-### PR#6
-
-- **New Color Palette**: Updated theme to "Earthy Professional" with Moss Green primary, Steel Blue secondary, Terracotta danger, and Mustard warning tokens
-- **Category Updates**: Renamed "Global Entry / Travel" to "Travel"; added Taxes, Fees, and Apps/Software categories
-- **Pie Chart Refinements**: Sorted legend largest-to-smallest, display percentages only, and added hover tooltips showing dollar amounts
-- **Bulk Review Improvements**: Added comma-formatted amount inputs and Expense Type selector (Variable/Bill/Subscription) to the import review modal
-- **UI Polish**: Enlarged "Add Transaction" buttons on desktop and mobile for better usability
-- **AI Enhancement**: Updated Gemini prompt to predict and save expense type during receipt scanning
-```
