@@ -281,7 +281,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
   // Desktop panel vs mobile modal styling
   const containerClass = isDesktopPanel
-    ? "fixed top-16 right-0 w-[340px] h-[calc(100vh-4rem)] bg-card border-l border-border flex flex-col z-30 animate-in slide-in-from-right-10 fade-in duration-300"
+    ? "fixed top-16 right-0 w-[420px] h-[calc(100vh-4rem)] bg-card border-l border-border flex flex-col z-30 animate-in slide-in-from-right-10 fade-in duration-300"
     : "fixed bottom-4 right-4 w-[90vw] md:w-[400px] h-[600px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col z-50 animate-in slide-in-from-bottom-10 fade-in duration-300";
 
   return (
@@ -1075,17 +1075,17 @@ export default function App() {
             </button>
           </div>
         </div>
-        {/* Desktop: Unified grid matching wireframe layout */}
-        <div className="hidden lg:grid grid-cols-6 grid-rows-[auto_auto_auto] gap-4 mb-8">
+        {/* Desktop: Unified grid matching wireframe layout (8-col for equal widths) */}
+        <div className="hidden lg:grid grid-cols-8 grid-rows-[auto_auto_auto] gap-4 mb-8">
           {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
           {(() => {
             const isNegative = financials.net < 0;
             return (
               <Card className={cn(
-                "col-span-3 row-span-2 p-0 relative overflow-hidden border-none min-h-[280px] flex flex-col justify-between transition-colors duration-500 text-black",
+                "col-span-4 row-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
                 isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary shadow-xl shadow-primary/20"
               )}>
-                <div className="p-6 flex-1 relative z-10 flex flex-col">
+                <div className="p-4 flex-1 relative z-10 flex flex-col">
                   {/* Top Row: Month badge, centered title, TBD pills */}
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
@@ -1113,7 +1113,7 @@ export default function App() {
                 </div>
 
                 {/* Bottom TBD Action Buttons */}
-                <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="p-3 grid grid-cols-2 gap-2">
                   <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
                     <span>TBD</span>
                   </button>
@@ -1130,7 +1130,7 @@ export default function App() {
           {/* Row 1 Right: Income */}
           <Card
             onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-            className="col-span-1 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
               <ArrowDownLeft size={36} />
@@ -1139,10 +1139,10 @@ export default function App() {
             <p className="text-2xl font-bold mt-2 text-primary">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
-          {/* Row 1 Right: Expenses */}
+          {/* Row 1 Right: Expenses - equal width with Income */}
           <Card
             onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-            className="col-span-2 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
+            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
               <ArrowUpRight size={36} />
@@ -1151,10 +1151,10 @@ export default function App() {
             <p className="text-2xl font-bold mt-2 text-danger">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
-          {/* Row 2 Right: Subscriptions (full width of right side) */}
+          {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
           <Card
             onClick={() => handleNavigation('subscriptions')}
-            className="col-span-3 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+            className="col-span-4 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
           >
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
@@ -1168,7 +1168,7 @@ export default function App() {
           {/* Row 3: Credit Card Payments */}
           <Card
             onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
-            className="col-span-2 p-5 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
+            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
               <CreditCard size={36} />
@@ -1178,14 +1178,14 @@ export default function App() {
           </Card>
 
           {/* Row 3: Credit Card Balances - Coming Soon */}
-          <Card className="col-span-2 p-5 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
+          <Card className="col-span-3 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Balances</h3>
             <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
             <Activity size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
           </Card>
 
           {/* Row 3: Balance Transfers - Coming Soon */}
-          <Card className="col-span-2 p-5 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
+          <Card className="col-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Balance Transfers</h3>
             <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
             <TrendingDown size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
@@ -1987,7 +1987,7 @@ export default function App() {
       <main className={cn(
         "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500 transition-all duration-300",
         "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
-        isChatOpen && "lg:pr-[360px]"
+        isChatOpen && "lg:pr-[440px]"
       )}>
 
 
@@ -2001,7 +2001,7 @@ export default function App() {
       <div className={cn(
         "fixed z-50 pointer-events-none transition-all duration-300",
         "bottom-24 right-4 md:bottom-8 md:right-8",
-        isChatOpen && "lg:right-[360px]"
+        isChatOpen && "lg:right-[440px]"
       )}>
         <button
           onClick={() => setIsChatOpen(!isChatOpen)}
