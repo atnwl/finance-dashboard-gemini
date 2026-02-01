@@ -2833,8 +2833,20 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         onSave(itemToSave);
         savedCount++;
       } else if (!existingItem.statementId && finalStmtId) {
-        // Existing transaction WITHOUT statementId - UPDATE it to add the link
-        const updatedItem = { ...existingItem, statementId: finalStmtId, isIncome: !!matchingIncome };
+        // Existing transaction WITHOUT statementId - UPDATE it.
+        // CRITICAL: We must apply the USER'S EDITS (category, frequency, etc.) from 'item' 
+        // effectively overwriting the stale existing data, while preserving the ID.
+        const updatedItem = {
+          ...existingItem,
+          // Apply edits from Bulk Review
+          category: item.category,
+          frequency: item.frequency,
+          type: item.type,
+          isIncome: item.isIncome,
+          name: item.name,
+          // Link statement
+          statementId: finalStmtId
+        };
         onSave(updatedItem);
         updatedCount++;
       }
