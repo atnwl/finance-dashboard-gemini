@@ -1723,8 +1723,58 @@ export default function App() {
           {/* List View */}
           <div className="space-y-px bg-white/5">
             {items.map((item) => {
+              // Parse original date
               const [y, m, d] = item.date.split('-').map(Number);
-              const dateObj = new Date(y, m - 1, d);
+              const originalDateObj = new Date(y, m - 1, d);
+
+              let dateObj = originalDateObj;
+              let nextPaymentText = null;
+              let frequency = item.frequency; // e.g. 'monthly', 'weekly'
+
+              if (isSubView && frequency) {
+                // CALCULATE MOST RECENT & NEXT DATES
+                const today = new Date();
+                const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                // Calculate Most Recent Occurrence (<= Today)
+                let recent = new Date(originalDateObj);
+
+                if (frequency === 'monthly') {
+                  let candidate = new Date(current.getFullYear(), current.getMonth(), d);
+                  if (candidate > current) {
+                    candidate = new Date(current.getFullYear(), current.getMonth() - 1, d);
+                  }
+                  recent = candidate < originalDateObj ? originalDateObj : candidate;
+
+                } else if (frequency === 'weekly') {
+                  const oneDay = 86400000;
+                  const diff = Math.floor((current - originalDateObj) / oneDay);
+                  if (diff >= 0) {
+                    const weeks = Math.floor(diff / 7);
+                    recent = new Date(originalDateObj.getTime() + weeks * 7 * oneDay);
+                  }
+                } else if (frequency === 'annual' || frequency === 'annually') {
+                  let candidate = new Date(current.getFullYear(), m - 1, d);
+                  if (candidate > current) candidate = new Date(current.getFullYear() - 1, m - 1, d);
+                  recent = candidate < originalDateObj ? originalDateObj : candidate;
+                }
+
+                dateObj = recent;
+
+                // Calculate "Next" Text (e.g. "15th")
+                const day = d;
+                const suffix = (val) => {
+                  if (val > 3 && val < 21) return 'th';
+                  switch (val % 10) {
+                    case 1: return "st";
+                    case 2: return "nd";
+                    case 3: return "rd";
+                    default: return "th";
+                  }
+                };
+                nextPaymentText = `${day}${suffix(day)}`;
+              }
+
               const isIncome = item._type === 'income';
               const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
               const sourceText = sourceStatement
@@ -1735,34 +1785,59 @@ export default function App() {
                 <div
                   key={item.id}
                   onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors"
+                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 overflow-hidden">
                     {/* Icon Circle */}
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
-                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white" // Bright Green/Red per mock
+                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white"
                     )}>
                       {isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />}
                     </div>
 
                     {/* Text Info */}
-                    <div>
-                      <h4 className="font-bold text-base text-white">{item.name}</h4>
-                      <p className="text-xs text-muted font-medium mt-0.5 flex items-center gap-1.5">
+                    <div className="min-w-[80px] shrink flex-1">
+                      <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+                      <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
                         <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                        •
-                        <span className="capitalize flex items-center gap-1">
-                          {sourceText}
-                        </span>
+                        {!isSubView && (
+                          <>
+                            <span>•</span>
+                            <span className="capitalize truncate max-w-[120px]">
+                              {sourceText}
+                            </span>
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
 
+                  {/* Subscriptions Extra Columns */}
+                  {isSubView && (
+                    <>
+                      {/* Frequency Pill */}
+                      <div className="hidden sm:flex items-center justify-center shrink-0">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                          "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        )}>
+                          {item.frequency || 'Monthly'}
+                        </span>
+                      </div>
+
+                      {/* Next Date */}
+                      <div className="flex flex-col items-end shrink-0 min-w-[50px]">
+                        <span className="text-[10px] text-muted font-medium uppercase tracking-wide">Next</span>
+                        <span className="text-sm font-bold text-gray-300">{nextPaymentText}</span>
+                      </div>
+                    </>
+                  )}
+
                   {/* Amount */}
                   <div className={cn(
-                    "text-right font-bold text-base",
-                    isIncome ? "text-[#34D399]" : "text-[#F87171]" // Matching mock colors explicitly
+                    "text-right font-bold text-base shrink-0 min-w-[70px]",
+                    isIncome ? "text-[#34D399]" : "text-[#F87171]"
                   )}>
                     {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
