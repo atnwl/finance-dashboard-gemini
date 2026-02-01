@@ -1126,7 +1126,7 @@ export default function App() {
           {/* Desktop: Just show month label */}
           <div className="hidden lg:flex items-center gap-4 w-full">
             <h2 className="text-lg font-bold text-white tracking-wide shrink-0">{MONTHS[selectedMonth]} Overview</h2>
-            <div className="h-[2px] flex-1 bg-gradient-to-r from-white/30 via-white/10 to-transparent rounded-full" />
+            <div className="h-[2px] flex-1 bg-gradient-to-r from-primary/50 via-primary/10 to-transparent rounded-full" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -1420,7 +1420,7 @@ export default function App() {
         {/* Charts Section - Visible on Dashboard mainly */}
         <div className="flex items-center gap-4 px-2 mb-4 mt-2">
           <h3 className="text-lg font-bold text-white tracking-wide shrink-0">Analytics</h3>
-          <div className="h-[2px] flex-1 bg-gradient-to-r from-white/30 via-white/10 to-transparent rounded-full" />
+          <div className="h-[2px] flex-1 bg-gradient-to-r from-primary/50 via-primary/10 to-transparent rounded-full" />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
