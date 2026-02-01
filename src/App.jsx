@@ -2740,7 +2740,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               id: Math.random().toString(36).substr(2, 9),
               isIncome: i.isIncome ?? false,
               type: i.type || 'variable',
-              frequency: (i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time'
+              // PRESERVE cached frequency! Only default if no frequency exists.
+              frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
             })));
           }
 
