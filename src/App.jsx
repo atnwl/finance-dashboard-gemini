@@ -2252,10 +2252,9 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
 }
 
 function AccountCard({ account, onDelete }) {
-  const [expanded, setExpanded] = useState(false);
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
-  const history = sortedStmts.slice(1);
+  const history = sortedStmts; // Show all history including latest in the list? Or just history? Design shows list usage.
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -2264,77 +2263,93 @@ function AccountCard({ account, onDelete }) {
     return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const formatBalance = (val) => {
+    if (val === undefined || val === null || val === '') return '—';
+    const num = parseFloat(val);
+    const amount = `$${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return num < 0 ? `-${amount}` : amount;
+  };
+
   return (
     <Card className="p-4 border-border/50">
-      <div className="flex items-center justify-between">
+      {/* Header: Hero Balance & Name */}
+      <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <CreditCard size={20} />
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <CreditCard size={24} />
           </div>
           <div>
-            <h3 className="font-semibold">{account.provider}</h3>
-            <p className="text-xs text-muted">Ending in ••••{account.last4 || '????'}</p>
+            <h3 className="font-bold text-lg">{account.provider}</h3>
+            <p className="text-sm text-muted">Ending in ••••{account.last4 || '????'}</p>
           </div>
         </div>
-        <div className="text-right flex flex-col items-end">
-          <div className="flex items-center gap-1">
-            <p className="text-sm font-medium mr-1">Latest: {formatDate(latest.date)}</p>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
-              className="text-muted hover:text-orange-400 transition-colors p-1"
-              title="Remove record only (Keep transactions)"
-            >
-              <Trash2 size={14} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
-              className="text-muted hover:text-red-500 transition-colors p-1"
-              title="Delete record AND transactions"
-            >
-              <FileX size={14} />
-            </button>
+
+        {/* Only show balance hero if it's a credit card or has a balance */}
+        {latest.balance !== undefined && (
+          <div className="text-right">
+            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Current Balance</span>
+            <span className={cn(
+              "text-2xl font-bold",
+              parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]" // Red for debt, Light Green for credit/zero
+            )}>
+              {formatBalance(latest.balance)}
+            </span>
           </div>
-          {latest.transactionCount !== undefined && <p className="text-xs text-muted">{latest.transactionCount} transactions</p>}
-        </div>
+        )}
       </div>
 
-      {history.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/5">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs text-muted hover:text-white flex items-center gap-1 transition-colors"
-          >
-            <ChevronRight size={14} className={cn("transition-transform", expanded && "rotate-90")} />
-            Statement History ({history.length} more)
-          </button>
-          {expanded && (
-            <div className="mt-2 space-y-1 pl-5">
-              {history.map(s => (
-                <div key={s.id} className="flex justify-between items-center text-xs p-1.5 hover:bg-white/5 rounded group">
-                  <span>{formatDate(s.date)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted">Uploaded {new Date(s.uploadDate).toLocaleDateString()}</span>
+      {/* Ledger Table */}
+      <div className="bg-black/20 rounded-xl overflow-hidden border border-white/5">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/5 text-left text-[10px] text-muted uppercase tracking-wider font-semibold">
+              <th className="px-4 py-2 font-medium">Date</th>
+              <th className="px-4 py-2 font-medium text-right">Txns</th>
+              <th className="px-4 py-2 font-medium text-right">Balance</th>
+              <th className="px-2 py-2 w-8"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {history.slice(0, 5).map(s => (
+              <tr key={s.id} className="hover:bg-white/5 transition-colors group">
+                <td className="px-4 py-3 text-white">{formatDate(s.date)}</td>
+                <td className="px-4 py-3 text-right text-muted">{s.transactionCount || 0}</td>
+                <td className={cn(
+                  "px-4 py-3 text-right font-mono font-medium",
+                  s.balance !== undefined
+                    ? parseFloat(s.balance) > 0 ? "text-danger" : "text-[#E8F5E9]"
+                    : "text-muted"
+                )}>
+                  {formatBalance(s.balance)}
+                </td>
+                <td className="px-2 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(s.id, false); }}
-                      className="text-muted hover:text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                      title="Remove record only (Keep transactions)"
+                      className="text-muted hover:text-orange-400 p-1"
+                      title="Remove record only"
                     >
                       <Trash2 size={12} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); onDelete(s.id, true); }}
-                      className="text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      className="text-muted hover:text-red-500 p-1"
                       title="Delete record AND transactions"
                     >
                       <FileX size={12} />
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {history.length > 5 && (
+          <div className="px-4 py-2 text-center text-xs text-muted border-t border-white/5">
+            + {history.length - 5} older statements
+          </div>
+        )}
+      </div>
     </Card>
   );
 }
@@ -2559,7 +2574,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       "metadata": {
         "provider": "Chase",
         "last4": "1234",
-        "statementEndDate": "2026-01-24"
+        "statementEndDate": "2026-01-24",
+        "balance": "1240.50"
       },
       "transactions": [
         {"name": "Merchant", "date": "2026-01-15", "amount": 10.50, "isIncome": false, "category": "Food", "type": "variable"},
@@ -2574,6 +2590,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
       CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
       Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
+    - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
+      Credit Cards: Positive number = Owed debt. Negative number = Credit.
+      Bank Accounts: Positive number = Available funds.
+      Return as a pure number (no currency symbols).
     `;
 
           const result = await model.generateContent([
@@ -2726,6 +2746,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
+          balance: pendingStatement.balance || null, // Save balance
           uploadDate: new Date().toISOString(),
           transactionCount: bulkItems.length
         };
@@ -2993,7 +3014,7 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
         </div>
 
         {/* Statement Metadata Editor */}
-        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-3 gap-2">
+        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-4 gap-2">
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
             <input
@@ -3012,6 +3033,17 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
               placeholder="1234"
               value={stmt.last4 || ''}
               onChange={(e) => updateStmt('last4', e.target.value)}
+            />
+          </div>
+          <div className="col-span-1">
+            <label className="text-[10px] text-muted uppercase font-bold px-1">Balance</label>
+            <input
+              type="number"
+              step="0.01"
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+              placeholder="0.00"
+              value={stmt.balance || ''}
+              onChange={(e) => updateStmt('balance', e.target.value)}
             />
           </div>
           <div className="col-span-1">
