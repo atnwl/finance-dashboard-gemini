@@ -6,7 +6,8 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw
+  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw,
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -55,6 +56,36 @@ const getCategoryIcon = (category) => {
     'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
+};
+
+const getBrandIcon = (name) => {
+  const n = name.toLowerCase();
+  if (n.includes('netflix')) return <Tv size={24} />;
+  if (n.includes('spotify') || n.includes('music') || n.includes('audio') || n.includes('pandora') || n.includes('tidal')) return <Headphones size={24} />;
+  if (n.includes('youtube') || n.includes('google *youtube') || n.includes('video')) return <Youtube size={24} />;
+  if (n.includes('prime') || n.includes('amazon')) return <ShoppingBag size={24} />;
+  if (n.includes('apple') || n.includes('icloud') || n.includes('itunes')) return <Smartphone size={24} />;
+  if (n.includes('adobe') || n.includes('photoshop') || n.includes('creative cloud')) return <Image size={24} />;
+  if (n.includes('figma') || n.includes('design')) return <PenTool size={24} />;
+  if (n.includes('github') || n.includes('gitlab')) return <Github size={24} />;
+  if (n.includes('vercel') || n.includes('netlify')) return <Server size={24} />;
+  if (n.includes('heroku') || n.includes('digitalocean') || n.includes('aws') || n.includes('cloud')) return <Cloud size={24} />;
+  if (n.includes('hbo') || n.includes('hulu') || n.includes('disney') || n.includes('peacock') || n.includes('paramount') || n.includes('tv')) return <Film size={24} />;
+  if (n.includes('uber') || n.includes('lyft')) return <Car size={24} />;
+  if (n.includes('steam') || n.includes('game') || n.includes('nintendo') || n.includes('playstation') || n.includes('xbox')) return <Gamepad2 size={24} />;
+  if (n.includes('chatgpt') || n.includes('openai') || n.includes('notion') || n.includes('claude') || n.includes('ai ')) return <Sparkles size={24} />;
+  if (n.includes('google') || n.includes('gsuite') || n.includes('workspace')) return <Chrome size={24} />;
+  if (n.includes('twitter') || n.includes('x.com') || n.includes('x corp')) return <Twitter size={24} />;
+  if (n.includes('linkedin')) return <Linkedin size={24} />;
+  if (n.includes('facebook') || n.includes('meta')) return <Facebook size={24} />;
+  if (n.includes('instagram')) return <Instagram size={24} />;
+  if (n.includes('twitch')) return <Twitch size={24} />;
+  if (n.includes('starbucks') || n.includes('coffee')) return <Coffee size={24} />;
+  if (n.includes('internet') || n.includes('wifi') || n.includes('broadband')) return <Wifi size={24} />;
+  if (n.includes('electric') || n.includes('power') || n.includes('energy') || n.includes('utility')) return <Zap size={24} />;
+  if (n.includes('mobile') || n.includes('phone') || n.includes('cell') || n.includes('verizon') || n.includes('t-mobile') || n.includes('at&t')) return <Smartphone size={24} />;
+
+  return null;
 };
 
 // --- Components ---
@@ -1781,6 +1812,14 @@ export default function App() {
                 ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                 : (isIncome ? 'Income' : 'Expense');
 
+              // Determine frequency badge styling
+              let freqStyle = "bg-secondary/10 text-secondary border-secondary/20"; // Default (Monthly)
+              if (frequency) {
+                const f = frequency.toLowerCase();
+                if (f.includes('week')) freqStyle = "bg-warning/10 text-warning border-warning/20"; // High frequency -> Warm color
+                else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-primary/10 text-primary border-primary/20"; // Low frequency -> Green/Good
+              }
+
               return (
                 <div
                   key={item.id}
@@ -1793,46 +1832,38 @@ export default function App() {
                       "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
                       isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white"
                     )}>
-                      {isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />}
+                      {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
                     </div>
 
                     {/* Text Info */}
                     <div className="min-w-[80px] shrink flex-1">
                       <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
-                      <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
-                        <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                        {!isSubView && (
-                          <>
-                            <span>•</span>
-                            <span className="capitalize truncate max-w-[120px]">
-                              {sourceText}
-                            </span>
-                          </>
-                        )}
-                      </p>
+
+                      {isSubView ? (
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide",
+                            freqStyle
+                          )}>
+                            {item.frequency || 'Monthly'}
+                          </span>
+                          <span className="text-xs text-muted font-medium flex items-center gap-2">
+                            <span>on {nextPaymentText}</span>
+                            <span className="opacity-50">|</span>
+                            <span>last paid: {dateObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</span>
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
+                          <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                          <span>•</span>
+                          <span className="capitalize truncate max-w-[120px]">
+                            {sourceText}
+                          </span>
+                        </p>
+                      )}
                     </div>
                   </div>
-
-                  {/* Subscriptions Extra Columns */}
-                  {isSubView && (
-                    <>
-                      {/* Frequency Pill */}
-                      <div className="hidden sm:flex items-center justify-center shrink-0">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                          "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                        )}>
-                          {item.frequency || 'Monthly'}
-                        </span>
-                      </div>
-
-                      {/* Next Date */}
-                      <div className="flex flex-col items-end shrink-0 min-w-[50px]">
-                        <span className="text-[10px] text-muted font-medium uppercase tracking-wide">Next</span>
-                        <span className="text-sm font-bold text-gray-300">{nextPaymentText}</span>
-                      </div>
-                    </>
-                  )}
 
                   {/* Amount */}
                   <div className={cn(
