@@ -125,35 +125,68 @@ const Input = ({ label, ...props }) => (
   </div>
 );
 
-const Select = ({ label, options, ...props }) => (
-  <div className="flex flex-col gap-1.5 w-full">
-    {label && <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>}
-    <div className="relative">
-      <select
-        className={cn(
-          "w-full bg-[#0F1115] border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none transition-all cursor-pointer",
-          props.className
+const Select = ({ label, options, value, onChange, name, className, ...props }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find(opt => opt.value === value)?.label || value;
+
+  const handleSelect = (newValue) => {
+    // Mimic native event for compatibility with existing handleChange
+    onChange({ target: { name, value: newValue } });
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5 w-full" ref={containerRef}>
+      {label && <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "w-full bg-[#0F1115] border border-border rounded-xl px-4 py-3 text-left focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all flex items-center justify-between",
+            className
+          )}
+        >
+          <span className={cn("block truncate", !value && "text-muted")}>
+            {selectedLabel}
+          </span>
+          <ChevronRight size={16} className={cn("text-muted transition-transform", isOpen ? "rotate-90" : "rotate-0")} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-[#161B21] border border-border rounded-xl shadow-2xl max-h-60 overflow-auto py-1 animate-in fade-in zoom-in-95 duration-200">
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleSelect(opt.value)}
+                className={cn(
+                  "w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5",
+                  opt.value === value ? "text-primary font-medium bg-primary/10" : "text-gray-300"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         )}
-        style={{
-          WebkitAppearance: 'none',
-          MozAppearance: 'none',
-          appearance: 'none',
-          backgroundColor: '#0F1115' // explicit styling
-        }}
-        {...props}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value} style={{ backgroundColor: '#0F1115', color: '#E5E7EB' }}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Chat Component ---
 const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false }) => {
@@ -1182,6 +1215,8 @@ export default function App() {
             >
               {demoFinancials ? "Demo Active" : "Demo"}
             </button>
+
+            {/* Prominent Add Button Removed */}
           </div>
         </div>
         {/* Desktop: Unified grid matching wireframe layout (8-col for equal widths) */}
@@ -1492,7 +1527,7 @@ export default function App() {
                             <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
                             {payload.map((entry, index) => (
                               <div key={index} className="flex justify-between gap-4 text-sm">
-                                <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#88A0AF' }}>
+                                <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#D67C7C' }}>
                                   {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
                                 </span>
                                 <span className="font-bold text-gray-200">
@@ -1538,7 +1573,7 @@ export default function App() {
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isPast ? "#334155" : isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
+                          fill={isPast || isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
                           stroke={isSelected ? "#ffffff" : "none"}
                           strokeWidth={isSelected ? 2 : 0}
                           fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1567,7 +1602,7 @@ export default function App() {
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isPast ? "#334155" : isCurrent ? "#88A0AF" : "#88A0AF99"} // Secondary (Steel Blue)
+                          fill={isPast || isCurrent ? "#D67C7C" : "#D67C7C99"} // Danger (Terracotta)
                           stroke={isSelected ? "#ffffff" : "none"}
                           strokeWidth={isSelected ? 2 : 0}
                           fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1614,25 +1649,44 @@ export default function App() {
                 <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-              {Object.entries(financials.byCategory)
-                .sort(([, a], [, b]) => b - a)
-                .map(([name, value], idx) => (
-                  <div key={name} className="flex items-center gap-2 group relative cursor-help">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                    <span className="text-muted truncate flex-1">{name}</span>
-                    <span className="text-white font-medium shrink-0">
-                      {Math.round(value / financials.totalExpenses * 100)}%
-                    </span>
-                    {/* Tooltip on hover */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
-                      <p className="text-[10px] text-muted mb-0.5">{name}</p>
-                      <p className="text-sm font-bold text-white">
-                        ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
+            <div className="mt-4 flex gap-4 text-xs">
+              {(() => {
+                const sortedItems = Object.entries(financials.byCategory).sort(([, a], [, b]) => b - a);
+                const mid = Math.ceil(sortedItems.length / 2);
+                const left = sortedItems.slice(0, mid);
+                const right = sortedItems.slice(mid);
+
+                const renderColumn = (items, offsetIndex) => (
+                  <div className="flex-1 space-y-2">
+                    {items.map(([name, value], i) => {
+                      const actualIdx = offsetIndex + i;
+                      return (
+                        <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[actualIdx % COLORS.length] }} />
+                          <span className="text-muted truncate flex-1">{name}</span>
+                          <span className="text-white font-medium shrink-0">
+                            {Math.round(value / financials.totalExpenses * 100)}%
+                          </span>
+                          {/* Tooltip on hover */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-[#161B21] border border-border rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 whitespace-nowrap">
+                            <p className="text-[10px] text-muted mb-0.5">{name}</p>
+                            <p className="text-sm font-bold text-white">
+                              ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                );
+
+                return (
+                  <>
+                    {renderColumn(left, 0)}
+                    {renderColumn(right, mid)}
+                  </>
+                );
+              })()}
             </div>
           </Card>
         </div>
@@ -1982,22 +2036,29 @@ export default function App() {
       {/* Sidebar */}
       {/* Top Navigation (Desktop) & Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 shrink-0">
+        <div className="w-full max-w-none px-4 md:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 shrink-0 flex-1 justify-start">
             <div className="bg-primary p-2 rounded-xl">
               <Wallet className="text-black" size={28} />
             </div>
+            {/* Desktop Add Button */}
+            <button
+              onClick={openAddModal}
+              className="hidden md:flex items-center justify-center w-10 h-10 bg-primary/20 hover:bg-primary text-primary hover:text-black rounded-full shadow-lg hover:shadow-primary/20 hover:scale-105 active:scale-95 transition-all ml-1"
+              title="Add New Transaction"
+            >
+              <Plus size={24} strokeWidth={3} />
+            </button>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+          <nav className="hidden md:flex items-center gap-1 mx-auto px-2 shrink-0">
             <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Statements" active={activeTab === 'statements'} onClick={() => { handleNavigation('statements'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
-            <NavTab label="Ask AI" active={isChatOpen} onClick={() => setIsChatOpen(!isChatOpen)} icon={MessageSquare} />
           </nav>
 
-          <div className="flex items-center gap-3 flex-1 md:flex-none justify-end">
+          <div className="flex items-center gap-3 shrink-0 flex-1 justify-end">
             <div className="relative flex-1 max-w-[160px] sm:max-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
@@ -2019,15 +2080,19 @@ export default function App() {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50 border border-white/10 hover:ring-2 hover:ring-primary/50 transition-all"
-              />
+                className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 border border-white/10 hover:ring-2 hover:ring-purple-500/50 transition-all flex items-center justify-center text-white shadow-lg shadow-purple-500/20"
+              >
+                <User size={18} />
+              </button>
 
               {showUserMenu && (
                 <div className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                   {/* User Info Row */}
                   <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary/50" />
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white">
+                        <User size={16} />
+                      </div>
                       <div>
                         <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'Guest'}</p>
                         <p className="text-xs text-muted">{user ? 'Logged In' : 'Not Logged In'}</p>
@@ -2184,7 +2249,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-6 animate-in fade-in duration-500 transition-all duration-300",
+        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-32 animate-in fade-in duration-500 transition-all duration-300",
         "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
         isChatOpen && "lg:pr-[440px]"
       )}>
@@ -2267,7 +2332,7 @@ export default function App() {
       {/* Transaction Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-border flex justify-between items-center">
               <h3 className="text-lg font-bold">{editingItem ? 'Edit Item' : 'Add New Item'}</h3>
               <button onClick={() => setIsFormOpen(false)} className="text-muted hover:text-white">✕</button>
