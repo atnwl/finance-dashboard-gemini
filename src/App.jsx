@@ -33,11 +33,11 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Freelance', 'Gift', 'Investments', 'Refund', 'Salary', 'Transfer', 'Other'
+  'Freelance', 'Gift', 'Interest', 'Investments', 'Refund', 'Salary', 'Transfer', 'Other'
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Amazon', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance',
+  'Alcohol', 'Amazon', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
 ];
 
@@ -53,7 +53,7 @@ const getCategoryIcon = (category) => {
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
     'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
     'Transfer': '🔄',
-    'Salary': '💵', 'Freelance': '💻', 'Investments': '📈', 'Other': '📦'
+    'Salary': '💵', 'Freelance': '💻', 'Interest': '💰', 'Investments': '📈', 'Other': '📦'
   };
   return map[category] || '📦';
 };
@@ -2454,7 +2454,7 @@ function AccountCard({ account, onDelete }) {
         {/* Only show balance hero if it's a credit card or has a balance */}
         {latest.balance !== undefined && (
           <div className="text-right">
-            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Current Balance</span>
+            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
             <span className={cn(
               "text-2xl font-bold",
               account.type === 'bank_account' ? "text-primary" : (parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]")
