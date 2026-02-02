@@ -2719,8 +2719,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     - type: "credit_card" or "bank_account". Use the rules above (e.g. Fold = bank_account).
     - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
     - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
-    - statementEndDate: Look for "Opening/Closing Date", "Statement Period", or "Closing Date".
-      Extract the END/CLOSING date (the second date if there's a range like "12/25/25 - 01/24/26").
+    - statementEndDate: Look for "Statement Date" (explicit single date) FIRST.
+      If found, use that date.
+      If not found, look for "Statement Period" or "Closing Date" and extract the END date.
+      CRITICAL: "Statement Date" takes precedence over the end of a "Period Covered".
       CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
       Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
     - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
