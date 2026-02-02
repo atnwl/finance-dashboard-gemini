@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw,
+  Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw,
   Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -1236,9 +1236,41 @@ export default function App() {
                 <div className="p-4 flex-1 relative z-10 flex flex-col">
                   {/* Top Row: Month badge, centered title, TBD pills */}
                   <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
-                      {MONTHS[selectedMonth]}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedMonth === 0) {
+                            setSelectedMonth(11);
+                            setSelectedYear(selectedYear - 1);
+                          } else {
+                            setSelectedMonth(selectedMonth - 1);
+                          }
+                        }}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                        title="Previous Month"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                        {MONTHS[selectedMonth]}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (selectedMonth === 11) {
+                            setSelectedMonth(0);
+                            setSelectedYear(selectedYear + 1);
+                          } else {
+                            setSelectedMonth(selectedMonth + 1);
+                          }
+                        }}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                        title="Next Month"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
 
                     {/* Centered Title */}
                     <h3 className="absolute left-1/2 -translate-x-1/2 text-sm font-bold uppercase tracking-[0.2em] text-black/50">
@@ -1362,10 +1394,40 @@ export default function App() {
                   )}>
                     <div className="p-5 flex-1 relative z-10">
                       <div className="flex justify-between items-center mb-2 relative">
-                        <div className="z-20">
+                        <div className="z-20 flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (selectedMonth === 0) {
+                                setSelectedMonth(11);
+                                setSelectedYear(selectedYear - 1);
+                              } else {
+                                setSelectedMonth(selectedMonth - 1);
+                              }
+                            }}
+                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                            title="Previous Month"
+                          >
+                            <ChevronLeft size={20} />
+                          </button>
                           <span className="text-xl font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
                             {MONTHS[selectedMonth]}
                           </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (selectedMonth === 11) {
+                                setSelectedMonth(0);
+                                setSelectedYear(selectedYear + 1);
+                              } else {
+                                setSelectedMonth(selectedMonth + 1);
+                              }
+                            }}
+                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                            title="Next Month"
+                          >
+                            <ChevronRight size={20} />
+                          </button>
                         </div>
                         <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
                           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
