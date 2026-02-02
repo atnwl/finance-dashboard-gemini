@@ -1858,11 +1858,20 @@ export default function App() {
                   <ChevronRight size={20} className="rotate-180" />
                 </button>
               )}
-              <h2 className="font-bold text-xl">Transaction History</h2>
+              {isSubView ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
+                    <Calendar size={20} />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-xl">Subscriptions</h2>
+                    <p className="text-xs text-muted leading-none mt-1">Active recurring charges</p>
+                  </div>
+                </div>
+              ) : (
+                <h2 className="font-bold text-xl">Transaction History</h2>
+              )}
             </div>
-            <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-muted hover:text-white transition-colors">
-              <Settings size={20} />
-            </button>
           </div>
 
           {/* Filter Pills */}
@@ -1977,7 +1986,9 @@ export default function App() {
                     {/* Icon Circle */}
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
-                      isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white"
+                      isSubView
+                        ? "bg-secondary/10 text-secondary border border-secondary/20"
+                        : (isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white")
                     )}>
                       {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
                     </div>
