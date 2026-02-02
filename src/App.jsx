@@ -6,7 +6,7 @@ import {
   Plus, Trash2, Edit2, TrendingUp, TrendingDown, CreditCard,
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
-  Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw,
+  Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw, Check,
   Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -2051,7 +2051,15 @@ export default function App() {
                             <span className="text-xs text-muted font-medium flex items-center gap-2">
                               <span>on {nextPaymentText}</span>
                               <span className="opacity-50">|</span>
-                              <span>last paid: <span className={(frequency === 'annual' || frequency === 'annually') ? "text-primary" : (dateObj.getMonth() !== new Date().getMonth() || dateObj.getFullYear() !== new Date().getFullYear() ? "text-warning" : "text-secondary")}>{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></span>
+                              {(() => {
+                                const isPaidThisMonth = dateObj.getMonth() === new Date().getMonth() && dateObj.getFullYear() === new Date().getFullYear();
+                                return (
+                                  <span className={cn("flex items-center gap-1.5", isPaidThisMonth ? "text-[#8DAA7F] font-bold" : "text-muted")}>
+                                    {isPaidThisMonth && <Check size={12} strokeWidth={3} />}
+                                    <span>{isPaidThisMonth ? "Paid" : "Last Paid"}: {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                  </span>
+                                );
+                              })()}
                             </span>
                           </div>
                         ) : (
