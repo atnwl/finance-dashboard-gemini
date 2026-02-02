@@ -1928,35 +1928,6 @@ export default function App() {
               let frequency = item.frequency; // e.g. 'monthly', 'weekly'
 
               if (isSubView && frequency) {
-                // CALCULATE MOST RECENT & NEXT DATES
-                const today = new Date();
-                const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-                // Calculate Most Recent Occurrence (<= Today)
-                let recent = new Date(originalDateObj);
-
-                if (frequency === 'monthly') {
-                  let candidate = new Date(current.getFullYear(), current.getMonth(), d);
-                  if (candidate > current) {
-                    candidate = new Date(current.getFullYear(), current.getMonth() - 1, d);
-                  }
-                  recent = candidate < originalDateObj ? originalDateObj : candidate;
-
-                } else if (frequency === 'weekly') {
-                  const oneDay = 86400000;
-                  const diff = Math.floor((current - originalDateObj) / oneDay);
-                  if (diff >= 0) {
-                    const weeks = Math.floor(diff / 7);
-                    recent = new Date(originalDateObj.getTime() + weeks * 7 * oneDay);
-                  }
-                } else if (frequency === 'annual' || frequency === 'annually') {
-                  let candidate = new Date(current.getFullYear(), m - 1, d);
-                  if (candidate > current) candidate = new Date(current.getFullYear() - 1, m - 1, d);
-                  recent = candidate < originalDateObj ? originalDateObj : candidate;
-                }
-
-                dateObj = recent;
-
                 // Calculate "Next" Text (e.g. "15th")
                 const day = d;
                 const suffix = (val) => {
