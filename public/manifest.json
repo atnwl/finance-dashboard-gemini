@@ -1,7 +1,7 @@
 {
-    "name": "Teddy Finance",
-    "short_name": "Teddy",
-    "description": "Personal Finance Dashboard",
+    "name": "Lume Finance",
+    "short_name": "Lume",
+    "description": "Premium Personal Finance Dashboard",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0F1115",
@@ -9,9 +9,9 @@
     "orientation": "portrait",
     "icons": [
         {
-            "src": "/vite.svg",
+            "src": "/lume-logo.jpg",
             "sizes": "any",
-            "type": "image/svg+xml",
+            "type": "image/jpeg",
             "purpose": "any maskable"
         }
     ]

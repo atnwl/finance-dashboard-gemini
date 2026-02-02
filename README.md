@@ -1,8 +1,8 @@
-# FinBoard - Personal Finance Dashboard
+# Lume - Personal Finance Dashboard
 
-![Filter Search](public/preview.png)
+![Lume Dashboard Preview](public/preview.png)
 
-**FinBoard** is a premium, dark-mode personal finance dashboard built for clarity and speed. It combines modern React architecture with Gemini AI to automate the most tedious parts of tracking your money.
+**Lume** is a premium, dark-mode personal finance dashboard built for clarity and speed. It combines modern React architecture with Gemini AI to automate the most tedious parts of tracking your money.
 
 ## ✨ Core Features
 
@@ -40,7 +40,7 @@
 
 ## 🎨 Design Philosophy
 
-FinBoard uses a custom-curated palette designed for long-term usage:
+Lume uses a custom-curated palette designed for long-term usage:
 - **Primary (`#8DAA7F`):** Income & Growth
 - **Danger (`#D67C7C`):** Expenses & Alerts
 - **Secondary (`#88A0AF`):** Information & Utility
