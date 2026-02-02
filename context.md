@@ -17,6 +17,26 @@ FinBoard is a personal finance dashboard built with:
 
 ---
 
+## 🛑 CRITICAL: Branching Strategy
+
+**You MUST create a NEW, Short-Lived Feature Branch for every distinct task/request.**
+
+1.  **NEVER** reuse old branches (e.g., do not keep pushing to `feature/intelligent-transactions`).
+2.  **Start Fresh**: Always pull `main` first.
+3.  **Naming Convention**: `feature/[short-description]` or `fix/[bug-description]`.
+4.  **One Branch = One PR**: This ensures clean history and atomic PRs.
+
+**Mandatory Workflow:**
+```bash
+git checkout main
+git pull
+git checkout -b feature/short-descriptive-name
+# ... do work ...
+./deploy.sh "feat: description of change"
+```
+
+---
+
 ## 📊 Data Model
 
 All financial data is stored in a single `data` state object:

@@ -486,6 +486,13 @@ export default function App() {
   // Date Filtering State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Force reset to current month on mount (page refresh)
+  useEffect(() => {
+    const now = new Date();
+    setSelectedMonth(now.getMonth());
+    setSelectedYear(now.getFullYear());
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingStatement, setPendingStatement] = useState(null);
 
@@ -1054,7 +1061,7 @@ export default function App() {
     const creditCardAccounts = (data.statements || []).reduce((acc, s) => {
       const key = `${s.provider}-${s.last4 || 'unknown'}`;
       if (!acc[key]) {
-        acc[key] = { provider: s.provider, last4: s.last4, latestDate: s.date, latestBalance: s.balance };
+        acc[key] = { provider: s.provider, last4: s.last4, latestDate: s.date, latestBalance: s.balance, type: s.type };
       } else {
         // Update if this statement is newer
         if (new Date(s.date) > new Date(acc[key].latestDate)) {
@@ -1066,31 +1073,50 @@ export default function App() {
     }, {});
 
     const accountList = Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
-    const totalCreditBalance = accountList.reduce((sum, acc) => sum + (parseFloat(acc.latestBalance) || 0), 0);
+    const totalCreditBalance = accountList.reduce((sum, acc) => {
+      // Exclude Bank Accounts from Total Debt Calculation
+      if (acc.provider.toLowerCase().includes('fold') || acc.type === 'bank_account') return sum;
+      return sum + (parseFloat(acc.latestBalance) || 0);
+    }, 0);
 
     const renderAccountList = () => {
       // Filter to only accounts WITH balance data
-      const accountsWithBalance = accountList.filter(acc => acc.latestBalance !== undefined && acc.latestBalance !== null);
+      // Filter out Fold and explicitly marked bank accounts
+      const accountsWithBalance = accountList
+        .filter(acc =>
+          acc.latestBalance !== undefined &&
+          acc.latestBalance !== null &&
+          !acc.provider.toLowerCase().includes('fold') &&
+          acc.type !== 'bank_account'
+        )
+        // Sort by Balance Descending (High to Low)
+        .sort((a, b) => (parseFloat(b.latestBalance) || 0) - (parseFloat(a.latestBalance) || 0));
 
       if (accountsWithBalance.length === 0) {
         return <p className="text-[10px] text-muted/70 italic mt-1">Re-import statements to capture balances.</p>;
       }
       return (
-        <div className="space-y-0.5 mt-1.5">
-          {accountsWithBalance.slice(0, 4).map((acc, idx) => (
+        <div className="grid grid-cols-2 gap-x-8 lg:gap-x-24 xl:gap-x-32 gap-y-1.5 mt-2">
+          {accountsWithBalance.slice(0, 6).map((acc, idx) => (
             <div key={idx} className="flex justify-between items-center text-[11px]">
-              <span className="text-muted truncate max-w-[100px]">{acc.provider} <span className="opacity-40">••{acc.last4?.slice(-2)}</span></span>
+              <span className="text-muted truncate mr-1" title={`${acc.provider} ...${acc.last4}`}>
+                {acc.provider} <span className="opacity-50">...{acc.last4}</span>
+              </span>
               <span className={cn(
-                "font-mono font-semibold",
+                "font-mono font-semibold whitespace-nowrap",
                 (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
               )}>
                 {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
               </span>
             </div>
           ))}
-          {accountsWithBalance.length > 4 && <p className="text-[9px] text-muted/50 italic">+ {accountsWithBalance.length - 4} more</p>}
+          {accountsWithBalance.length > 6 && (
+            <p className="col-span-2 text-[9px] text-muted/50 italic text-center mt-1">
+              + {accountsWithBalance.length - 6} more
+            </p>
+          )}
           {accountsWithBalance.length > 1 && (
-            <div className="flex justify-between items-center text-[11px] border-t border-white/10 pt-1 mt-1 font-bold">
+            <div className="col-span-2 flex justify-between items-center text-[11px] border-t border-white/10 pt-2 mt-1 font-bold">
               <span className="text-white/70">Total</span>
               <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
                 {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
@@ -2620,6 +2646,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       - Deposits = INCOME (isIncome: true)
       - Withdrawals/debits = EXPENSES (isIncome: false)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false
+      - NOTE: "Fold" is always a BANK ACCOUNT.
     
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
@@ -2635,6 +2662,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     Return STRICT JSON Object: 
     {
       "metadata": {
+        "type": "credit_card" OR "bank_account", 
         "provider": "Chase",
         "last4": "1234",
         "statementEndDate": "2026-01-24",
@@ -2647,6 +2675,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     }
     
     IMPORTANT for metadata:
+    - type: "credit_card" or "bank_account". Use the rules above (e.g. Fold = bank_account).
     - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
     - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
     - statementEndDate: Look for "Opening/Closing Date", "Statement Period", or "Closing Date".
