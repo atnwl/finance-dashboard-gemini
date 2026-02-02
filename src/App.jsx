@@ -1749,7 +1749,9 @@ export default function App() {
       // Group by unique account (provider + last4)
       const grouped = (data.statements || []).reduce((acc, s) => {
         const key = `${s.provider}-${s.last4 || 'unknown'}`;
-        acc[key] = acc[key] || { provider: s.provider, last4: s.last4, statements: [] };
+        // Fold is always a bank account
+        const resolvedType = (s.provider?.toLowerCase() === 'fold' || s.type === 'bank_account') ? 'bank_account' : 'credit_card';
+        acc[key] = acc[key] || { provider: s.provider, last4: s.last4, type: resolvedType, statements: [] };
         acc[key].statements.push(s);
         return acc;
       }, {});
@@ -2008,7 +2010,7 @@ export default function App() {
                           <span className="text-xs text-muted font-medium flex items-center gap-2">
                             <span>on {nextPaymentText}</span>
                             <span className="opacity-50">|</span>
-                            <span>last paid: {dateObj.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</span>
+                            <span>last paid: <span className={(frequency === 'annual' || frequency === 'annually') ? "text-primary" : (dateObj.getMonth() !== new Date().getMonth() || dateObj.getFullYear() !== new Date().getFullYear() ? "text-warning" : "text-secondary")}>{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></span>
                           </span>
                         </div>
                       ) : (
@@ -2455,7 +2457,7 @@ function AccountCard({ account, onDelete }) {
             <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Current Balance</span>
             <span className={cn(
               "text-2xl font-bold",
-              parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]" // Red for debt, Light Green for credit/zero
+              account.type === 'bank_account' ? "text-primary" : (parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]")
             )}>
               {formatBalance(latest.balance)}
             </span>
@@ -2892,6 +2894,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           provider: stmtProvider,
           last4: stmtLast4,
           date: stmtDate,
+          type: pendingStatement.type || 'credit_card', // Default to credit_card if missing
           balance: pendingStatement.balance || null, // Save balance
           uploadDate: new Date().toISOString(),
           transactionCount: bulkItems.length
