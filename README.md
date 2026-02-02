@@ -1,20 +1,28 @@
-# Personal Finance Dashboard
+# FinBoard - Personal Finance Dashboard
 
-![Preview](public/preview.png)
+![Filter Search](public/preview.png)
 
-A single-page personal finance dashboard built with React and Tailwind CSS, featuring Gemini AI integration for smart financial insights.
+**FinBoard** is a premium, dark-mode personal finance dashboard built for clarity and speed. It combines modern React architecture with Gemini AI to automate the most tedious parts of tracking your money.
 
-## Features
+## ✨ Core Features
 
-- **Dashboard Overview:** Real-time summary of Income, Expenses, Net Cash Flow, and Subscriptions.
-- **Visualizations:** Interactive Bar and Pie charts powered by Recharts.
-- **Transaction Management:** Full CRUD (Create, Read, Update, Delete) for income and expenses.
-- **Subscription Tracker:** Dedicated view for managing recurring services.
-- **Gemini AI Chat:** Integrated chat assistant that can analyze your local financial data and answer questions.
-- **Data Persistence:** All data is stored locally in your browser (LocalStorage).
-- **Dark Mode:** Sleek, dark-mode-first design.
+- **🤖 Intelligent Statement Parsing:** Upload PDF or Image statements (Chase, Fold, and more) and let Gemini AI extract transactions, merchants, and categories automatically.
+- **✅ Bulk Review Workflow:** Never wonder where your data came from. Review and adjust AI-parsed transactions in a structured bulk-review modal before importing.
+- **🛡️ Encrypted Cloud Sync:** Optional Supabase integration with client-side AES-256 encryption. Your financial data stays private, even in the cloud.
+- **📱 PWA & Mobile Optimized:** Built with an "Android-First" philosophy. Installable as a progressive web app with fullscreen support for the best mobile experience.
+- **📊 Advanced Visualizations:** High-fidelity interactive charts for cash flow, category breakdowns, and monthly trends powered by Recharts.
+- **🔄 Smart Deduplication:** Intelligent logic handles "inter-account" noise (like credit card payments appearing on both bank and card statements) to keep your net worth accurate.
+- **💬 AI Financial Assistant:** Integrated Gemini chat that has full context of your local data to help you find trends or categorize tricky transactions.
 
-## Setup
+## 🛠️ Technology Stack
+
+- **Frontend:** React 19, Vite, Tailwind CSS
+- **Intelligence:** Google Gemini 2.0 Flash
+- **Backend (Optional):** Supabase (Auth & Encrypted Sync)
+- **Design System:** "Earthy Professional" custom palette
+- **Deployment:** Vercel
+
+## 🚀 Getting Started
 
 1.  **Install Dependencies:**
     ```bash
@@ -26,18 +34,19 @@ A single-page personal finance dashboard built with React and Tailwind CSS, feat
     npm run dev
     ```
 
-3.  **Build for Production:**
-    ```bash
-    npm run build
-    ```
+3.  **Configure AI (Optional):**
+    - Click the **Sparkles/Ask AI** button.
+    - Click the **Settings (gear)** icon and enter your [Google AI Studio Key](https://aistudio.google.com/).
 
-## AI Configuration
+## 🎨 Design Philosophy
 
-To use the AI features:
-1.  Click the "Ask AI" button in the dashboard.
-2.  Click the settings (gear) icon.
-3.  Enter your Google Gemini API Key.
+FinBoard uses a custom-curated palette designed for long-term usage:
+- **Primary (`#8DAA7F`):** Income & Growth
+- **Danger (`#D67C7C`):** Expenses & Alerts
+- **Secondary (`#88A0AF`):** Information & Utility
+- **Dark Neutral (`#0F1115` / `#161B21`):** High-contrast readability
 
-## License
+## 📄 License
 
 MIT
+
