@@ -235,7 +235,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
       const context = `
-        You are a helpful financial assistant analyzing the user's personal finance dashboard.
+        You are Lume, a helpful financial assistant analyzing the user's Lume dashboard.
         
         CURRENT DATA:
         - Total Monthly Income: $${financials.totalIncome.toFixed(2)}
@@ -357,7 +357,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
             <Sparkles size={16} className="text-black fill-current" />
           </div>
           <div>
-            <h3 className="font-bold text-sm">Gemini Assistant</h3>
+            <h3 className="font-bold text-sm">Lume Assistant</h3>
             <p className="text-[10px] text-muted flex items-center gap-1">
               {localStorage.getItem('geminiApiKey') ? (
                 <>
@@ -1207,7 +1207,7 @@ export default function App() {
             <button
               onClick={() => toggleDemo(false)}
               className={cn(
-                "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider",
+                "text-[10px] font-bold px-4 py-1.5 rounded-full border transition-all uppercase tracking-wider whitespace-nowrap",
                 demoFinancials
                   ? "bg-purple-500 text-white border-purple-400 shadow-lg shadow-purple-500/20"
                   : "bg-white/5 text-muted border-white/10 hover:bg-white/10"
@@ -2050,9 +2050,15 @@ export default function App() {
       {/* Top Navigation (Desktop) & Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
         <div className="w-full max-w-none px-4 md:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 shrink-0 flex-1 justify-start">
-            <div className="bg-primary p-2 rounded-xl">
-              <Wallet className="text-black" size={28} />
+          <div className="flex items-center gap-3 shrink-0 flex-1 justify-start">
+            <div
+              className="flex items-center gap-1.5 group cursor-pointer select-none"
+              onClick={() => handleNavigation('dashboard')}
+            >
+              <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-b from-[#A5C196] via-[#8DAA7F] to-[#738965] bg-clip-text text-transparent transition-all duration-300 group-hover:brightness-110 drop-shadow-sm">
+                Lume
+              </h1>
+              <div className="w-1.5 h-1.5 rounded-full bg-primary mb-1 mt-1 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-0 group-hover:scale-100 shadow-[0_0_10px_#8DAA7F]"></div>
             </div>
             {/* Desktop Add Button */}
             <button
