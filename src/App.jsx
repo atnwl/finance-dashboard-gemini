@@ -2408,7 +2408,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
 function AccountCard({ account, onDelete }) {
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
-  const history = sortedStmts; // Show all history including latest in the list? Or just history? Design shows list usage.
+
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -2452,57 +2452,34 @@ function AccountCard({ account, onDelete }) {
         )}
       </div>
 
-      {/* Ledger Table */}
-      <div className="bg-black/20 rounded-xl overflow-hidden border border-white/5">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/5 text-left text-[10px] text-muted uppercase tracking-wider font-semibold">
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium text-right">Txns</th>
-              <th className="px-4 py-2 font-medium text-right">Balance</th>
-              <th className="px-2 py-2 w-8"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {history.slice(0, 5).map(s => (
-              <tr key={s.id} className="hover:bg-white/5 transition-colors group">
-                <td className="px-4 py-3 text-white">{formatDate(s.date)}</td>
-                <td className="px-4 py-3 text-right text-muted">{s.transactionCount || 0}</td>
-                <td className={cn(
-                  "px-4 py-3 text-right font-mono font-medium",
-                  s.balance !== undefined
-                    ? parseFloat(s.balance) > 0 ? "text-danger" : "text-[#E8F5E9]"
-                    : "text-muted"
-                )}>
-                  {formatBalance(s.balance)}
-                </td>
-                <td className="px-2 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, false); }}
-                      className="text-muted hover:text-orange-400 p-1"
-                      title="Remove record only"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDelete(s.id, true); }}
-                      className="text-muted hover:text-red-500 p-1"
-                      title="Delete record AND transactions"
-                    >
-                      <FileX size={12} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {history.length > 5 && (
-          <div className="px-4 py-2 text-center text-xs text-muted border-t border-white/5">
-            + {history.length - 5} older statements
+      {/* Latest Statement Summary */}
+      <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Last Statement</div>
+          <div className="flex items-center gap-3">
+            <div className="font-medium text-white">{formatDate(latest.date)}</div>
+            <div className="text-xs text-muted px-2 py-0.5 bg-white/5 rounded-full border border-white/10">
+              {latest.transactionCount || 0} Transactions
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
+            className="p-2 text-muted hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors"
+            title="Remove record only"
+          >
+            <Trash2 size={16} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
+            className="p-2 text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+            title="Delete record AND transactions"
+          >
+            <FileX size={16} />
+          </button>
+        </div>
       </div>
     </Card>
   );
