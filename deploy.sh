@@ -3,6 +3,12 @@
 # Get current branch name
 BRANCH=$(git symbolic-ref --short HEAD)
 
+if [ "$BRANCH" = "main" ]; then
+  echo "🛑 Error: Direct deployment from 'main' is restricted."
+  echo "👉 Please create a feature branch using: git checkout -b feature/your-feature-name"
+  exit 1
+fi
+
 # Default commit message with timestamp if no argument provided
 MSG="${1:-Auto-deploy $(date +'%Y-%m-%d %H:%M:%S')}"
 
