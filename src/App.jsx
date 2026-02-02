@@ -542,6 +542,10 @@ export default function App() {
       const nextShouldBeNegative = !demoToggle;
       setDemoToggle(nextShouldBeNegative);
 
+      // Randomize Month for Demo Mode (Every Refresh)
+      const newDemoMonth = Math.floor(Math.random() * 12);
+      setSelectedMonth(newDemoMonth);
+
       let income, expenses;
       if (nextShouldBeNegative) {
         // Force Negative: Expenses > Income
@@ -559,9 +563,9 @@ export default function App() {
       const recurring = Math.floor(expenses * 0.6);
 
       const yearlyData = MONTHS.map((m, i) => {
-        // Use forced values for the currently selected month, random for others
-        const mInc = (i === selectedMonth) ? income : (Math.floor(Math.random() * 4000) + 2000);
-        const mExp = (i === selectedMonth) ? expenses : (Math.floor(Math.random() * 3500) + 1500);
+        // Use NEW demo month for forced values
+        const mInc = (i === newDemoMonth) ? income : (Math.floor(Math.random() * 4000) + 2000);
+        const mExp = (i === newDemoMonth) ? expenses : (Math.floor(Math.random() * 3500) + 1500);
 
         return {
           name: m.slice(0, 3),
@@ -1561,19 +1565,20 @@ export default function App() {
                   >
                     {financials.yearlyData.map((entry, index) => {
                       const today = new Date();
-                      const currentMonth = today.getMonth();
-                      const currentYear = today.getFullYear();
+                      // In Demo Mode, the "Current Date" is simulated as the selected month
+                      const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
+                      const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
 
-                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                      const isCurrent = selectedYear === currentYear && index === currentMonth;
-                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+                      const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
+                      const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
+                      const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
 
                       const isSelected = index === selectedMonth;
 
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isPast || isCurrent ? "#8DAA7F" : "#8DAA7F99"} // Primary (Moss Green)
+                          fill={isFuture ? "#374151" : (isPast || isCurrent ? "#8DAA7F" : "#8DAA7F99")} // Primary (Moss Green) or Grey for Future
                           stroke={isSelected ? "#ffffff" : "none"}
                           strokeWidth={isSelected ? 2 : 0}
                           fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1590,19 +1595,20 @@ export default function App() {
                   >
                     {financials.yearlyData.map((entry, index) => {
                       const today = new Date();
-                      const currentMonth = today.getMonth();
-                      const currentYear = today.getFullYear();
+                      // In Demo Mode, the "Current Date" is simulated as the selected month
+                      const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
+                      const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
 
-                      const isPast = selectedYear < currentYear || (selectedYear === currentYear && index < currentMonth);
-                      const isCurrent = selectedYear === currentYear && index === currentMonth;
-                      const isFuture = selectedYear > currentYear || (selectedYear === currentYear && index > currentMonth);
+                      const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
+                      const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
+                      const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
 
                       const isSelected = index === selectedMonth;
 
                       return (
                         <Cell
                           key={`cell-${index}`}
-                          fill={isPast || isCurrent ? "#D67C7C" : "#D67C7C99"} // Danger (Terracotta)
+                          fill={isFuture ? "#374151" : (isPast || isCurrent ? "#D67C7C" : "#D67C7C99")} // Danger (Terracotta) or Grey for Future
                           stroke={isSelected ? "#ffffff" : "none"}
                           strokeWidth={isSelected ? 2 : 0}
                           fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
@@ -1701,39 +1707,18 @@ export default function App() {
     const currentMonthIndex = today.getMonth();
     const currentYear = today.getFullYear();
 
-    // Filter One-Time items for this specific month/year
+    // Filter items for this specific month/year
     const monthFilter = (item) => {
       if (!item.date) return false;
       const [y, m] = item.date.split('-').map(Number);
       return (m - 1) === selectedMonth && y === selectedYear;
     };
 
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && monthFilter(i)).map(i => ({ ...i, _type: 'income', isVirtual: false }));
-    const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && monthFilter(e)).map(e => ({ ...e, _type: 'expenses', isVirtual: false }));
+    // ONLY show actual transactions from data (no virtual/assumed items)
+    const incomeItems = data.income.filter(monthFilter).map(i => ({ ...i, _type: 'income', isVirtual: false }));
+    const expenseItems = data.expenses.filter(monthFilter).map(e => ({ ...e, _type: 'expenses', isVirtual: false }));
 
-    // Generate Virtual Recurring Items
-    // For each recurring item, IF it started before or during this month, allow it.
-    // We assume recurring items are active indefinitely for now (simplified).
-    const generateVirtual = (items, type) => items.filter(isRecurring).map(item => {
-      // Create a virtual date for this month
-      // Preserve the day of the month from the original date
-      const [oy, om, od] = item.date.split('-').map(Number);
-      // Handle day overflow (e.g. 31st in Feb) -> javascript Date object handles this (rolls over to Mar 1), which is fine/safe enough
-      const virtualDate = new Date(selectedYear, selectedMonth, od);
-
-      return {
-        ...item,
-        date: virtualDate.toISOString().split('T')[0],
-        _type: type,
-        isVirtual: true
-        // id: item.id - Keep original ID for editing/deletion to work
-      };
-    });
-
-    const virtualIncome = generateVirtual(data.income, 'income');
-    const virtualExpenses = generateVirtual(data.expenses, 'expenses');
-
-    const allItems = [...oneTimeIncome, ...oneTimeExpenses, ...virtualIncome, ...virtualExpenses];
+    const allItems = [...incomeItems, ...expenseItems];
 
     // Sort by Date Descending
     return allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1805,8 +1790,9 @@ export default function App() {
     ].filter(item => {
       const q = searchQuery.toLowerCase();
       const matchesName = item.name.toLowerCase().includes(q);
+      const matchesCategory = item.category && item.category.toLowerCase().includes(q);
       const matchesAmount = !isNaN(parseFloat(searchQuery)) && Math.abs(parseFloat(item.amount) - parseFloat(searchQuery)) < 0.01;
-      return matchesName || matchesAmount;
+      return matchesName || matchesCategory || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
     let items = isSearchActive ? searchItems : (isSubView
@@ -1911,10 +1897,31 @@ export default function App() {
 
           {/* List View */}
           <div className="space-y-px bg-white/5">
-            {items.map((item) => {
+            {items.map((item, index) => {
               // Parse original date
               const [y, m, d] = item.date.split('-').map(Number);
               const originalDateObj = new Date(y, m - 1, d);
+
+              // Search Grouping Header
+              let monthHeader = null;
+              if (isSearchActive) {
+                const currentMonthKey = `${y}-${m}`;
+                const prevItem = items[index - 1];
+                let prevMonthKey = null;
+                if (prevItem) {
+                  const [py, pm] = prevItem.date.split('-').map(Number);
+                  prevMonthKey = `${py}-${pm}`;
+                }
+
+                if (currentMonthKey !== prevMonthKey) {
+                  monthHeader = (
+                    <div className="px-4 py-2 bg-white/5 text-xs font-bold text-muted uppercase tracking-widest border-b border-white/5 flex items-center gap-2">
+                      <Calendar size={12} className="opacity-50" />
+                      {MONTHS[m - 1]} {y}
+                    </div>
+                  );
+                }
+              }
 
               let dateObj = originalDateObj;
               let nextPaymentText = null;
@@ -1979,60 +1986,62 @@ export default function App() {
               }
 
               return (
-                <div
-                  key={item.id}
-                  onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                  className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    {/* Icon Circle */}
+                <React.Fragment key={item.id}>
+                  {monthHeader}
+                  <div
+                    onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                    className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      {/* Icon Circle */}
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
+                        isSubView
+                          ? "bg-secondary/10 text-secondary border border-secondary/20"
+                          : (isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white")
+                      )}>
+                        {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
+                      </div>
+
+                      {/* Text Info */}
+                      <div className="min-w-[80px] shrink flex-1">
+                        <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+
+                        {isSubView ? (
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className={cn(
+                              "px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide",
+                              freqStyle
+                            )}>
+                              {item.frequency || 'Monthly'}
+                            </span>
+                            <span className="text-xs text-muted font-medium flex items-center gap-2">
+                              <span>on {nextPaymentText}</span>
+                              <span className="opacity-50">|</span>
+                              <span>last paid: <span className={(frequency === 'annual' || frequency === 'annually') ? "text-primary" : (dateObj.getMonth() !== new Date().getMonth() || dateObj.getFullYear() !== new Date().getFullYear() ? "text-warning" : "text-secondary")}>{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></span>
+                            </span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
+                            <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                            <span>•</span>
+                            <span className="capitalize truncate max-w-[120px]">
+                              {sourceText}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Amount */}
                     <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
-                      isSubView
-                        ? "bg-secondary/10 text-secondary border border-secondary/20"
-                        : (isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white")
+                      "text-right font-bold text-base shrink-0 min-w-[70px]",
+                      isIncome ? "text-[#34D399]" : "text-[#F87171]"
                     )}>
-                      {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
-                    </div>
-
-                    {/* Text Info */}
-                    <div className="min-w-[80px] shrink flex-1">
-                      <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
-
-                      {isSubView ? (
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className={cn(
-                            "px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide",
-                            freqStyle
-                          )}>
-                            {item.frequency || 'Monthly'}
-                          </span>
-                          <span className="text-xs text-muted font-medium flex items-center gap-2">
-                            <span>on {nextPaymentText}</span>
-                            <span className="opacity-50">|</span>
-                            <span>last paid: <span className={(frequency === 'annual' || frequency === 'annually') ? "text-primary" : (dateObj.getMonth() !== new Date().getMonth() || dateObj.getFullYear() !== new Date().getFullYear() ? "text-warning" : "text-secondary")}>{dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></span>
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                          <span>•</span>
-                          <span className="capitalize truncate max-w-[120px]">
-                            {sourceText}
-                          </span>
-                        </p>
-                      )}
+                      {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                   </div>
-
-                  {/* Amount */}
-                  <div className={cn(
-                    "text-right font-bold text-base shrink-0 min-w-[70px]",
-                    isIncome ? "text-[#34D399]" : "text-[#F87171]"
-                  )}>
-                    {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
