@@ -1741,10 +1741,10 @@ export default function App() {
         return acc;
       }, {});
 
-      // Sort accounts by most recent upload
+      // Sort accounts by most recent statement date
       const sortedAccounts = Object.values(grouped).sort((a, b) => {
-        const latestA = Math.max(...a.statements.map(s => new Date(s.uploadDate)));
-        const latestB = Math.max(...b.statements.map(s => new Date(s.uploadDate)));
+        const latestA = Math.max(...a.statements.map(s => new Date(s.date)));
+        const latestB = Math.max(...b.statements.map(s => new Date(s.date)));
         return latestB - latestA;
       });
 
@@ -2451,33 +2451,37 @@ function AccountCard({ account, onDelete }) {
         )}
       </div>
 
-      {/* Latest Statement Summary */}
-      <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex items-center justify-between">
-        <div>
-          <div className="text-[10px] text-muted uppercase tracking-wider font-semibold mb-1">Last Statement</div>
-          <div className="flex items-center gap-3">
-            <div className="font-medium text-white">{formatDate(latest.date)}</div>
-            <div className="text-xs text-muted px-2 py-0.5 bg-white/5 rounded-full border border-white/10">
-              {latest.transactionCount || 0} Transactions
+      {/* Last Statement Uploaded */}
+      <div className="mt-4">
+        <div className="text-[10px] text-muted uppercase tracking-wider font-bold px-1 mb-1">Last statement uploaded</div>
+        <div className="rounded-xl p-3 flex items-center justify-between transition-all border bg-primary/5 border-primary/20 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col">
+              <div className="font-bold text-white text-sm">{formatDate(latest.date)}</div>
+            </div>
+
+            <div className="ml-4 pl-4 border-l border-white/10">
+              <div className="text-[9px] text-muted uppercase font-bold mb-0.5">Transactions</div>
+              <div className="text-xs font-mono font-medium text-white/80">{latest.transactionCount || 0}</div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
-            className="p-2 text-muted hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors"
-            title="Remove record only"
-          >
-            <Trash2 size={16} />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
-            className="p-2 text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
-            title="Delete record AND transactions"
-          >
-            <FileX size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, false); }}
+              className="p-2 text-muted hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors group/btn"
+              title="Remove record only"
+            >
+              <Trash2 size={16} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(latest.id, true); }}
+              className="p-2 text-muted hover:text-danger hover:bg-danger/10 rounded-lg transition-colors group/btn"
+              title="Delete record AND transactions"
+            >
+              <FileX size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </Card>
