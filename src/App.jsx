@@ -33,12 +33,12 @@ const MONTHS = [
 ];
 
 const INCOME_CATEGORIES = [
-  'Freelance', 'Gift', 'Interest', 'Investments', 'Refund', 'Salary', 'Transfer', 'Other'
+  'Freelance', 'Gift', 'Interest', 'Investments', 'Other', 'Refund', 'Salary', 'Transfer'
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Amazon', 'Software', 'BNPL', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
-  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
+  'Alcohol', 'Amazon', 'BNPL', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Other', 'Personal', 'Restaurants', 'Shopping', 'Software', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities'
 ];
 
 const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
