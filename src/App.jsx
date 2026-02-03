@@ -2105,11 +2105,11 @@ export default function App() {
                 : (isIncome ? 'Income' : 'Expense');
 
               // Determine frequency badge styling
-              let freqStyle = "bg-secondary/10 text-secondary border-secondary/20"; // Default (Monthly)
+              let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
               if (frequency) {
                 const f = frequency.toLowerCase();
-                if (f.includes('week')) freqStyle = "bg-warning/10 text-warning border-warning/20"; // High frequency -> Warm color
-                else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-primary/10 text-primary border-primary/20"; // Low frequency -> Green/Good
+                if (f.includes('week')) freqStyle = "bg-[#D4A373] text-[#0F1115]"; // High frequency -> Warm color
+                else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-[#8DAA7F] text-[#0F1115]"; // Low frequency -> Green/Good
               }
 
               return (
@@ -2137,7 +2137,7 @@ export default function App() {
                         {isSubView ? (
                           <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className={cn(
-                              "px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide",
+                              "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide",
                               freqStyle
                             )}>
                               {item.frequency || 'Monthly'}

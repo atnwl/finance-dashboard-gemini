@@ -6,6 +6,10 @@ dist
 .vercel
 
 # User requested exclusions
-context.md
 *.sh
 .agent/
+context.md
+PRhighlights.md
+research.md
+PRandMerge.sh
+deploy.sh
