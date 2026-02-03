@@ -37,7 +37,7 @@ const INCOME_CATEGORIES = [
 ];
 
 const EXPENSE_CATEGORIES = [
-  'Alcohol', 'Amazon', 'Apps/Software', 'Buy Now Pay Later', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
+  'Alcohol', 'Amazon', 'Software', 'BNPL', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Personal', 'Restaurants', 'Shopping', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities', 'Other'
 ];
 
@@ -47,11 +47,11 @@ const isRecurring = (item) => item.frequency !== 'one-time';
 
 const getCategoryIcon = (category) => {
   const map = {
-    'Amazon': '📦', 'Alcohol': '🍺', 'Apps/Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
+    'Amazon': '📦', 'Alcohol': '🍺', 'Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Gas': '⛽', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
     'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
-    'Student Loans': '🎓', 'Buy Now Pay Later': '💳', 'Credit Card Payment': '💳',
+    'Student Loans': '🎓', 'BNPL': '💳', 'Credit Card Payment': '💳',
     'Transfer': '🔄',
     'Salary': '💵', 'Freelance': '💻', 'Interest': '💰', 'Investments': '📈', 'Other': '📦'
   };
@@ -1163,7 +1163,7 @@ export default function App() {
               </span>
               <span className={cn(
                 "font-mono font-semibold whitespace-nowrap",
-                (parseFloat(acc.latestBalance) || 0) > 0 ? "text-danger" : "text-[#E8F5E9]"
+                (parseFloat(acc.latestBalance) || 0) > 0 ? "text-primary" : "text-[#E8F5E9]"
               )}>
                 {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
               </span>
@@ -1177,7 +1177,7 @@ export default function App() {
           {accountsWithBalance.length > 1 && (
             <div className="col-span-2 flex justify-between items-center text-[11px] border-t border-white/10 pt-2 mt-1 font-bold">
               <span className="text-white/70">Total</span>
-              <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
+              <span className={totalCreditBalance > 0 ? "text-primary" : "text-[#E8F5E9]"}>
                 {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
               </span>
             </div>
@@ -1361,7 +1361,7 @@ export default function App() {
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
               <p className="text-2xl font-display font-bold mt-2 text-warning tracking-tight">
-                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">per month</span>
               </p>
             </div>
             <Calendar size={28} className="text-warning opacity-40" />
@@ -1582,7 +1582,7 @@ export default function App() {
                 <div>
                   <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
                   <p className="text-xl font-display font-bold mt-1 text-white tracking-tight">
-                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted/70 ml-1">per month</span>
                   </p>
                 </div>
                 <Calendar size={24} className="text-warning opacity-50" />
@@ -1991,7 +1991,8 @@ export default function App() {
           {/* Header */}
           <div className="px-4 py-6 border-b border-white/5 flex items-center justify-between sticky top-16 z-30 bg-background/95 backdrop-blur-md md:static md:bg-transparent">
             <div className="flex items-center gap-3">
-              {(transactionFilter || activeTab === 'transactions') && (
+              {/* Back Arrow for Drilled Filters */}
+              {transactionFilter && (
                 <button
                   onClick={() => {
                     handleNavigation('dashboard');
@@ -2000,6 +2001,15 @@ export default function App() {
                   className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
                 >
                   <ChevronRight size={20} className="rotate-180" />
+                </button>
+              )}
+              {/* X Button for Search */}
+              {isSearchActive && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
+                >
+                  <X size={20} />
                 </button>
               )}
               {isSubView ? (
@@ -2214,7 +2224,7 @@ export default function App() {
             </button>
           </div>
 
-          <nav className="hidden md:flex items-center gap-1 mx-auto px-2 shrink-0">
+          <nav className="hidden md:flex items-center gap-1 mx-auto px-2 shrink-0 overflow-x-auto whitespace-nowrap scrollbar-hide max-w-[50vw]">
             <NavTab label="Dashboard" active={activeTab === 'dashboard'} onClick={() => { handleNavigation('dashboard'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Transactions" active={activeTab === 'transactions'} onClick={() => { handleNavigation('transactions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
             <NavTab label="Subscriptions" active={activeTab === 'subscriptions'} onClick={() => { handleNavigation('subscriptions'); setTransactionFilter(null); }} disabled={searchQuery.length >= 2} />
@@ -2617,7 +2627,7 @@ function AccountCard({ account, onDelete }) {
             <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
             <span className={cn(
               "text-2xl font-bold",
-              account.type === 'bank_account' ? "text-primary" : (parseFloat(latest.balance) > 0 ? "text-danger" : "text-[#E8F5E9]")
+              account.type === 'bank_account' ? "text-primary" : (parseFloat(latest.balance) > 0 ? "text-primary" : "text-[#E8F5E9]")
             )}>
               {formatBalance(latest.balance)}
             </span>
