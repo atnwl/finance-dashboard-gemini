@@ -1163,7 +1163,11 @@ export default function App() {
               </span>
               <span className={cn(
                 "font-mono font-semibold whitespace-nowrap",
-                (parseFloat(acc.latestBalance) || 0) > 0 ? "text-primary" : "text-[#E8F5E9]"
+                (parseFloat(acc.latestBalance) || 0) > 0
+                  ? (acc.type === 'bank_account' ? "text-primary" : "text-danger")
+                  : (parseFloat(acc.latestBalance) || 0) < 0
+                    ? (acc.type === 'bank_account' ? "text-danger" : "text-primary")
+                    : "text-[#E8F5E9]"
               )}>
                 {formatAccounting(parseFloat(acc.latestBalance) || 0).replace('(', '-').replace(')', '')}
               </span>
@@ -1177,7 +1181,7 @@ export default function App() {
           {accountsWithBalance.length > 1 && (
             <div className="col-span-2 flex justify-between items-center text-[11px] border-t border-white/10 pt-2 mt-1 font-bold">
               <span className="text-white/70">Total</span>
-              <span className={totalCreditBalance > 0 ? "text-primary" : "text-[#E8F5E9]"}>
+              <span className={totalCreditBalance > 0 ? "text-danger" : "text-[#E8F5E9]"}>
                 {formatAccounting(totalCreditBalance).replace('(', '-').replace(')', '')}
               </span>
             </div>
@@ -2627,7 +2631,9 @@ function AccountCard({ account, onDelete }) {
             <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
             <span className={cn(
               "text-2xl font-bold",
-              account.type === 'bank_account' ? "text-primary" : (parseFloat(latest.balance) > 0 ? "text-primary" : "text-[#E8F5E9]")
+              account.type === 'bank_account'
+                ? (parseFloat(latest.balance) >= 0 ? "text-primary" : "text-danger")
+                : (parseFloat(latest.balance) > 0 ? "text-danger" : (parseFloat(latest.balance) < 0 ? "text-primary" : "text-[#E8F5E9]"))
             )}>
               {formatBalance(latest.balance)}
             </span>
