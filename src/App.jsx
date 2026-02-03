@@ -513,8 +513,10 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [data, setData] = useState({ income: [], expenses: [], statements: [] });
+  const [editingBalanceTransfer, setEditingBalanceTransfer] = useState(null);
+  const [data, setData] = useState({ income: [], expenses: [], statements: [], balanceTransfers: [] });
 
   // Date Filtering State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -623,7 +625,7 @@ export default function App() {
     const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
     if (!hasWiped) {
       localStorage.removeItem('financeData');
-      setData({ income: [], expenses: [], statements: [] }); // Reset state
+      setData({ income: [], expenses: [], statements: [], balanceTransfers: [] }); // Reset state
       localStorage.setItem('hasWipedLegacyData_v2', 'true');
       console.log("Legacy data wiped for fresh start.");
     } else {
@@ -631,7 +633,7 @@ export default function App() {
       const saved = localStorage.getItem('financeData');
       if (saved) {
         try {
-          setData({ income: [], expenses: [], statements: [], ...JSON.parse(saved) });
+          setData({ income: [], expenses: [], statements: [], balanceTransfers: [], ...JSON.parse(saved) });
         } catch (e) {
           console.error("Failed to load data", e);
         }
@@ -934,6 +936,26 @@ export default function App() {
         return next;
       });
     }
+  };
+
+  // --- Balance Transfer Handlers ---
+  const handleSaveBalanceTransfer = (newItem) => {
+    setData(prev => {
+      const items = prev.balanceTransfers || [];
+      if (newItem.id) {
+        return { ...prev, balanceTransfers: items.map(i => i.id === newItem.id ? newItem : i) };
+      }
+      return { ...prev, balanceTransfers: [...items, { ...newItem, id: crypto.randomUUID() }] };
+    });
+    setIsBalanceFormOpen(false);
+    setEditingBalanceTransfer(null);
+  };
+
+  const handleDeleteBalanceTransfer = (id) => {
+    setData(prev => ({
+      ...prev,
+      balanceTransfers: (prev.balanceTransfers || []).filter(i => i.id !== id)
+    }));
   };
 
   // --- Auth & Sync Handlers ---
@@ -1371,11 +1393,83 @@ export default function App() {
             {renderAccountList()}
           </Card>
 
-          {/* Row 3: Balance Transfers - Coming Soon */}
-          <Card className="col-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors">
-            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Balance Transfers</h3>
-            <p className="text-lg font-bold mt-2 text-white/30 italic">Coming Soon</p>
-            <TrendingDown size={44} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 rotate-[-15deg]" />
+          {/* Row 3: Balance Transfers */}
+          <Card className="col-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors flex flex-col">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">
+                Balance Transfers
+                {(() => {
+                  const total = (data.balanceTransfers || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+                  return total > 0 ? <span className="text-danger ml-2">${total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> : null;
+                })()}
+              </h3>
+              <button
+                onClick={() => { setEditingBalanceTransfer(null); setIsBalanceFormOpen(true); }}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors z-20"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory">
+              {(!data.balanceTransfers || data.balanceTransfers.length === 0) ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted/50 text-xs italic mt-4">
+                  <span>No active transfers</span>
+                </div>
+              ) : (
+                [...data.balanceTransfers].sort((a, b) => {
+                  const now = new Date();
+                  const daysLeftA = (new Date(a.aprEndDate) - now);
+                  const daysLeftB = (new Date(b.aprEndDate) - now);
+                  return daysLeftA - daysLeftB;
+                }).map(bt => {
+                  const start = new Date(bt.startDate);
+                  const end = new Date(bt.aprEndDate);
+                  const now = new Date();
+                  const totalDuration = end - start;
+                  const elapsed = now - start;
+                  const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+                  const diffTime = end - now;
+                  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                  let progressColor = "bg-primary";
+                  if (daysLeft < 30) progressColor = "bg-danger";
+                  else if (daysLeft < 90) progressColor = "bg-warning";
+
+                  return (
+                    <div
+                      key={bt.id}
+                      className="p-2.5 rounded-lg bg-black/20 hover:bg-black/30 cursor-pointer transition-colors group/item snap-start"
+                      onClick={() => { setEditingBalanceTransfer(bt); setIsBalanceFormOpen(true); }}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-bold text-xs truncate max-w-[100px]" title={bt.name}>{bt.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-white/80">${Number(bt.amount).toLocaleString()}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteBalanceTransfer(bt.id); }}
+                            className="text-danger opacity-0 group-hover/item:opacity-100 hover:bg-danger/10 p-1 rounded transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-1">
+                        <div className={cn("h-full transition-all duration-500", progressColor)} style={{ width: `${progress}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted font-medium">
+                        <span>{daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired'}</span>
+                        <span className="text-white/40">{new Date(bt.aprEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <TrendingDown size={100} className="absolute bottom-[-30px] right-[-20px] text-muted opacity-[0.03] rotate-[-15deg] pointer-events-none" />
           </Card>
         </div>
 
@@ -2399,6 +2493,15 @@ export default function App() {
       </div>
 
       {/* Transaction Modal */}
+      {isBalanceFormOpen && (
+        <BalanceTransferForm
+          initialData={editingBalanceTransfer}
+          onSave={handleSaveBalanceTransfer}
+          onCancel={() => setIsBalanceFormOpen(false)}
+        />
+      )}
+
+      {/* Transaction Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-200">
@@ -2413,6 +2516,7 @@ export default function App() {
               setPendingStatement={setPendingStatement}
               pendingStatement={pendingStatement}
               onSaveStatement={handleSaveStatement}
+              onSaveBalanceTransfer={handleSaveBalanceTransfer}
               onSave={handleSave}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
@@ -2558,7 +2662,91 @@ function AccountCard({ account, onDelete }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSave, onCancel, onOpenSettings }) {
+function BalanceTransferForm({ initialData, onSave, onCancel }) {
+  const [formData, setFormData] = useState(
+    initialData ? { ...initialData } : {
+      name: '',
+      amount: '',
+      startDate: new Date().toISOString().split('T')[0],
+      aprEndDate: ''
+    }
+  );
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-card border border-border rounded-xl shadow-2xl relative overflow-hidden">
+        <div className="p-4 border-b border-border flex justify-between items-center bg-white/5">
+          <h2 className="text-lg font-bold">{initialData ? 'Edit' : 'Add'} Balance Transfer</h2>
+          <button onClick={onCancel} className="text-muted hover:text-white">✕</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <Input
+            label="Card Name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="e.g. Chase Slate"
+            required
+            autoFocus
+          />
+          <Input
+            label="Transfer Amount"
+            name="amount"
+            type="number"
+            value={formData.amount}
+            onChange={handleChange}
+            placeholder="0.00"
+            required
+            step="0.01"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start Date"
+              name="startDate"
+              type="date"
+              value={formData.startDate}
+              onChange={handleChange}
+              required
+            />
+            <Input
+              label="0% End Date"
+              name="aprEndDate"
+              type="date"
+              value={formData.aprEndDate}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 mt-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/5 transition-colors text-muted hover:text-white"
+            >
+              Cancel
+            </button>
+            <Button type="submit">
+              Save Transfer
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData.type === 'subscription' || initialData.type === 'bill') ? 'monthly' : 'one-time',
@@ -2802,6 +2990,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
       Credit Cards: Positive number = Owed debt. Negative number = Credit.
       Bank Accounts: Positive number = Available funds.
+    - balanceTransferOffer: Look for ACTIVE "Balance Transfer" or "Promo Balance" sections.
+      If a specific promotional balance is listed (e.g. "0.00% APR Balance"), extract it.
+      Return object: { "amount": "1234.50", "promoEndDate": "2026-07-15", "apr": "0" }.
+      If none found, omit this field or return null.
       Return as a pure number (no currency symbols).
     `;
 
@@ -2962,6 +3154,19 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           transactionCount: bulkItems.length
         };
         onSaveStatement(newStmt);
+      }
+
+      // 1.5 Save Balance Transfer if Detected
+      if (pendingStatement.balanceTransferOffer && pendingStatement.balanceTransferOffer.amount) {
+        // Basic validation
+        if (onSaveBalanceTransfer) {
+          onSaveBalanceTransfer({
+            name: `${stmtProvider} Transfer (${stmtLast4})`,
+            amount: pendingStatement.balanceTransferOffer.amount,
+            startDate: stmtDate, // Assuming started on statement date if not specified
+            aprEndDate: pendingStatement.balanceTransferOffer.promoEndDate || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] // Default 1 yr if missing
+          });
+        }
       }
     }
 
