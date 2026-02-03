@@ -1798,6 +1798,7 @@ export default function App() {
                     outerRadius={100}
                     paddingAngle={5}
                     dataKey="value"
+                    isAnimationActive={false}
                   >
                     {Object.entries(financials.byCategory).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
