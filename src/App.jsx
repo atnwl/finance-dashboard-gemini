@@ -592,7 +592,72 @@ export default function App() {
         totalCcPayments: cc,
         yearlyData,
         totalRecurringExpenses: recurring,
+        demoAccounts: [
+          { provider: 'Chase Sapphire', last4: '4456', latestBalance: Math.floor(Math.random() * 3000) + 500, type: 'credit_card', latestDate: '2026-01-28', transactionCount: Math.floor(Math.random() * 30) + 20 },
+          { provider: 'Amex Platinum', last4: '1002', latestBalance: Math.floor(Math.random() * 5000) + 1000, type: 'credit_card', latestDate: '2026-01-15', transactionCount: Math.floor(Math.random() * 40) + 25 },
+          { provider: 'Citi Custom', last4: '8834', latestBalance: Math.random() > 0.5 ? Math.floor(Math.random() * 1500) : 0, type: 'credit_card', latestDate: '2026-01-31', transactionCount: Math.floor(Math.random() * 10) + 5 },
+          { provider: 'Fidelity Rewards', last4: '2341', latestBalance: Math.floor(Math.random() * 2000) + 100, type: 'credit_card', latestDate: '2026-01-20', transactionCount: Math.floor(Math.random() * 25) + 12 },
+          { provider: 'Fold', last4: '7721', latestBalance: Math.floor(Math.random() * 12000) + 5000, type: 'bank_account', latestDate: '2026-02-01', transactionCount: Math.floor(Math.random() * 60) + 40 },
+        ],
+        demoTransfers: [
+          {
+            id: 'demo-bt1',
+            name: 'Citi Diamond',
+            amount: Math.floor(Math.random() * 8000) + 4000,
+            startDate: '2025-01-15',
+            aprEndDate: '2026-06-30'
+          },
+          {
+            id: 'demo-bt2',
+            name: 'Wells Fargo',
+            amount: Math.floor(Math.random() * 4000) + 2000,
+            startDate: '2025-08-01',
+            aprEndDate: '2026-11-15'
+          }
+        ],
+        demoSubscriptions: [
+          { name: 'Netflix', category: 'Entertainment', amount: 15.99, type: 'subscription' },
+          { name: 'Spotify', category: 'Entertainment', amount: 9.99, type: 'subscription' },
+          { name: 'ChatGPT Plus', category: 'Education', amount: 20.00, type: 'subscription' },
+          { name: 'iCloud', category: 'Utilities', amount: 9.99, type: 'subscription' },
+          { name: 'Adobe CC', category: 'Work', amount: 52.99, type: 'subscription' },
+          { name: 'Gym Membership', category: 'Health', amount: 45.00, type: 'subscription' },
+          { name: 'Amazon Prime', category: 'Shopping', amount: 14.99, type: 'subscription' },
+          { name: 'YouTube Premium', category: 'Entertainment', amount: 11.99, type: 'subscription' }
+        ].slice(0, count).map((sub, i, arr) => {
+          // Scale to match 'subs' exactly
+          const baseTotal = arr.reduce((acc, s) => acc + s.amount, 0);
+          let val = (sub.amount * (subs / baseTotal));
+          if (i === arr.length - 1) {
+            const others = arr.slice(0, i).reduce((acc, s) => acc + (s.amount * (subs / baseTotal)), 0);
+            val = subs - others;
+          }
+          return {
+            ...sub,
+            id: `demo-sub-${i}`,
+            amount: Math.max(0.99, val),
+            date: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-05`,
+            frequency: 'monthly',
+            nextPaymentDate: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-05`
+          };
+        }),
+        demoTransactions: [
+          { name: 'Salary Paycheck', amount: income * 0.6, category: 'Income', isIncome: true, _type: 'income' },
+          { name: 'Freelance Gig', amount: income * 0.4, category: 'Income', isIncome: true, _type: 'income' },
+          { name: 'Rent Payment', amount: expenses * 0.4, category: 'Housing', isIncome: false, _type: 'expenses' },
+          { name: 'Car Payment', amount: expenses * 0.1, category: 'Transport', isIncome: false, _type: 'expenses' },
+          { name: 'Whole Foods', amount: expenses * 0.15, category: 'Food', isIncome: false, _type: 'expenses' },
+          { name: 'Gas Station', amount: expenses * 0.05, category: 'Transport', isIncome: false, _type: 'expenses' },
+          { name: 'Electric Bill', amount: expenses * 0.1, category: 'Utilities', isIncome: false, _type: 'expenses' },
+          { name: 'AMC Theatres', amount: expenses * 0.1, category: 'Entertainment', isIncome: false, _type: 'expenses' },
+          { name: 'Internet Bill', amount: expenses * 0.1, category: 'Utilities', isIncome: false, _type: 'expenses' },
+        ].map((t, i) => ({
+          ...t,
+          id: `demo-txn-${i}`,
+          date: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 25) + 1).padStart(2, '0')}`
+        }))
       });
+
     }
   };
   const [user, setUser] = useState(null);
@@ -1131,13 +1196,15 @@ export default function App() {
       return acc;
     }, {});
 
-    const accountList = Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+    const accountList = demoFinancials ? demoFinancials.demoAccounts : Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
     const totalCreditBalance = accountList.reduce((sum, acc) => {
       // Exclude Bank Accounts from Total Debt Calculation
       if (acc.provider.toLowerCase().includes('fold') || acc.type === 'bank_account') return sum;
       return sum + (parseFloat(acc.latestBalance) || 0);
     }, 0);
-    const totalBalanceTransferAmount = (data.balanceTransfers || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const totalBalanceTransferAmount = demoFinancials
+      ? demoFinancials.demoTransfers.reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0)
+      : (data.balanceTransfers || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
     const renderAccountList = () => {
       // Filter to only accounts WITH balance data
@@ -1192,7 +1259,8 @@ export default function App() {
     };
 
     const renderBalanceTransferList = () => {
-      const sorted = [...(data.balanceTransfers || [])].sort((a, b) => {
+      const activeTransfers = demoFinancials ? demoFinancials.demoTransfers : (data.balanceTransfers || []);
+      const sorted = [...activeTransfers].sort((a, b) => {
         const now = new Date();
         const daysLeftA = (new Date(a.aprEndDate) - now);
         const daysLeftB = (new Date(b.aprEndDate) - now);
@@ -1880,6 +1948,8 @@ export default function App() {
   // --- Virtual Transactions Helper ---
 
   const getMonthlyItems = useMemo(() => {
+    if (demoFinancials) return [...demoFinancials.demoTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+
     const today = new Date();
     const currentMonthIndex = today.getMonth();
     const currentYear = today.getFullYear();
@@ -1899,7 +1969,7 @@ export default function App() {
 
     // Sort by Date Descending
     return allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [data, selectedMonth, selectedYear]);
+  }, [data, demoFinancials, selectedMonth, selectedYear]);
 
   // --- Render Functions ---
 
@@ -1919,7 +1989,15 @@ export default function App() {
       }, {});
 
       // Sort accounts by most recent statement date
-      const sortedAccounts = Object.values(grouped).sort((a, b) => {
+      const sortedAccounts = demoFinancials ? demoFinancials.demoAccounts.map(acc => ({
+        ...acc,
+        statements: [{
+          id: `demo-${acc.provider}`,
+          date: acc.latestDate,
+          balance: acc.latestBalance,
+          transactionCount: acc.transactionCount
+        }]
+      })) : Object.values(grouped).sort((a, b) => {
         const latestA = Math.max(...a.statements.map(s => new Date(s.date)));
         const latestB = Math.max(...b.statements.map(s => new Date(s.date)));
         return latestB - latestA;
@@ -1973,7 +2051,7 @@ export default function App() {
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
     let items = isSearchActive ? searchItems : (isSubView
-      ? data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => new Date(b.date) - new Date(a.date))
+      ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => new Date(b.date) - new Date(a.date)))
       : getMonthlyItems);
 
     if (transactionFilter && !isSearchActive && !isSubView) {
