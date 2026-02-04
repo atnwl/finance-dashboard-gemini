@@ -1200,7 +1200,7 @@ export default function App() {
       });
 
       return (
-        <div className="flex-1 overflow-y-auto space-y-2 max-h-[160px] md:max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory pr-1">
+        <div className="flex-1 overflow-y-auto space-y-2 max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory pr-1">
           {sorted.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-muted/50 text-[10px] italic mt-4">
               <span>No active transfers</span>
@@ -1626,7 +1626,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col group hover:border-secondary/30 transition-all relative overflow-hidden min-h-[160px] cursor-pointer">
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col group hover:border-secondary/30 transition-all relative overflow-hidden cursor-pointer">
                 <div className="flex justify-between items-start mb-3">
                   <h4 className="text-muted text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                     <TrendingDown size={12} />
