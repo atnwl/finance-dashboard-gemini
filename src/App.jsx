@@ -626,16 +626,34 @@ export default function App() {
           { name: 'YouTube Premium', category: 'Entertainment', amount: 11.99, type: 'subscription' }
         ].slice(0, count).map((sub, i, arr) => {
           // Scale to match 'subs' exactly
+          // Use a closure or careful reduce to ensure we track the *assigned* rounded amounts
           const baseTotal = arr.reduce((acc, s) => acc + s.amount, 0);
-          let val = (sub.amount * (subs / baseTotal));
-          if (i === arr.length - 1) {
-            const others = arr.slice(0, i).reduce((acc, s) => acc + (s.amount * (subs / baseTotal)), 0);
-            val = subs - others;
-          }
+
+          // Re-calculate previous items' ASSIGNED amounts to ensure the last item picks up the matching residual
+          const getAssignedAmount = (index) => {
+            if (index === arr.length - 1) {
+              // Verify this logic inside map:
+              // This implies we need to calculate all previous values again. 
+              // Better is to pre-calculate, but inside map we can do it iteratively or redundant calculation.
+              let previousSum = 0;
+              for (let k = 0; k < index; k++) {
+                const raw = (arr[k].amount * (subs / baseTotal));
+                // Use rounding to 2 decimals to match display
+                previousSum += (Math.round(raw * 100) / 100);
+              }
+              // Last item takes the remainder
+              return (Math.round((subs - previousSum) * 100) / 100);
+            }
+            const raw = (arr[index].amount * (subs / baseTotal));
+            return (Math.round(raw * 100) / 100);
+          };
+
+          const assignedAmount = getAssignedAmount(i);
+
           return {
             ...sub,
             id: `demo-sub-${i}`,
-            amount: Math.max(0.99, val),
+            amount: assignedAmount, // Use the exact calculated share
             date: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-05`,
             frequency: 'monthly',
             nextPaymentDate: `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-05`
