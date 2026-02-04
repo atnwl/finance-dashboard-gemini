@@ -1137,6 +1137,7 @@ export default function App() {
       if (acc.provider.toLowerCase().includes('fold') || acc.type === 'bank_account') return sum;
       return sum + (parseFloat(acc.latestBalance) || 0);
     }, 0);
+    const totalBalanceTransferAmount = (data.balanceTransfers || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
 
     const renderAccountList = () => {
       // Filter to only accounts WITH balance data
@@ -1189,6 +1190,70 @@ export default function App() {
         </div>
       );
     };
+
+    const renderBalanceTransferList = () => {
+      const sorted = [...(data.balanceTransfers || [])].sort((a, b) => {
+        const now = new Date();
+        const daysLeftA = (new Date(a.aprEndDate) - now);
+        const daysLeftB = (new Date(b.aprEndDate) - now);
+        return daysLeftA - daysLeftB;
+      });
+
+      return (
+        <div className="flex-1 overflow-y-auto space-y-2 max-h-[160px] md:max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory pr-1">
+          {sorted.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-muted/50 text-[10px] italic mt-4">
+              <span>No active transfers</span>
+            </div>
+          ) : (
+            sorted.map(bt => {
+              const start = new Date(bt.startDate);
+              const end = new Date(bt.aprEndDate);
+              const now = new Date();
+              const totalDuration = end - start;
+              const elapsed = now - start;
+              const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+
+              const diffTime = end - now;
+              const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              let progressColor = "bg-primary";
+              if (daysLeft < 30) progressColor = "bg-danger";
+              else if (daysLeft < 90) progressColor = "bg-warning";
+
+              return (
+                <div
+                  key={bt.id}
+                  className="p-2 rounded-lg bg-black/20 hover:bg-black/30 cursor-pointer transition-colors group/item snap-start"
+                  onClick={() => { setEditingBalanceTransfer(bt); setIsBalanceFormOpen(true); }}
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-[10px] truncate max-w-[120px] text-white/90" title={bt.name}>{bt.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[10px] text-white/80">${Number(bt.amount).toLocaleString()}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteBalanceTransfer(bt.id); }}
+                        className="text-danger opacity-0 group-hover/item:opacity-100 hover:bg-danger/10 p-1 rounded transition-all"
+                      >
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-1">
+                    <div className={cn("h-full transition-all duration-500", progressColor)} style={{ width: `${progress}%` }} />
+                  </div>
+                  <div className="flex justify-between text-[9px] text-muted font-medium">
+                    <span>{daysLeft > 0 ? `${daysLeft}d left` : 'Expired'}</span>
+                    <span className="text-white/30">{new Date(bt.aprEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      );
+    };
+
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
@@ -1402,10 +1467,7 @@ export default function App() {
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">
                 Balance Transfers
-                {(() => {
-                  const total = (data.balanceTransfers || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
-                  return total > 0 ? <span className="text-danger ml-2">${total.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> : null;
-                })()}
+                {totalBalanceTransferAmount > 0 && <span className="text-danger ml-2">${totalBalanceTransferAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>}
               </h3>
               <button
                 onClick={() => { setEditingBalanceTransfer(null); setIsBalanceFormOpen(true); }}
@@ -1415,63 +1477,7 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory">
-              {(!data.balanceTransfers || data.balanceTransfers.length === 0) ? (
-                <div className="h-full flex flex-col items-center justify-center text-muted/50 text-xs italic mt-4">
-                  <span>No active transfers</span>
-                </div>
-              ) : (
-                [...data.balanceTransfers].sort((a, b) => {
-                  const now = new Date();
-                  const daysLeftA = (new Date(a.aprEndDate) - now);
-                  const daysLeftB = (new Date(b.aprEndDate) - now);
-                  return daysLeftA - daysLeftB;
-                }).map(bt => {
-                  const start = new Date(bt.startDate);
-                  const end = new Date(bt.aprEndDate);
-                  const now = new Date();
-                  const totalDuration = end - start;
-                  const elapsed = now - start;
-                  const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-
-                  const diffTime = end - now;
-                  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                  let progressColor = "bg-primary";
-                  if (daysLeft < 30) progressColor = "bg-danger";
-                  else if (daysLeft < 90) progressColor = "bg-warning";
-
-                  return (
-                    <div
-                      key={bt.id}
-                      className="p-2.5 rounded-lg bg-black/20 hover:bg-black/30 cursor-pointer transition-colors group/item snap-start"
-                      onClick={() => { setEditingBalanceTransfer(bt); setIsBalanceFormOpen(true); }}
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="font-bold text-xs truncate max-w-[100px]" title={bt.name}>{bt.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-white/80">${Number(bt.amount).toLocaleString()}</span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteBalanceTransfer(bt.id); }}
-                            className="text-danger opacity-0 group-hover/item:opacity-100 hover:bg-danger/10 p-1 rounded transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-1">
-                        <div className={cn("h-full transition-all duration-500", progressColor)} style={{ width: `${progress}%` }} />
-                      </div>
-                      <div className="flex justify-between text-[10px] text-muted font-medium">
-                        <span>{daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired'}</span>
-                        <span className="text-white/40">{new Date(bt.aprEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            {renderBalanceTransferList()}
 
             <TrendingDown size={100} className="absolute bottom-[-30px] right-[-20px] text-muted opacity-[0.03] rotate-[-15deg] pointer-events-none" />
           </Card>
@@ -1620,12 +1626,22 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-purple-500/30 transition-colors relative overflow-hidden min-h-[140px]">
-                <div>
-                  <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">Transfers</h4>
-                  <p className="text-lg font-bold text-white/40 italic">Coming Soon</p>
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col group hover:border-secondary/30 transition-all relative overflow-hidden min-h-[160px] cursor-pointer">
+                <div className="flex justify-between items-start mb-3">
+                  <h4 className="text-muted text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingDown size={12} />
+                    Transfers
+                    {totalBalanceTransferAmount > 0 && <span className="text-danger ml-1">${totalBalanceTransferAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>}
+                  </h4>
+                  <button
+                    onClick={() => { setEditingBalanceTransfer(null); setIsBalanceFormOpen(true); }}
+                    className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors z-20"
+                  >
+                    <Plus size={14} />
+                  </button>
                 </div>
-                <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-10 group-hover:opacity-20 transition-opacity rotate-[-15deg]" />
+                {renderBalanceTransferList()}
+                <TrendingDown size={48} className="absolute bottom-[-10px] right-[-10px] text-muted opacity-[0.03] rotate-[-15deg] pointer-events-none" />
               </div>
             </>
           )}
