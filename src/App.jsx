@@ -1811,12 +1811,15 @@ export default function App() {
                     y={financials.totalRecurringExpenses}
                     stroke="#D4A373"
                     strokeDasharray="3 3"
-                    label={{
-                      value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-                      fill: "#D4A373",
-                      fontSize: 10,
-                      position: "insideTopRight",
-                      dy: -10
+                    label={({ viewBox }) => {
+                      const lineRightX = viewBox.x + viewBox.width;
+                      const lineY = viewBox.y;
+                      return (
+                        <g>
+                          <text x={lineRightX} y={lineY} dy={-6} fill="#D4A373" fontSize={10} textAnchor="end">Recurring:</text>
+                          <text x={lineRightX} y={lineY} dy={14} fill="#D4A373" fontSize={12} fontWeight="bold" textAnchor="end">${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</text>
+                        </g>
+                      );
                     }}
                   />
                   <Bar
