@@ -1815,7 +1815,8 @@ export default function App() {
                       value: `Recurring: $${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
                       fill: "#D4A373",
                       fontSize: 10,
-                      position: "insideTopRight"
+                      position: "insideTopRight",
+                      dy: -10
                     }}
                   />
                   <Bar
