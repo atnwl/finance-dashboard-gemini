@@ -1155,7 +1155,7 @@ export default function App() {
         return <p className="text-[10px] text-muted/70 italic mt-1">Re-import statements to capture balances.</p>;
       }
       return (
-        <div className="grid grid-cols-2 gap-x-8 lg:gap-x-24 xl:gap-x-32 gap-y-1.5 mt-2">
+        <div className="grid grid-cols-2 gap-x-3 lg:gap-x-8 xl:gap-x-12 gap-y-1.5 mt-2">
           {accountsWithBalance.slice(0, 6).map((acc, idx) => (
             <div key={idx} className="flex justify-between items-center text-[11px]">
               <span className="text-muted truncate mr-1" title={`${acc.provider} ...${acc.last4}`}>
@@ -1250,13 +1250,13 @@ export default function App() {
           </div>
         </div>
         {/* Desktop: Unified grid matching wireframe layout (8-col for equal widths) */}
-        <div className="hidden lg:grid grid-cols-8 grid-rows-[auto_auto_auto] gap-4 mb-8">
+        <div className="hidden lg:grid grid-cols-12 grid-rows-[auto_auto_auto] gap-4 mb-8">
           {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
           {(() => {
             const isNegative = financials.net < 0;
             return (
               <Card className={cn(
-                "col-span-4 row-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
+                "col-span-6 row-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
                 isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary shadow-xl shadow-primary/20"
               )}>
                 <div className="p-4 flex-1 relative z-10 flex flex-col">
@@ -1348,7 +1348,7 @@ export default function App() {
           {/* Row 1 Right: Expenses - equal width with Income */}
           <Card
             onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
+            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
               <ArrowUpRight size={36} />
@@ -1360,7 +1360,7 @@ export default function App() {
           {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
           <Card
             onClick={() => handleNavigation('subscriptions')}
-            className="col-span-4 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+            className="col-span-6 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
           >
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
@@ -1386,7 +1386,7 @@ export default function App() {
           {/* Row 3: Credit Card Balances */}
           <Card
             onClick={() => { handleNavigation('statements'); }}
-            className="col-span-3 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
+            className="col-span-5 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
           >
             <h3 className="text-muted text-[10px] font-medium uppercase tracking-wide flex items-center gap-1.5">
               <CreditCard size={12} className="text-muted" />
@@ -1398,7 +1398,7 @@ export default function App() {
           </Card>
 
           {/* Row 3: Balance Transfers */}
-          <Card className="col-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors flex flex-col">
+          <Card className="col-span-4 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors flex flex-col">
             <div className="flex justify-between items-start mb-2">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">
                 Balance Transfers
