@@ -1487,7 +1487,7 @@ export default function App() {
           {/* Row 1 Right: Income */}
           <Card
             onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-            className="col-span-2 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
+            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
               <ArrowDownLeft size={36} />
