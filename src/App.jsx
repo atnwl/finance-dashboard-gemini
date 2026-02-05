@@ -1286,7 +1286,7 @@ export default function App() {
       });
 
       return (
-        <div className="flex-1 overflow-y-auto space-y-2 max-h-[72px] scrollbar-hide relative z-10 snap-y snap-mandatory pr-1">
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-hide relative z-10 snap-y snap-mandatory h-full min-h-0">
           {sorted.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-muted/50 text-[10px] italic mt-4">
               <span>No active transfers</span>
@@ -1400,9 +1400,9 @@ export default function App() {
             {/* Prominent Add Button Removed */}
           </div>
         </div>
-        {/* Desktop: Unified grid matching wireframe layout (8-col for equal widths) */}
+        {/* Desktop: Unified grid matching wireframe layout (12-col) */}
         <div className="hidden lg:grid grid-cols-12 grid-rows-[auto_auto_auto] gap-4 mb-8">
-          {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
+          {/* 1. Cash Flow Hero (Left, Spans 2 rows) */}
           {(() => {
             const isNegative = financials.net < 0;
             return (
@@ -1484,7 +1484,7 @@ export default function App() {
             );
           })()}
 
-          {/* Row 1 Right: Income */}
+          {/* 2. Income (Top Center) */}
           <Card
             onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
             className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-primary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/10 flex flex-col justify-center"
@@ -1496,7 +1496,7 @@ export default function App() {
             <p className="text-2xl font-display font-bold mt-2 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
-          {/* Row 1 Right: Expenses - equal width with Income */}
+          {/* 3. Expenses (Top Right) */}
           <Card
             onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
             className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-danger/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-danger/10 flex flex-col justify-center"
@@ -1508,56 +1508,31 @@ export default function App() {
             <p className="text-2xl font-display font-bold mt-2 text-danger tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
-          {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
+          {/* 4. Subscriptions (Middle Center) - Reduced width from 6 to 3 */}
           <Card
             onClick={() => handleNavigation('subscriptions')}
-            className="col-span-6 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
+            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex flex-col justify-between"
           >
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
               <p className="text-2xl font-display font-bold mt-2 text-warning tracking-tight">
-                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">per month</span>
+                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-xs font-normal text-muted ml-1 block">per month</span>
               </p>
             </div>
-            <Calendar size={28} className="text-warning opacity-40" />
+            <Calendar size={28} className="absolute bottom-3 right-3 text-warning opacity-40" />
           </Card>
 
-          {/* Row 3: Credit Card Payments */}
-          <Card
-            onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
-            className="col-span-3 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex flex-col justify-center"
-          >
-            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-              <CreditCard size={36} />
-            </div>
-            <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Payments</h3>
-            <p className="text-2xl font-display font-bold mt-2 text-secondary tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </Card>
-
-          {/* Row 3: Credit Card Balances */}
-          <Card
-            onClick={() => { handleNavigation('statements'); }}
-            className="col-span-5 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
-          >
-            <h3 className="text-muted text-[10px] font-medium uppercase tracking-wide flex items-center gap-1.5">
-              <CreditCard size={12} className="text-muted" />
-              Card Balances
-            </h3>
-
-            {/* Compact List of Balances */}
-            {renderAccountList()}
-          </Card>
-
-          {/* Row 3: Balance Transfers */}
-          <Card className="col-span-4 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors flex flex-col">
+          {/* 5. Balance Transfers (Right, Spans 2 Rows) - Moved UP and made TALL */}
+          <Card className="col-span-3 row-span-2 p-4 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors flex flex-col">
             <div className="flex justify-between items-start mb-2">
-              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide leading-tight">
                 Balance Transfers
-                {totalBalanceTransferAmount > 0 && <span className="text-danger ml-2">${totalBalanceTransferAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>}
+                {totalBalanceTransferAmount > 0 && <span className="text-danger block mt-1 text-sm">${totalBalanceTransferAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>}
               </h3>
               <button
                 onClick={() => { setEditingBalanceTransfer(null); setIsBalanceFormOpen(true); }}
-                className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors z-20"
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 hover:bg-primary/20 hover:text-primary transition-colors z-20 shrink-0"
               >
                 <Plus size={14} />
               </button>
@@ -1566,6 +1541,34 @@ export default function App() {
             {renderBalanceTransferList()}
 
             <TrendingDown size={100} className="absolute bottom-[-30px] right-[-20px] text-muted opacity-[0.03] rotate-[-15deg] pointer-events-none" />
+          </Card>
+
+          {/* 6. Credit Card Payments (Bottom Left) - Expanded width from 3 to 6 */}
+          <Card
+            onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
+            className="col-span-6 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-secondary/20 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-secondary/10 flex items-center justify-between"
+          >
+            <div>
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Credit Card Payments</h3>
+              <p className="text-3xl font-display font-bold mt-1 text-secondary tracking-tight">${financials.totalCcPayments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <div className="p-3 bg-secondary/10 rounded-full group-hover:bg-secondary/20 transition-colors">
+              <CreditCard size={28} className="text-secondary" />
+            </div>
+          </Card>
+
+          {/* 7. Credit Card Balances (Bottom Center) - Reduced width from 5 to 3 */}
+          <Card
+            onClick={() => { handleNavigation('statements'); }}
+            className="col-span-3 p-3 bg-card/30 border-border/50 relative overflow-hidden group hover:bg-card/40 transition-colors cursor-pointer"
+          >
+            <h3 className="text-muted text-[10px] font-medium uppercase tracking-wide flex items-center gap-1.5 mb-2">
+              <CreditCard size={12} className="text-muted" />
+              Card Balances
+            </h3>
+
+            {/* Compact List of Balances */}
+            {renderAccountList()}
           </Card>
         </div>
 
