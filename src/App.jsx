@@ -2111,7 +2111,7 @@ export default function App() {
               .recharts-surface:focus { outline: none !important; }
             `}</style>
               <ResponsiveContainer width="100%" height="100%">
-                {selectedCategory ? (
+                {selectedCategory && financials.categoryYearlyData ? (
                   // Category Drill-Down View: Single category month-over-month
                   <BarChart
                     className="outline-none focus:outline-none"
