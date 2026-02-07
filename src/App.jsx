@@ -802,6 +802,32 @@ export default function App() {
     const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
 
+    // --- Subscription Data Logic (Hoisted) ---
+    const subscriptionItems = useMemo(() => {
+      // Calculate only if needed (check activeTab inside or just calc always? 
+      // Safest to just calc always or respect activeTab dependency if costly)
+      // We use activeTab here directly instead of isSubView variable which is defined later
+      const isSub = activeTab === 'subscriptions';
+      const raw = isSub ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
+      const uniqueSubs = new Map();
+      raw.forEach(item => {
+        const key = item.name.toLowerCase().trim();
+        const existing = uniqueSubs.get(key);
+        if (!existing || new Date(item.date) > new Date(existing.date)) {
+          uniqueSubs.set(key, item);
+        }
+      });
+      return Array.from(uniqueSubs.values())
+        .map(x => ({ ...x, _type: 'expenses' }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    }, [data.expenses, demoFinancials, activeTab]);
+
+    const availableFrequencies = useMemo(() => {
+      const freqs = new Set(subscriptionItems.map(i => i.frequency || 'Monthly'));
+      return Array.from(freqs).map(f => f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()).sort();
+    }, [subscriptionItems]);
+    // -----------------------------------------
+
     // 1. SMART RECURRING CALCULATION (Deduplicated & Latest)
     const uniqueRecurring = {};
     const NOW = new Date();
@@ -2081,27 +2107,7 @@ export default function App() {
       return matchesName || matchesCategory || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
-    // Subscription Data Logic
-    const subscriptionItems = useMemo(() => {
-      const raw = isSubView ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
-      const uniqueSubs = new Map();
-      raw.forEach(item => {
-        const key = item.name.toLowerCase().trim();
-        const existing = uniqueSubs.get(key);
-        // Keep the one with the LATEST date
-        if (!existing || new Date(item.date) > new Date(existing.date)) {
-          uniqueSubs.set(key, item);
-        }
-      });
-      return Array.from(uniqueSubs.values())
-        .map(x => ({ ...x, _type: 'expenses' }))
-        .sort((a, b) => new Date(a.date) - new Date(b.date));
-    }, [data.expenses, demoFinancials, isSubView]);
 
-    const availableFrequencies = useMemo(() => {
-      const freqs = new Set(subscriptionItems.map(i => i.frequency || 'Monthly'));
-      return Array.from(freqs).map(f => f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()).sort();
-    }, [subscriptionItems]);
 
     let items = isSearchActive ? searchItems : (isSubView
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
