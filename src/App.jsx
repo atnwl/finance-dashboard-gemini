@@ -38,7 +38,7 @@ const INCOME_CATEGORIES = [
 
 const EXPENSE_CATEGORIES = [
   'Alcohol', 'Amazon', 'BNPL', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
-  'Kids: Activities', 'Kids: Clothes', 'Kids: Toys', 'Other', 'Personal', 'Restaurants', 'Shopping', 'Software', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities'
+  'Kids: Activities', 'Kids: Clothes', 'Kids: Health', 'Kids: Toys', 'Other', 'Personal', 'Restaurants', 'Shopping', 'Software', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities'
 ];
 
 const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
@@ -50,7 +50,7 @@ const getCategoryIcon = (category) => {
     'Amazon': '📦', 'Alcohol': '🍺', 'Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
     'Housing': '🏠', 'Groceries': '🛒', 'Restaurants': '🍔', 'Gas': '⛽', 'Utilities': '💡',
     'Entertainment': '🎬', 'Health': '❤️', 'Shopping': '🛍️', 'Personal': '👤',
-    'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨',
+    'Kids: Clothes': '👕', 'Kids: Toys': '🧸', 'Kids: Activities': '🎨', 'Kids: Health': '🩹',
     'Student Loans': '🎓', 'BNPL': '💳', 'Credit Card Payment': '💳',
     'Transfer': '🔄',
     'Salary': '💵', 'Freelance': '💻', 'Interest': '💰', 'Investments': '📈', 'Other': '📦'
