@@ -1413,7 +1413,7 @@ export default function App() {
                 <div className="p-4 flex-1 relative z-10 flex flex-col">
                   {/* Top Row: Month badge, centered title, TBD pills */}
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 -ml-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1424,12 +1424,12 @@ export default function App() {
                             setSelectedMonth(selectedMonth - 1);
                           }
                         }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                         title="Previous Month"
                       >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={16} />
                       </button>
-                      <span className="text-lg font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                      <span className="text-sm font-bold px-3 py-1 rounded-full backdrop-blur-sm bg-black/10">
                         {MONTHS[selectedMonth]}
                       </span>
                       <button
@@ -1442,10 +1442,10 @@ export default function App() {
                             setSelectedMonth(selectedMonth + 1);
                           }
                         }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                         title="Next Month"
                       >
-                        <ChevronRight size={20} />
+                        <ChevronRight size={16} />
                       </button>
                     </div>
 
@@ -1584,7 +1584,7 @@ export default function App() {
                   )}>
                     <div className="p-5 flex-1 relative z-10">
                       <div className="flex justify-between items-center mb-2 relative">
-                        <div className="z-20 flex items-center gap-1">
+                        <div className="z-20 flex items-center gap-0.5 -ml-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1595,12 +1595,12 @@ export default function App() {
                                 setSelectedMonth(selectedMonth - 1);
                               }
                             }}
-                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                             title="Previous Month"
                           >
-                            <ChevronLeft size={20} />
+                            <ChevronLeft size={16} />
                           </button>
-                          <span className="text-xl font-bold px-4 py-1.5 rounded-full backdrop-blur-sm bg-black/10">
+                          <span className="text-sm font-bold px-3 py-1 rounded-full backdrop-blur-sm bg-black/10">
                             {MONTHS[selectedMonth]}
                           </span>
                           <button
@@ -1613,10 +1613,10 @@ export default function App() {
                                 setSelectedMonth(selectedMonth + 1);
                               }
                             }}
-                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
+                            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-black/10 transition-colors"
                             title="Next Month"
                           >
-                            <ChevronRight size={20} />
+                            <ChevronRight size={16} />
                           </button>
                         </div>
                         <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
@@ -3033,8 +3033,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
 
   // Receipt Scanning
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
     const apiKey = localStorage.getItem('geminiApiKey');
     if (!apiKey) {
@@ -3048,27 +3048,39 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     const startTime = Date.now();
 
     // Small delay to allow React to render the loading spinner before processing starts
-    setTimeout(() => {
-      // Convert to Base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64Data = reader.result.split(',')[1];
+    // Small delay to allow React to render the loading spinner before processing starts
+    setTimeout(async () => {
+      try {
+        // Helper: Convert File to Gemini InlineData Part
+        const fileToPart = (file) => new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve({
+            inlineData: {
+              data: reader.result.split(',')[1],
+              mimeType: file.type
+            }
+          });
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
-          const genAI = new GoogleGenerativeAI(apiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // Convert all files to parts
+        const imageParts = await Promise.all(files.map(fileToPart));
 
-          // Fetch Intelligence Cache to teach Gemini user's preferences
-          const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
-          const knownRules = Object.entries(cache)
-            .map(([name, data]) => `- ${name}: ${data.category}`)
-            .slice(-40) // Pick last 40 most recent/relevant rules to avoid over-bloating prompt
-            .join('\n');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-          const prompt = `
-    Analyze this image (receipt, bank statement, or credit card statement). It may be a single receipt or a list of transactions.
+        // Fetch Intelligence Cache to teach Gemini user's preferences
+        const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+        const knownRules = Object.entries(cache)
+          .map(([name, data]) => `- ${name}: ${data.category}`)
+          .slice(-40) // Pick last 40 most recent/relevant rules to avoid over-bloating prompt
+          .join('\n');
+
+        const prompt = `
+    Analyze the provided images/documents. They may be multiple pages of a single statement, or multiple receipts.
     
-    EXTRACT ALL distinct transactions found in the document.
+    EXTRACT ALL distinct transactions found across ALL files.
     - Ignore headers, footers, account summaries, or balances.
     - If it's a statement, handle various layouts (tables, lists, blocks).
     
@@ -3130,116 +3142,106 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       Return as a pure number (no currency symbols).
     `;
 
-          const result = await model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: file.type
-              }
-            }
-          ]);
+        const result = await model.generateContent([prompt, ...imageParts]);
 
-          const responseText = result.response.text().replace(/```json|```/g, '').trim();
-          const parsed = JSON.parse(responseText);
+        const responseText = result.response.text().replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(responseText);
 
-          let rawItems = [];
-          let metadata = null;
+        let rawItems = [];
+        let metadata = null;
 
-          if (Array.isArray(parsed)) {
-            rawItems = parsed;
-          } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
-            rawItems = parsed.transactions;
-            metadata = parsed.metadata;
-          } else {
-            rawItems = [parsed];
-          }
-
-          // Apply local cache as a secondary "Guarantee" layer
-          const items = rawItems.map(item => {
-            const lowerName = item.name.toLowerCase().trim();
-            if (cache[lowerName]) {
-              return {
-                ...item,
-                category: cache[lowerName].category,
-                isIncome: cache[lowerName].isIncome,
-                frequency: cache[lowerName].frequency || item.frequency, // Restore frequency!
-                type: cache[lowerName].type || item.type,
-                isRuleApplied: true
-              };
-            }
-            return item;
-          });
-
-          if (items.length === 0) throw new Error("No transactions found");
-
-          const minLoadTimePromise = new Promise(resolve => {
-            const elapsed = Date.now() - startTime;
-            setTimeout(resolve, Math.max(0, 1500 - elapsed));
-          });
-
-          await minLoadTimePromise;
-
-          if (items.length === 1) {
-            // Single Item Mode (Old Behavior)
-            const prediction = items[0];
-            console.log("Gemini Prediction:", prediction);
-
-            const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-            if (!validCats.includes(prediction.category)) {
-              prediction.category = 'Other'; // Safer default than index 0 (Alcohol)
-            }
-
-            setFormData(prev => ({
-              ...prev,
-              name: prediction.name,
-              amount: prediction.amount,
-              category: prediction.category,
-              // If date is present, use it, else keep default
-              ...(prediction.date && { date: prediction.date })
-            }));
-            triggerAiFlash();
-          } else {
-            // Bulk Mode
-            if (metadata) {
-              setPendingStatement(metadata);
-            } else {
-              setPendingStatement(null);
-            }
-            setBulkItems(items.map(i => ({
-              ...i,
-              id: Math.random().toString(36).substr(2, 9),
-              isIncome: i.isIncome ?? false,
-              type: i.type || 'variable',
-              // PRESERVE cached frequency! Only default if no frequency exists.
-              frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
-            })));
-          }
-
-        } catch (err) {
-          console.error("Receipt scanning failed:", err);
-
-          let errorMessage = "Failed to scan receipt. ";
-          if (err.message?.includes("API key")) {
-            errorMessage += "API key issue - check your Gemini API key.";
-          } else if (err.message?.includes("JSON") || err.name === "SyntaxError") {
-            errorMessage += "Could not parse AI response. The image might be unclear.";
-          } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
-            errorMessage += "API rate limit reached. Try again in a minute.";
-          } else if (err.message?.includes("RECITATION") || err.message?.includes("SAFETY")) {
-            errorMessage += "Content was blocked by AI safety filters.";
-          } else {
-            errorMessage += err.message || "Unknown error occurred.";
-          }
-
-          alert(errorMessage);
-        } finally {
-          setIsAiLoading(false);
-          // Reset file input value so same file can be selected again if needed
-          e.target.value = '';
+        if (Array.isArray(parsed)) {
+          rawItems = parsed;
+        } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
+          rawItems = parsed.transactions;
+          metadata = parsed.metadata;
+        } else {
+          rawItems = [parsed];
         }
-      };
-      reader.readAsDataURL(file);
+
+        // Apply local cache as a secondary "Guarantee" layer
+        const items = rawItems.map(item => {
+          const lowerName = item.name.toLowerCase().trim();
+          if (cache[lowerName]) {
+            return {
+              ...item,
+              category: cache[lowerName].category,
+              isIncome: cache[lowerName].isIncome,
+              frequency: cache[lowerName].frequency || item.frequency, // Restore frequency!
+              type: cache[lowerName].type || item.type,
+              isRuleApplied: true
+            };
+          }
+          return item;
+        });
+
+        if (items.length === 0) throw new Error("No transactions found");
+
+        const minLoadTimePromise = new Promise(resolve => {
+          const elapsed = Date.now() - startTime;
+          setTimeout(resolve, Math.max(0, 1500 - elapsed));
+        });
+
+        await minLoadTimePromise;
+
+        if (items.length === 1) {
+          // Single Item Mode (Old Behavior)
+          const prediction = items[0];
+          console.log("Gemini Prediction:", prediction);
+
+          const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+          if (!validCats.includes(prediction.category)) {
+            prediction.category = 'Other'; // Safer default than index 0 (Alcohol)
+          }
+
+          setFormData(prev => ({
+            ...prev,
+            name: prediction.name,
+            amount: prediction.amount,
+            category: prediction.category,
+            // If date is present, use it, else keep default
+            ...(prediction.date && { date: prediction.date })
+          }));
+          triggerAiFlash();
+        } else {
+          // Bulk Mode
+          if (metadata) {
+            setPendingStatement(metadata);
+          } else {
+            setPendingStatement(null);
+          }
+          setBulkItems(items.map(i => ({
+            ...i,
+            id: Math.random().toString(36).substr(2, 9),
+            isIncome: i.isIncome ?? false,
+            type: i.type || 'variable',
+            // PRESERVE cached frequency! Only default if no frequency exists.
+            frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
+          })));
+        }
+
+      } catch (err) {
+        console.error("Receipt scanning failed:", err);
+
+        let errorMessage = "Failed to scan receipt. ";
+        if (err.message?.includes("API key")) {
+          errorMessage += "API key issue - check your Gemini API key.";
+        } else if (err.message?.includes("JSON") || err.name === "SyntaxError") {
+          errorMessage += "Could not parse AI response. The image might be unclear.";
+        } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
+          errorMessage += "API rate limit reached. Try again in a minute.";
+        } else if (err.message?.includes("RECITATION") || err.message?.includes("SAFETY")) {
+          errorMessage += "Content was blocked by AI safety filters.";
+        } else {
+          errorMessage += err.message || "Unknown error occurred.";
+        }
+
+        alert(errorMessage);
+      } finally {
+        setIsAiLoading(false);
+        // Reset file input value so same file can be selected again if needed
+        e.target.value = '';
+      }
     }, 10);
   };
 
@@ -3387,6 +3389,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           <div className="relative flex-[2]">
             <input
               type="file"
+              multiple
               capture="environment"
               accept="image/*"
               className="hidden"
@@ -3419,6 +3422,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           <div className="relative flex-1">
             <input
               type="file"
+              multiple
               accept="image/*,application/pdf"
               className="hidden"
               id="file-upload"
