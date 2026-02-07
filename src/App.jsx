@@ -1953,9 +1953,14 @@ export default function App() {
           >
             <div className="flex-1">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Monthly Subscriptions</h3>
-              <p className="text-2xl font-display font-bold text-warning tracking-tight mt-2">
-                ${financials.totalMonthlySubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">mo</span>
-              </p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <p className="text-2xl font-display font-bold text-warning tracking-tight">
+                  ${financials.totalMonthlySubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">mo</span>
+                </p>
+                <p className="text-sm font-medium text-muted">
+                  ${(financials.totalMonthlySubscriptionsCost * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] font-normal text-muted ml-0.5">yr</span>
+                </p>
+              </div>
             </div>
             <div className="flex-1 border-l border-white/10 pl-4">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Annual Subscriptions</h3>
@@ -2684,15 +2689,36 @@ export default function App() {
       }
     }
 
-    const filteredTotal = items.filter(item => {
-      // If filtering for CC Payments, we WANT to see them.
-      // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
-      if (transactionFilter === 'cc-payments') return true;
-      return notSpecial(item);
-    }).reduce((acc, item) => {
-      const amt = parseFloat(item.amount) || 0;
-      return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
-    }, 0);
+    // For subscriptions view, calculate appropriate total based on filter
+    let filteredTotal = 0;
+    if (isSubView) {
+      if (!subscriptionFilter) {
+        // "All" subscriptions: show annualized total
+        filteredTotal = items.reduce((acc, item) => {
+          const amt = parseFloat(item.amount) || 0;
+          const freq = (item.frequency || 'Monthly').toLowerCase();
+          // If monthly, multiply by 12 for annual cost
+          return acc + (freq === 'monthly' ? amt * 12 : amt);
+        }, 0);
+      } else {
+        // Specific frequency filter: just sum the raw amounts
+        filteredTotal = items.reduce((acc, item) => {
+          const amt = parseFloat(item.amount) || 0;
+          return acc + amt;
+        }, 0);
+      }
+    } else {
+      // For transaction filters
+      filteredTotal = items.filter(item => {
+        // If filtering for CC Payments, we WANT to see them.
+        // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
+        if (transactionFilter === 'cc-payments') return true;
+        return notSpecial(item);
+      }).reduce((acc, item) => {
+        const amt = parseFloat(item.amount) || 0;
+        return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
+      }, 0);
+    }
 
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -2754,7 +2780,7 @@ export default function App() {
               <div className="text-right">
                 <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
                   {isSubView ?
-                    (subscriptionFilter?.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost')
+                    (!subscriptionFilter ? 'Annual Cost' : (subscriptionFilter.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost'))
                     : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
                   }
                 </p>
