@@ -2659,20 +2659,9 @@ export default function App() {
     }, 0) : 0;
 
 
-
     let items = isSearchActive ? searchItems : (isSubView
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
-
-    const filteredTotal = items.filter(item => {
-      // If filtering for CC Payments, we WANT to see them.
-      // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
-      if (transactionFilter === 'cc-payments') return true;
-      return notSpecial(item);
-    }).reduce((acc, item) => {
-      const amt = parseFloat(item.amount) || 0;
-      return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
-    }, 0);
 
     if (transactionFilter && !isSearchActive && !isSubView) {
       if (transactionFilter === 'income') {
@@ -2683,6 +2672,16 @@ export default function App() {
         items = items.filter(i => i.category === 'Credit Card Payment');
       }
     }
+
+    const filteredTotal = items.filter(item => {
+      // If filtering for CC Payments, we WANT to see them.
+      // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
+      if (transactionFilter === 'cc-payments') return true;
+      return notSpecial(item);
+    }).reduce((acc, item) => {
+      const amt = parseFloat(item.amount) || 0;
+      return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
+    }, 0);
 
     const today = new Date();
     const currentMonth = today.getMonth();
