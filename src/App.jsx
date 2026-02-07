@@ -684,6 +684,9 @@ export default function App() {
 
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Category Drill-Down State (for pie chart -> bar chart interaction)
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
   // Demo Mode State
   const [demoFinancials, setDemoFinancials] = useState(null);
   const [demoToggle, setDemoToggle] = useState(false); // Alternates between positive/negative
@@ -940,15 +943,42 @@ export default function App() {
     return amt * (map[frequency] || 0);
   };
 
+  // Normalize transaction names by stripping unique identifiers (PayPal transaction IDs, etc.)
+  const normalizeSubscriptionName = (name) => {
+    if (!name) return '';
+    let normalized = name.trim();
+
+    // PayPal pattern: PP*MERCHANT*UNIQUEID -> PP*MERCHANT
+    // Common patterns: PP*SPOTIFY*P3E77027F1, PP*NETFLIX*ABC123, PAYPAL*MERCHANTNAME REF#123
+    const paypalMatch = normalized.match(/^(PP\*[A-Z0-9]+)\*[A-Z0-9]+$/i);
+    if (paypalMatch) {
+      normalized = paypalMatch[1];
+    }
+
+    // PayPal with space pattern: PAYPAL *MERCHANT 402-xxx-xxxx
+    normalized = normalized.replace(/(PAYPAL\s*\*[^\s]+)\s+[\d\-]+$/i, '$1');
+
+    // Strip trailing reference numbers/IDs: "MERCHANT REF#12345" or "MERCHANT #12345"
+    normalized = normalized.replace(/\s+(REF)?#?[A-Z0-9]{6,}$/i, '');
+
+    // Strip trailing phone numbers: "MERCHANT 800-123-4567"
+    normalized = normalized.replace(/\s+\d{3}[\-\s]?\d{3}[\-\s]?\d{4}$/i, '');
+
+    return normalized;
+  };
+
   const subscriptionItems = useMemo(() => {
     const isSub = activeTab === 'subscriptions';
     const raw = isSub ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
     const uniqueSubs = new Map();
     raw.forEach(item => {
-      const key = item.name.toLowerCase().trim();
+      // Use normalized name for grouping to avoid duplicates from transaction IDs
+      const normalizedName = normalizeSubscriptionName(item.name);
+      const key = normalizedName.toLowerCase().trim();
       const existing = uniqueSubs.get(key);
       if (!existing || new Date(item.date) > new Date(existing.date)) {
-        uniqueSubs.set(key, item);
+        // Store with a display name (normalized) and original item data
+        uniqueSubs.set(key, { ...item, displayName: normalizedName || item.name });
       }
     });
     return Array.from(uniqueSubs.values())
@@ -1967,7 +1997,27 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 min-h-[300px] md:min-h-[400px]">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-base font-medium text-muted">Income vs Expenses</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-medium text-muted">
+                  {selectedCategory ? (
+                    <span className="flex items-center gap-2">
+                      <span className="text-white">{selectedCategory}</span>
+                      <span className="text-muted/60">Month over Month</span>
+                    </span>
+                  ) : (
+                    'Income vs Expenses'
+                  )}
+                </h3>
+                {selectedCategory && (
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-danger/20 text-danger border border-danger/30 hover:bg-danger/30 transition-colors flex items-center gap-1"
+                  >
+                    <X size={10} />
+                    Clear
+                  </button>
+                )}
+              </div>
               {/* Chart controls (year/month) - Simplified for mobile */}
               <div className="flex gap-2">
                 <select
@@ -1985,130 +2035,200 @@ export default function App() {
               .recharts-surface:focus { outline: none !important; }
             `}</style>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  className="outline-none focus:outline-none"
-                  data={financials.yearlyData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                  onClick={(e) => {
-                    if (e) {
-                      if (e.activeTooltipIndex !== undefined) {
+                {selectedCategory ? (
+                  // Category Drill-Down View: Single category month-over-month
+                  <BarChart
+                    className="outline-none focus:outline-none"
+                    data={financials.categoryYearlyData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    onClick={(e) => {
+                      if (e && e.activeTooltipIndex !== undefined) {
                         setSelectedMonth(Number(e.activeTooltipIndex));
-                      } else if (e.activeLabel) {
-                        // Fallback: find index by name
-                        const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
-                        if (index !== -1) setSelectedMonth(index);
                       }
-                    }
-                  }}
-                  cursor="pointer"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#9CA3AF', fontSize: 11 }}
-                    tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'transparent' }}
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
-                            <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
-                            {payload.map((entry, index) => (
-                              <div key={index} className="flex justify-between gap-4 text-sm">
-                                <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#D67C7C' }}>
-                                  {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
-                                </span>
+                    }}
+                    cursor="pointer"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                      tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const categoryValue = payload[0]?.value || 0;
+                          return (
+                            <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
+                              <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
+                              <div className="flex justify-between gap-4 text-sm">
+                                <span style={{ color: '#D4A373' }}>{selectedCategory}</span>
                                 <span className="font-bold text-gray-200">
-                                  ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ${Number(categoryValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar
+                      key={`category-${selectedCategory}-${selectedMonth}`}
+                      dataKey={selectedCategory}
+                      radius={[4, 4, 0, 0]}
+                      barSize={40}
+                      isAnimationActive={false}
+                    >
+                      {financials.categoryYearlyData.map((entry, index) => {
+                        const today = new Date();
+                        const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
+                        const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
+
+                        const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
+
+                        const isSelected = index === selectedMonth;
+                        const hasValue = entry[selectedCategory] > 0;
+
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={isFuture ? "#374151" : hasValue ? "#D4A373" : "#374151"}
+                            stroke={isSelected ? "#ffffff" : "none"}
+                            strokeWidth={isSelected ? 2 : 0}
+                            fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : hasValue ? 0.8 : 0.2)}
+                          />
                         );
+                      })}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  // Default View: Income vs Expenses
+                  <BarChart
+                    className="outline-none focus:outline-none"
+                    data={financials.yearlyData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                    onClick={(e) => {
+                      if (e) {
+                        if (e.activeTooltipIndex !== undefined) {
+                          setSelectedMonth(Number(e.activeTooltipIndex));
+                        } else if (e.activeLabel) {
+                          const index = financials.yearlyData.findIndex(d => d.name === e.activeLabel);
+                          if (index !== -1) setSelectedMonth(index);
+                        }
                       }
-                      return null;
                     }}
-                  />
-                  <ReferenceLine
-                    y={financials.totalRecurringExpenses}
-                    stroke="#D4A373"
-                    strokeDasharray="3 3"
-                    label={({ viewBox }) => {
-                      const lineRightX = viewBox.x + viewBox.width;
-                      const lineY = viewBox.y;
-                      return (
-                        <g>
-                          <text x={lineRightX} y={lineY} dy={-6} fill="#D4A373" fontSize={10} textAnchor="end">Recurring:</text>
-                          <text x={lineRightX} y={lineY} dy={14} fill="#D4A373" fontSize={12} fontWeight="bold" textAnchor="end">${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</text>
-                        </g>
-                      );
-                    }}
-                  />
-                  <Bar
-                    key={`income-${selectedMonth}`}
-                    dataKey="income"
-                    radius={[4, 4, 0, 0]}
-                    barSize={30}
-                    isAnimationActive={false}
+                    cursor="pointer"
                   >
-                    {financials.yearlyData.map((entry, index) => {
-                      const today = new Date();
-                      // In Demo Mode, the "Current Date" is simulated as the selected month
-                      const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
-                      const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} vertical={false} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} dy={10} interval={0} />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#9CA3AF', fontSize: 11 }}
+                      tickFormatter={(value) => value >= 1000 ? `$${(value / 1000).toFixed(0)}k` : `$${value}`}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'transparent' }}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-[#161B21] border border-gray-700 p-3 rounded-lg shadow-xl">
+                              <p className="text-gray-400 text-xs mb-2 font-medium">{label} {payload[0]?.payload?.year || ''}</p>
+                              {payload.map((entry, index) => (
+                                <div key={index} className="flex justify-between gap-4 text-sm">
+                                  <span style={{ color: entry.dataKey === 'income' ? '#8DAA7F' : '#D67C7C' }}>
+                                    {entry.dataKey === 'income' ? 'Income' : 'Expenses'}
+                                  </span>
+                                  <span className="font-bold text-gray-200">
+                                    ${Number(entry.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <ReferenceLine
+                      y={financials.totalRecurringExpenses}
+                      stroke="#D4A373"
+                      strokeDasharray="3 3"
+                      label={({ viewBox }) => {
+                        const lineRightX = viewBox.x + viewBox.width;
+                        const lineY = viewBox.y;
+                        return (
+                          <g>
+                            <text x={lineRightX} y={lineY} dy={-6} fill="#D4A373" fontSize={10} textAnchor="end">Recurring:</text>
+                            <text x={lineRightX} y={lineY} dy={14} fill="#D4A373" fontSize={12} fontWeight="bold" textAnchor="end">${financials.totalRecurringExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</text>
+                          </g>
+                        );
+                      }}
+                    />
+                    <Bar
+                      key={`income-${selectedMonth}`}
+                      dataKey="income"
+                      radius={[4, 4, 0, 0]}
+                      barSize={30}
+                      isAnimationActive={false}
+                    >
+                      {financials.yearlyData.map((entry, index) => {
+                        const today = new Date();
+                        const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
+                        const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
 
-                      const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
-                      const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
-                      const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
+                        const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
+                        const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
+                        const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
 
-                      const isSelected = index === selectedMonth;
+                        const isSelected = index === selectedMonth;
 
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={isFuture ? "#374151" : (isPast || isCurrent ? "#8DAA7F" : "#8DAA7F99")} // Primary (Moss Green) or Grey for Future
-                          stroke={isSelected ? "#ffffff" : "none"}
-                          strokeWidth={isSelected ? 2 : 0}
-                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                        />
-                      );
-                    })}
-                  </Bar>
-                  <Bar
-                    key={`expenses-${selectedMonth}`}
-                    dataKey="expenses"
-                    radius={[4, 4, 0, 0]}
-                    barSize={30}
-                    isAnimationActive={false}
-                  >
-                    {financials.yearlyData.map((entry, index) => {
-                      const today = new Date();
-                      // In Demo Mode, the "Current Date" is simulated as the selected month
-                      const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
-                      const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={isFuture ? "#374151" : (isPast || isCurrent ? "#8DAA7F" : "#8DAA7F99")}
+                            stroke={isSelected ? "#ffffff" : "none"}
+                            strokeWidth={isSelected ? 2 : 0}
+                            fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                          />
+                        );
+                      })}
+                    </Bar>
+                    <Bar
+                      key={`expenses-${selectedMonth}`}
+                      dataKey="expenses"
+                      radius={[4, 4, 0, 0]}
+                      barSize={30}
+                      isAnimationActive={false}
+                    >
+                      {financials.yearlyData.map((entry, index) => {
+                        const today = new Date();
+                        const effectiveCurrentMonth = demoFinancials ? selectedMonth : today.getMonth();
+                        const effectiveCurrentYear = demoFinancials ? selectedYear : today.getFullYear();
 
-                      const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
-                      const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
-                      const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
+                        const isPast = selectedYear < effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index < effectiveCurrentMonth);
+                        const isCurrent = selectedYear === effectiveCurrentYear && index === effectiveCurrentMonth;
+                        const isFuture = selectedYear > effectiveCurrentYear || (selectedYear === effectiveCurrentYear && index > effectiveCurrentMonth);
 
-                      const isSelected = index === selectedMonth;
+                        const isSelected = index === selectedMonth;
 
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={isFuture ? "#374151" : (isPast || isCurrent ? "#D67C7C" : "#D67C7C99")} // Danger (Terracotta) or Grey for Future
-                          stroke={isSelected ? "#ffffff" : "none"}
-                          strokeWidth={isSelected ? 2 : 0}
-                          fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
-                        />
-                      );
-                    })}
-                  </Bar>
-                </BarChart>
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={isFuture ? "#374151" : (isPast || isCurrent ? "#D67C7C" : "#D67C7C99")}
+                            stroke={isSelected ? "#ffffff" : "none"}
+                            strokeWidth={isSelected ? 2 : 0}
+                            fillOpacity={isSelected ? 1 : (isFuture ? 0.3 : 0.6)}
+                          />
+                        );
+                      })}
+                    </Bar>
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </Card>
