@@ -2081,7 +2081,22 @@ export default function App() {
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
     let items = isSearchActive ? searchItems : (isSubView
-      ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => new Date(a.date) - new Date(b.date)))
+      ? (demoFinancials ? demoFinancials.demoSubscriptions : (() => {
+        const uniqueSubs = new Map();
+        data.expenses
+          .filter(e => e.type === 'subscription')
+          .forEach(item => {
+            const key = item.name.toLowerCase().trim();
+            const existing = uniqueSubs.get(key);
+            // Keep the one with the LATEST date
+            if (!existing || new Date(item.date) > new Date(existing.date)) {
+              uniqueSubs.set(key, item);
+            }
+          });
+        return Array.from(uniqueSubs.values())
+          .map(x => ({ ...x, _type: 'expenses' }))
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+      })())
       : getMonthlyItems);
 
     if (transactionFilter && !isSearchActive && !isSubView) {
