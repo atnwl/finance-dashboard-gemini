@@ -7,7 +7,7 @@ import {
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
   Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw, Check,
-  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
