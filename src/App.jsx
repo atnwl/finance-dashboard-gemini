@@ -3480,12 +3480,12 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
 function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings }) {
   const [formData, setFormData] = useState(
     initialData ? {
-      frequency: (initialData.type === 'subscription' || initialData.type === 'bill') ? 'monthly' : 'one-time',
+      frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
       ...initialData
     } : {
       name: '',
       amount: '',
-      category: (initialData.type === 'income' ? (data.categories?.income[0] || 'Salary') : (data.categories?.expenses[0] || 'Groceries')),
+      category: (initialData?.type === 'income' ? (data.categories?.income[0] || 'Salary') : (data.categories?.expenses[0] || 'Groceries')),
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
