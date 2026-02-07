@@ -620,6 +620,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [subscriptionFilter, setSubscriptionFilter] = useState('Monthly');
 
+  // --- Global Helpers ---
+  const isSpecial = (item) => item.category === 'Transfer' || item.category === 'Credit Card Payment';
+  const notSpecial = (item) => !isSpecial(item);
+
   // Handle Android Back Gesture / Browser History
   useEffect(() => {
     // Handle initial load
@@ -1017,8 +1021,7 @@ export default function App() {
 
     // Helpers
     const isRecurring = (item) => item.frequency !== 'one-time';
-    const isSpecial = (item) => item.category === 'Transfer' || item.category === 'Credit Card Payment';
-    const notSpecial = (item) => !isSpecial(item);
+    // isSpecial and notSpecial are hoisted
 
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
     // User asked: "monthly income... should only reflect that month".
@@ -1234,7 +1237,6 @@ export default function App() {
     // 1. Group by Merchant Name (normalized)
     // 2. Take only the LATEST transaction
 
-    // 3. Actuals Calculation (Strictly transactions in this month)
     // 3. Actuals Calculation (Strictly transactions in this month)
     const actualIncome = actualIncomeCurrentMonth;
     const actualExpenses = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
@@ -1821,7 +1823,7 @@ export default function App() {
         <div className="hidden lg:grid grid-cols-12 grid-rows-[auto_auto_auto] gap-4 mb-8">
           {/* Row 1-2: Cash Flow Hero (left, spans 2 rows) */}
           {(() => {
-            const isNegative = financials.net < 0;
+            const isNegative = (financials[cashFlowMode]?.net || 0) < 0;
             return (
               <Card className={cn(
                 "col-span-6 row-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
@@ -2002,7 +2004,7 @@ export default function App() {
             <>
               {/* Hero Card - Cash Flow Style */}
               {(() => {
-                const isNegative = financials.net < 0;
+                const isNegative = (financials[cashFlowMode]?.net || 0) < 0;
                 return (
                   <Card className={cn(
                     "col-span-2 p-0 relative overflow-hidden border-none min-h-[220px] flex flex-col justify-between transition-colors duration-500 text-black",
@@ -2646,7 +2648,7 @@ export default function App() {
       return matchesName || matchesCategory || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
-    const searchTotal = isSearchActive ? searchItems.reduce((acc, item) => {
+    const searchTotal = isSearchActive ? searchItems.filter(notSpecial).reduce((acc, item) => {
       const amt = parseFloat(item.amount) || 0;
       return item._type === 'income' ? acc + amt : acc - amt;
     }, 0) : 0;
@@ -2657,7 +2659,7 @@ export default function App() {
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
-    const filteredTotal = items.reduce((acc, item) => {
+    const filteredTotal = items.filter(notSpecial).reduce((acc, item) => {
       const amt = parseFloat(item.amount) || 0;
       return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
     }, 0);
