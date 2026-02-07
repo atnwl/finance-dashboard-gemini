@@ -1771,10 +1771,10 @@ export default function App() {
                     {/* Metrics Pills */}
                     <div className="flex rounded-full p-0.5 backdrop-blur-md bg-black/10">
                       <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
-                        {financials.savingsRate >= 0 ? '+' : ''}{financials.savingsRate.toFixed(1)}% Save
+                        TBD
                       </div>
                       <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
-                        {financials.expenseRatio.toFixed(1)}% Spend
+                        TBD
                       </div>
                     </div>
                   </div>
@@ -1785,22 +1785,6 @@ export default function App() {
                       {formatAccounting(financials.net)}
                     </p>
                   </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="p-3 grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-                    className="py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors"
-                  >
-                    <span>Income Detail</span>
-                  </button>
-                  <button
-                    onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-                    className="py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors"
-                  >
-                    <span>Expense Detail</span>
-                  </button>
                 </div>
 
                 <ArrowRightLeft size={140} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none text-black/5" />
