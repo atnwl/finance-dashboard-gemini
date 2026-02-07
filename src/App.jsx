@@ -1943,9 +1943,14 @@ export default function App() {
           >
             <div>
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
-              <p className="text-2xl font-display font-bold mt-2 text-warning tracking-tight">
-                ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">per month</span>
-              </p>
+              <div className="mt-2 flex items-baseline gap-4">
+                <p className="text-2xl font-display font-bold text-warning tracking-tight">
+                  ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">mo</span>
+                </p>
+                <p className="text-sm font-medium text-muted">
+                  ${(financials.totalSubscriptionsCost * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] font-normal text-muted ml-0.5">yr</span>
+                </p>
+              </div>
             </div>
             <Calendar size={28} className="text-warning opacity-40" />
           </Card>
@@ -2733,7 +2738,10 @@ export default function App() {
             {!isSearchActive && (transactionFilter || isSubView) && (
               <div className="text-right">
                 <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
-                  {isSubView ? 'Monthly Cost' : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : 'Net Total'))}
+                  {isSubView ?
+                    (subscriptionFilter?.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost')
+                    : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : 'Net Total'))
+                  }
                 </p>
                 <div className={cn(
                   "text-xl font-display font-bold tracking-tight",
@@ -2748,206 +2756,210 @@ export default function App() {
           </div>
 
           {/* Filter Pills */}
-          {!isSearchActive && (
-            <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
-              {!isSubView ? (
-                <>
-                  <button
-                    onClick={() => setTransactionFilter(null)}
-                    className={cn(
-                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                      !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                    )}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setTransactionFilter('expenses')}
-                    className={cn(
-                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                      transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                    )}
-                  >
-                    Expenses
-                  </button>
-                  <button
-                    onClick={() => setTransactionFilter('income')}
-                    className={cn(
-                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                      transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                    )}
-                  >
-                    Income
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setSubscriptionFilter(null)}
-                    className={cn(
-                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                      !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                    )}
-                  >
-                    All
-                  </button>
-                  {availableFrequencies.map(freq => (
+          {
+            !isSearchActive && (
+              <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+                {!isSubView ? (
+                  <>
                     <button
-                      key={freq}
-                      onClick={() => setSubscriptionFilter(freq)}
+                      onClick={() => setTransactionFilter(null)}
                       className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                        subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                        !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
                       )}
                     >
-                      {freq}
+                      All
                     </button>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
+                    <button
+                      onClick={() => setTransactionFilter('expenses')}
+                      className={cn(
+                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                        transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                      )}
+                    >
+                      Expenses
+                    </button>
+                    <button
+                      onClick={() => setTransactionFilter('income')}
+                      className={cn(
+                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                        transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                      )}
+                    >
+                      Income
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setSubscriptionFilter(null)}
+                      className={cn(
+                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                        !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                      )}
+                    >
+                      All
+                    </button>
+                    {availableFrequencies.map(freq => (
+                      <button
+                        key={freq}
+                        onClick={() => setSubscriptionFilter(freq)}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                          subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )
+          }
 
           {/* List View or Empty State */}
-          {items.length === 0 ? (
-            <div className="text-center py-12 text-muted">
-              <div className="bg-card w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
-                <Search size={24} opacity={0.5} />
+          {
+            items.length === 0 ? (
+              <div className="text-center py-12 text-muted">
+                <div className="bg-card w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+                  <Search size={24} opacity={0.5} />
+                </div>
+                <p>No transactions found for {MONTHS[selectedMonth]} {selectedYear}.</p>
               </div>
-              <p>No transactions found for {MONTHS[selectedMonth]} {selectedYear}.</p>
-            </div>
-          ) : (
-            <div className="space-y-px bg-white/5">
-              {items.map((item, index) => {
-                // Parse original date
-                const [y, m, d] = item.date.split('-').map(Number);
-                const originalDateObj = new Date(y, m - 1, d);
+            ) : (
+              <div className="space-y-px bg-white/5">
+                {items.map((item, index) => {
+                  // Parse original date
+                  const [y, m, d] = item.date.split('-').map(Number);
+                  const originalDateObj = new Date(y, m - 1, d);
 
-                // Search Grouping Header
-                let monthHeader = null;
-                if (isSearchActive) {
-                  const currentMonthKey = `${y}-${m}`;
-                  const prevItem = items[index - 1];
-                  let prevMonthKey = null;
-                  if (prevItem) {
-                    const [py, pm] = prevItem.date.split('-').map(Number);
-                    prevMonthKey = `${py}-${pm}`;
-                  }
-
-                  if (currentMonthKey !== prevMonthKey) {
-                    monthHeader = (
-                      <div className="px-4 py-2 bg-white/5 text-xs font-bold text-muted uppercase tracking-widest border-b border-white/5 flex items-center gap-2">
-                        <Calendar size={12} className="opacity-50" />
-                        {MONTHS[m - 1]} {y}
-                      </div>
-                    );
-                  }
-                }
-
-                let dateObj = originalDateObj;
-                let nextPaymentText = null;
-                let frequency = item.frequency; // e.g. 'monthly', 'weekly'
-
-                if (isSubView && frequency) {
-                  // Calculate "Next" Text (e.g. "15th")
-                  const day = d;
-                  const suffix = (val) => {
-                    if (val > 3 && val < 21) return 'th';
-                    switch (val % 10) {
-                      case 1: return "st";
-                      case 2: return "nd";
-                      case 3: return "rd";
-                      default: return "th";
+                  // Search Grouping Header
+                  let monthHeader = null;
+                  if (isSearchActive) {
+                    const currentMonthKey = `${y}-${m}`;
+                    const prevItem = items[index - 1];
+                    let prevMonthKey = null;
+                    if (prevItem) {
+                      const [py, pm] = prevItem.date.split('-').map(Number);
+                      prevMonthKey = `${py}-${pm}`;
                     }
-                  };
-                  nextPaymentText = `${day}${suffix(day)}`;
-                }
 
-                const isIncome = item._type === 'income';
-                const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
-                const sourceText = sourceStatement
-                  ? `${sourceStatement.provider} ****${sourceStatement.last4}`
-                  : (isIncome ? 'Income' : 'Expense');
+                    if (currentMonthKey !== prevMonthKey) {
+                      monthHeader = (
+                        <div className="px-4 py-2 bg-white/5 text-xs font-bold text-muted uppercase tracking-widest border-b border-white/5 flex items-center gap-2">
+                          <Calendar size={12} className="opacity-50" />
+                          {MONTHS[m - 1]} {y}
+                        </div>
+                      );
+                    }
+                  }
 
-                // Determine frequency badge styling
-                let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
-                if (frequency) {
-                  const f = frequency.toLowerCase();
-                  if (f.includes('week')) freqStyle = "bg-[#D4A373] text-[#0F1115]"; // High frequency -> Warm color
-                  else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-[#8DAA7F] text-[#0F1115]"; // Low frequency -> Green/Good
-                }
+                  let dateObj = originalDateObj;
+                  let nextPaymentText = null;
+                  let frequency = item.frequency; // e.g. 'monthly', 'weekly'
 
-                return (
-                  <React.Fragment key={item.id}>
-                    {monthHeader}
-                    <div
-                      onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
-                      className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
-                    >
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        {/* Icon Circle */}
+                  if (isSubView && frequency) {
+                    // Calculate "Next" Text (e.g. "15th")
+                    const day = d;
+                    const suffix = (val) => {
+                      if (val > 3 && val < 21) return 'th';
+                      switch (val % 10) {
+                        case 1: return "st";
+                        case 2: return "nd";
+                        case 3: return "rd";
+                        default: return "th";
+                      }
+                    };
+                    nextPaymentText = `${day}${suffix(day)}`;
+                  }
+
+                  const isIncome = item._type === 'income';
+                  const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
+                  const sourceText = sourceStatement
+                    ? `${sourceStatement.provider} ****${sourceStatement.last4}`
+                    : (isIncome ? 'Income' : 'Expense');
+
+                  // Determine frequency badge styling
+                  let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
+                  if (frequency) {
+                    const f = frequency.toLowerCase();
+                    if (f.includes('week')) freqStyle = "bg-[#D4A373] text-[#0F1115]"; // High frequency -> Warm color
+                    else if (f.includes('year') || f.includes('annual')) freqStyle = "bg-[#8DAA7F] text-[#0F1115]"; // Low frequency -> Green/Good
+                  }
+
+                  return (
+                    <React.Fragment key={item.id}>
+                      {monthHeader}
+                      <div
+                        onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                        className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {/* Icon Circle */}
+                          <div className={cn(
+                            "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
+                            isSubView
+                              ? "bg-secondary/10 text-secondary border border-secondary/20"
+                              : (isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white")
+                          )}>
+                            {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
+                          </div>
+
+                          {/* Text Info */}
+                          <div className="min-w-[80px] shrink flex-1">
+                            <h4 className="font-bold text-base text-white truncate">{item.displayName || item.name}</h4>
+
+                            {isSubView ? (
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide",
+                                  freqStyle
+                                )}>
+                                  {item.frequency || 'Monthly'}
+                                </span>
+                                <span className="text-xs text-muted font-medium flex items-center gap-2">
+                                  <span>{sourceStatement ? `${sourceStatement.provider} ****${sourceStatement.last4}` : (item.category || '')}</span>
+                                  {(sourceStatement || item.category) && <span className="opacity-50">|</span>}
+                                  {(() => {
+                                    const isPaidThisMonth = dateObj.getMonth() === new Date().getMonth() && dateObj.getFullYear() === new Date().getFullYear();
+                                    return (
+                                      <span className={cn("flex items-center gap-1.5", isPaidThisMonth ? "text-[#8DAA7F] font-bold" : "text-muted")}>
+                                        {isPaidThisMonth && <Check size={12} strokeWidth={3} />}
+                                        <span>{isPaidThisMonth ? "Paid" : "Last Paid"}: {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                      </span>
+                                    );
+                                  })()}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
+                                <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
+                                <span>•</span>
+                                <span className="capitalize truncate max-w-[120px]">
+                                  {sourceText}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Amount */}
                         <div className={cn(
-                          "w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-sm shrink-0",
-                          isSubView
-                            ? "bg-secondary/10 text-secondary border border-secondary/20"
-                            : (isIncome ? "bg-[#34D399] text-white" : "bg-[#F87171] text-white")
+                          "text-right font-bold text-base shrink-0 min-w-[70px]",
+                          isIncome ? "text-[#34D399]" : "text-[#F87171]"
                         )}>
-                          {getBrandIcon(item.name) || (isIncome ? <TrendingDown size={24} className="rotate-180" /> : <TrendingUp size={24} />)}
-                        </div>
-
-                        {/* Text Info */}
-                        <div className="min-w-[80px] shrink flex-1">
-                          <h4 className="font-bold text-base text-white truncate">{item.displayName || item.name}</h4>
-
-                          {isSubView ? (
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <span className={cn(
-                                "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide",
-                                freqStyle
-                              )}>
-                                {item.frequency || 'Monthly'}
-                              </span>
-                              <span className="text-xs text-muted font-medium flex items-center gap-2">
-                                <span>{sourceStatement ? `${sourceStatement.provider} ****${sourceStatement.last4}` : (item.category || '')}</span>
-                                {(sourceStatement || item.category) && <span className="opacity-50">|</span>}
-                                {(() => {
-                                  const isPaidThisMonth = dateObj.getMonth() === new Date().getMonth() && dateObj.getFullYear() === new Date().getFullYear();
-                                  return (
-                                    <span className={cn("flex items-center gap-1.5", isPaidThisMonth ? "text-[#8DAA7F] font-bold" : "text-muted")}>
-                                      {isPaidThisMonth && <Check size={12} strokeWidth={3} />}
-                                      <span>{isPaidThisMonth ? "Paid" : "Last Paid"}: {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                                    </span>
-                                  );
-                                })()}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
-                              <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                              <span>•</span>
-                              <span className="capitalize truncate max-w-[120px]">
-                                {sourceText}
-                              </span>
-                            </p>
-                          )}
+                          {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
-
-                      {/* Amount */}
-                      <div className={cn(
-                        "text-right font-bold text-base shrink-0 min-w-[70px]",
-                        isIncome ? "text-[#34D399]" : "text-[#F87171]"
-                      )}>
-                        {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )
+          }
+        </Card >
+      </div >
     );
   };
 
