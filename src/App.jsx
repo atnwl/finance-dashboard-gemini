@@ -2193,7 +2193,7 @@ export default function App() {
               <ArrowDownLeft size={36} />
             </div>
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Income</h3>
-            <p className="text-2xl font-display font-bold mt-2 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-display font-bold mt-2 text-primary tracking-tight">${(financials[cashFlowMode]?.income || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
           {/* Row 1 Right: Expenses - equal width with Income */}
@@ -2205,7 +2205,7 @@ export default function App() {
               <ArrowUpRight size={36} />
             </div>
             <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Expenses</h3>
-            <p className="text-2xl font-display font-bold mt-2 text-danger tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-display font-bold mt-2 text-danger tracking-tight">${(financials[cashFlowMode]?.expenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </Card>
 
           {/* Row 2 Right: Subscriptions - spans same width as Income+Expenses combined */}
