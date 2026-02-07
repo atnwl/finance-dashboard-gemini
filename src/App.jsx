@@ -2510,6 +2510,21 @@ export default function App() {
                           </div>
                         </div>
 
+                        {/* Reset AI Learning */}
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Reset AI categorization learning?')) {
+                              localStorage.removeItem('intelligenceCache');
+                              setSyncStatus('AI memory cleared');
+                              setTimeout(() => setSyncStatus(''), 2000);
+                            }
+                          }}
+                          className="w-full px-4 py-2 flex items-center gap-2 text-xs text-muted hover:text-white hover:bg-white/5 transition-colors border-t border-border/20"
+                        >
+                          <Sparkles size={14} />
+                          Reset AI Learning
+                        </button>
+
                         {/* Delete All */}
                         <button
                           onClick={handleDeleteAllData}
@@ -2976,7 +2991,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           // Validate Category
           const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
           if (!validCats.includes(prediction.category)) {
-            prediction.category = validCats[0]; // Fallback
+            prediction.category = 'Other'; // Safer default than index 0 (which might be Alcohol)
           }
 
           const suggestion = {
@@ -2987,15 +3002,14 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           };
 
           if (!suggestion.category) {
-            suggestion.category = suggestion.isIncome ? INCOME_CATEGORIES[0] : EXPENSE_CATEGORIES[0];
+            suggestion.category = suggestion.isIncome ? INCOME_CATEGORIES[0] : 'Other';
           }
 
           setFormData(prev => ({ ...prev, ...suggestion }));
           triggerAiFlash();
 
-          // 3. Save to Cache
-          cache[lowerName] = suggestion;
-          localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+          // NOTE: We do NOT save to cache here anymore. 
+          // We only learn when the user explicitly SAVES the form.
         }
       } catch (err) {
         console.error("AI Classification failed", err);
