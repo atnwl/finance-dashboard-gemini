@@ -120,7 +120,7 @@ const Input = ({ label, ...props }) => (
     {label && <label className="text-xs font-semibold text-muted uppercase tracking-wider">{label}</label>}
     <input
       className={cn(
-        "bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-600 w-full",
+        "bg-background border border-border rounded-xl px-4 py-3 text-text focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-gray-600 w-full min-w-0 max-w-full appearance-none",
         props.className
       )}
       style={props.type === 'date' ? { colorScheme: 'dark' } : {}}
@@ -4036,8 +4036,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <div className="relative w-full min-w-0">
+      <div className="flex gap-3">
+        <div className="relative flex-1 min-w-0">
           <Input
             label="Name"
             name="name"
@@ -4057,7 +4057,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             )}
           </div>
         </div>
-        <div className="min-w-0 w-full">
+        <div className="flex-1 min-w-0">
           <Input
             label="Date"
             type="date"
