@@ -982,8 +982,8 @@ export default function App() {
   };
 
   const subscriptionItems = useMemo(() => {
-    const isSub = activeTab === 'subscriptions';
-    const raw = isSub ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
+    // Always calculate subscriptions (needed for dashboard card)
+    const raw = demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription');
     const uniqueSubs = new Map();
     raw.forEach(item => {
       // Use normalized name for grouping to avoid duplicates from transaction IDs
@@ -998,7 +998,7 @@ export default function App() {
     return Array.from(uniqueSubs.values())
       .map(x => ({ ...x, _type: 'expenses' }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [data.expenses, demoFinancials, activeTab]);
+  }, [data.expenses, demoFinancials]);
 
   const availableFrequencies = useMemo(() => {
     const freqs = new Set(subscriptionItems.map(i => i.frequency || 'Monthly'));
