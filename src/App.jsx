@@ -2081,7 +2081,7 @@ export default function App() {
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
     let items = isSearchActive ? searchItems : (isSubView
-      ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => new Date(b.date) - new Date(a.date)))
+      ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription').map(x => ({ ...x, _type: 'expenses' })).sort((a, b) => new Date(a.date) - new Date(b.date)))
       : getMonthlyItems);
 
     if (transactionFilter && !isSearchActive && !isSubView) {
