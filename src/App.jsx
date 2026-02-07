@@ -1027,13 +1027,13 @@ export default function App() {
 
     // Income
     const recurringIncome = data.income.filter(i => isRecurring(i) && notSpecial(i));
-    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
-    const effectiveIncome = [...recurringIncome, ...oneTimeIncome];
+
 
 
 
     // 1. SMART RECURRING CALCULATION (Deduplicated & Latest)
     const uniqueRecurring = {};
+    const uniqueRecurringIncome = {};
     const NOW = new Date();
 
     // Group Expenses by Merchant (Latest wins)
@@ -1042,7 +1042,13 @@ export default function App() {
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .forEach(item => { uniqueRecurring[item.name.toLowerCase().trim()] = item; });
 
-    // Filter for Active (Recency Check)
+    // Group Income by Source (Latest wins)
+    data.income
+      .filter(i => isRecurring(i) && notSpecial(i))
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .forEach(item => { uniqueRecurringIncome[item.name.toLowerCase().trim()] = item; });
+
+    // Filter for Active Expenses (Recency Check)
     const activeRecurringItems = Object.values(uniqueRecurring).filter(item => {
       const itemDate = new Date(item.date);
       const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
@@ -1050,7 +1056,17 @@ export default function App() {
       return true;
     });
 
+    // Filter for Active Income (Recency Check)
+    const activeRecurringIncomeItems = Object.values(uniqueRecurringIncome).filter(item => {
+      const itemDate = new Date(item.date);
+      const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
+      // Allow slightly longer gap for income (e.g. irregularities) but generally same rule
+      if (item.frequency === 'monthly' && daysSince > 60) return false;
+      return true;
+    });
+
     const totalRecurringExpenses = activeRecurringItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    const totalRecurringIncome = activeRecurringIncomeItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
     // Subscriptions Specifics (Subset of Active Recurring)
     const activeSubscriptions = activeRecurringItems.filter(i => i.type === 'subscription');
@@ -1062,7 +1078,11 @@ export default function App() {
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
-    const totalIncome = effectiveIncome.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+    // One Time Income
+    const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
+    const oneTimeIncomeTotal = oneTimeIncome.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+
+    const totalIncome = totalRecurringIncome + oneTimeIncomeTotal;
     // Use deduplicated active recurring + one-time expenses for consistency with chart
     const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
     const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
