@@ -1005,6 +1005,18 @@ export default function App() {
     return Array.from(freqs).map(f => f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()).sort();
   }, [subscriptionItems]);
 
+  // Calculate subscription totals from subscriptionItems (matches what's shown in subs view)
+  const subscriptionTotals = useMemo(() => {
+    const monthly = subscriptionItems.filter(i => (i.frequency || 'Monthly').toLowerCase() === 'monthly');
+    const annual = subscriptionItems.filter(i => (i.frequency || '').toLowerCase() === 'annual');
+
+    return {
+      totalMonthly: monthly.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0),
+      totalAnnual: annual.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0),
+      count: subscriptionItems.length
+    };
+  }, [subscriptionItems]);
+
   const calculatedFinancials = useMemo(() => {
     // Filter data by selected Month and Year
     const filterByDate = (item) => {
@@ -1071,7 +1083,7 @@ export default function App() {
     const totalRecurringExpenses = activeRecurringItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const totalRecurringIncome = activeRecurringIncomeItems.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
 
-    // Subscriptions Specifics (Subset of Active Recurring)
+    // Subscriptions Specifics (Subset of Active Recurring) - for overview totals only
     const activeSubscriptions = activeRecurringItems.filter(i => i.type === 'subscription');
     const totalSubscriptionsCost = activeSubscriptions.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const activeSubscriptionCount = activeSubscriptions.length;
@@ -1955,17 +1967,17 @@ export default function App() {
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Monthly Subscriptions</h3>
               <div className="mt-2 flex items-baseline gap-2">
                 <p className="text-2xl font-display font-bold text-warning tracking-tight">
-                  ${financials.totalMonthlySubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">mo</span>
+                  ${subscriptionTotals.totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">mo</span>
                 </p>
                 <p className="text-sm font-medium text-muted">
-                  ${(financials.totalMonthlySubscriptionsCost * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] font-normal text-muted ml-0.5">yr</span>
+                  ${(subscriptionTotals.totalMonthly * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] font-normal text-muted ml-0.5">yr</span>
                 </p>
               </div>
             </div>
             <div className="flex-1 border-l border-white/10 pl-4">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Annual Subscriptions</h3>
               <p className="text-2xl font-display font-bold text-warning tracking-tight mt-2">
-                ${financials.totalAnnualSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">annual</span>
+                ${subscriptionTotals.totalAnnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">annual</span>
               </p>
             </div>
             <Calendar size={28} className="text-warning opacity-40" />
@@ -2786,7 +2798,7 @@ export default function App() {
                 </p>
                 <div className={cn(
                   "text-xl font-display font-bold tracking-tight",
-                  filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                  isSubView ? "text-danger" : (filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]")
                 )}>
                   {isSubView
                     ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
