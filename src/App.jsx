@@ -1194,8 +1194,9 @@ export default function App() {
     // 2. Take only the LATEST transaction
 
     // 3. Actuals Calculation (Strictly transactions in this month)
-    const actualIncome = monthlyIncome.reduce((acc, item) => acc + parseFloat(item.amount), 0);
-    const actualExpenses = monthlyExpenses.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    // 3. Actuals Calculation (Strictly transactions in this month)
+    const actualIncome = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualExpenses = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
     const actualNet = actualIncome - actualExpenses;
 
     const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
