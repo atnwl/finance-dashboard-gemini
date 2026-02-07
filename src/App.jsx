@@ -740,11 +740,19 @@ export default function App() {
         };
       });
 
+      // Generate categoryYearlyData for demo mode (derived from yearlyData)
+      const categoryYearlyData = yearlyData.map(monthData => ({
+        name: monthData.name,
+        year: monthData.year,
+        ...monthData.byCategory
+      }));
+
       setDemoFinancials({
         totalSubscriptionsCost: subs,
         activeSubscriptionCount: count,
         totalCcPayments: cc,
         yearlyData,
+        categoryYearlyData,
         totalRecurringExpenses: recurring,
         demoAccounts: [
           { provider: 'Chase Sapphire', last4: '4456', latestBalance: Math.floor(Math.random() * 3000) + 500, type: 'credit_card', latestDate: '2026-01-28', transactionCount: Math.floor(Math.random() * 30) + 20 },
@@ -1172,6 +1180,17 @@ export default function App() {
 
     // In demo mode, select the current month's data from yearlyData
     const monthData = demoFinancials.yearlyData[selectedMonth];
+
+    // Ensure categoryYearlyData exists (fallback generation if missing from state)
+    let categoryYearlyData = demoFinancials.categoryYearlyData;
+    if (!categoryYearlyData && demoFinancials.yearlyData) {
+      categoryYearlyData = demoFinancials.yearlyData.map(m => ({
+        name: m.name,
+        year: m.year,
+        ...m.byCategory
+      }));
+    }
+
     return {
       ...demoFinancials,
       totalIncome: monthData.income,
@@ -1179,7 +1198,8 @@ export default function App() {
       net: monthData.net,
       byCategory: monthData.byCategory,
       savingsRate: monthData.income > 0 ? (monthData.net / monthData.income) * 100 : 0,
-      expenseRatio: monthData.income > 0 ? (monthData.expenses / monthData.income) * 100 : 0
+      expenseRatio: monthData.income > 0 ? (monthData.expenses / monthData.income) * 100 : 0,
+      categoryYearlyData
     };
   }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
