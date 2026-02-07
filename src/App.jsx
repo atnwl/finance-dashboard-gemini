@@ -4036,7 +4036,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-4">
         <div className="relative w-full min-w-0">
           <Input
             label="Name"
@@ -4057,7 +4057,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             )}
           </div>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 w-full">
           <Input
             label="Date"
             type="date"
