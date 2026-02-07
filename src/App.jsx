@@ -2664,7 +2664,12 @@ export default function App() {
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
-    const filteredTotal = items.filter(notSpecial).reduce((acc, item) => {
+    const filteredTotal = items.filter(item => {
+      // If filtering for CC Payments, we WANT to see them.
+      // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
+      if (transactionFilter === 'cc-payments') return true;
+      return notSpecial(item);
+    }).reduce((acc, item) => {
       const amt = parseFloat(item.amount) || 0;
       return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
     }, 0);
@@ -2735,12 +2740,12 @@ export default function App() {
               </div>
             )}
 
-            {!isSearchActive && (transactionFilter || isSubView) && (
+            {!isSearchActive && (
               <div className="text-right">
                 <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
                   {isSubView ?
                     (subscriptionFilter?.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost')
-                    : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : 'Net Total'))
+                    : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
                   }
                 </p>
                 <div className={cn(
