@@ -475,6 +475,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [subscriptionFilter, setSubscriptionFilter] = useState(null);
 
   // Handle Android Back Gesture / Browser History
   useEffect(() => {
@@ -2080,23 +2081,30 @@ export default function App() {
       return matchesName || matchesCategory || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
+    // Subscription Data Logic
+    const subscriptionItems = useMemo(() => {
+      const raw = isSubView ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
+      const uniqueSubs = new Map();
+      raw.forEach(item => {
+        const key = item.name.toLowerCase().trim();
+        const existing = uniqueSubs.get(key);
+        // Keep the one with the LATEST date
+        if (!existing || new Date(item.date) > new Date(existing.date)) {
+          uniqueSubs.set(key, item);
+        }
+      });
+      return Array.from(uniqueSubs.values())
+        .map(x => ({ ...x, _type: 'expenses' }))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    }, [data.expenses, demoFinancials, isSubView]);
+
+    const availableFrequencies = useMemo(() => {
+      const freqs = new Set(subscriptionItems.map(i => i.frequency || 'Monthly'));
+      return Array.from(freqs).map(f => f.charAt(0).toUpperCase() + f.slice(1).toLowerCase()).sort();
+    }, [subscriptionItems]);
+
     let items = isSearchActive ? searchItems : (isSubView
-      ? (demoFinancials ? demoFinancials.demoSubscriptions : (() => {
-        const uniqueSubs = new Map();
-        data.expenses
-          .filter(e => e.type === 'subscription')
-          .forEach(item => {
-            const key = item.name.toLowerCase().trim();
-            const existing = uniqueSubs.get(key);
-            // Keep the one with the LATEST date
-            if (!existing || new Date(item.date) > new Date(existing.date)) {
-              uniqueSubs.set(key, item);
-            }
-          });
-        return Array.from(uniqueSubs.values())
-          .map(x => ({ ...x, _type: 'expenses' }))
-          .sort((a, b) => new Date(a.date) - new Date(b.date));
-      })())
+      ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
     if (transactionFilter && !isSearchActive && !isSubView) {
@@ -2150,35 +2158,63 @@ export default function App() {
           </div>
 
           {/* Filter Pills */}
-          {!isSubView && !isSearchActive && (
+          {!isSearchActive && (
             <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
-              <button
-                onClick={() => setTransactionFilter(null)}
-                className={cn(
-                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                  !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                )}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setTransactionFilter('expenses')}
-                className={cn(
-                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                  transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                )}
-              >
-                Expenses
-              </button>
-              <button
-                onClick={() => setTransactionFilter('income')}
-                className={cn(
-                  "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                  transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                )}
-              >
-                Income
-              </button>
+              {!isSubView ? (
+                <>
+                  <button
+                    onClick={() => setTransactionFilter(null)}
+                    className={cn(
+                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                      !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                    )}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setTransactionFilter('expenses')}
+                    className={cn(
+                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                      transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                    )}
+                  >
+                    Expenses
+                  </button>
+                  <button
+                    onClick={() => setTransactionFilter('income')}
+                    className={cn(
+                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                      transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                    )}
+                  >
+                    Income
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setSubscriptionFilter(null)}
+                    className={cn(
+                      "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                      !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                    )}
+                  >
+                    All
+                  </button>
+                  {availableFrequencies.map(freq => (
+                    <button
+                      key={freq}
+                      onClick={() => setSubscriptionFilter(freq)}
+                      className={cn(
+                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                        subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                      )}
+                    >
+                      {freq}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
 
