@@ -1142,21 +1142,23 @@ export default function App() {
         return (m - 1) === index && y === selectedYear;
       };
 
-      // Get all expense categories for this month
-      const monthExpenses = data.expenses.filter(e => monthFilter(e) && notSpecial(e));
-      const categoryTotals = monthExpenses.reduce((acc, item) => {
-        const amt = parseFloat(item.amount) || 0;
-        acc[item.category] = (acc[item.category] || 0) + amt;
-        return acc;
-      }, {});
+      const categoryTotals = {};
 
-      // Also add recurring expenses (prorated monthly) if they haven't been captured
-      const recurringForMonth = data.expenses
-        .filter(e => isRecurring(e) && notSpecial(e))
-        .forEach(item => {
-          const monthlyAmt = normalizeToMonthly(item.amount, item.frequency);
-          categoryTotals[item.category] = (categoryTotals[item.category] || 0) + monthlyAmt;
-        });
+      // 1. One-time expenses (filtered by date)
+      const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notSpecial(e));
+      oneTimeExpenses.forEach(item => {
+        const amt = parseFloat(item.amount) || 0;
+        const cat = item.category || 'Uncategorized';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+      });
+
+      // 2. Recurring expenses (apply to every month)
+      const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
+      recurringExpenses.forEach(item => {
+        const amt = normalizeToMonthly(item.amount, item.frequency);
+        const cat = item.category || 'Uncategorized';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+      });
 
       return {
         name: monthName.slice(0, 3),
@@ -4064,8 +4066,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="relative w-full">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="relative w-full min-w-0">
           <Input
             label="Name"
             name="name"
@@ -4085,15 +4087,17 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             )}
           </div>
         </div>
-        <Input
-          label="Date"
-          type="date"
-          name="date"
-          value={formData.date}
-          onChange={handleChange}
-          required
-          max="2030-12-31" // Basic sanity check
-        />
+        <div className="min-w-0">
+          <Input
+            label="Date"
+            type="date"
+            name="date"
+            value={formData.date}
+            onChange={handleChange}
+            required
+            max="2030-12-31" // Basic sanity check
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
