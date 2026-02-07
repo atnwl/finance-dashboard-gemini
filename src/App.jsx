@@ -2044,7 +2044,7 @@ export default function App() {
               className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center transition-colors border border-primary/20"
             >
               <Upload size={14} className="mr-2" />
-              Upload Statement
+              Upload Statement / Screenshot
             </button>
           </div>
           {sortedAccounts.length === 0 ? (
