@@ -1082,7 +1082,48 @@ export default function App() {
     const oneTimeIncome = data.income.filter(i => !isRecurring(i) && filterByDate(i) && notSpecial(i));
     const oneTimeIncomeTotal = oneTimeIncome.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
-    const totalIncome = totalRecurringIncome + oneTimeIncomeTotal;
+    // Smart Projected Income (Recurring + One-Time)
+    const smartProjectedIncome = totalRecurringIncome + oneTimeIncomeTotal;
+
+    // Average Monthly Income (Last 3 Months)
+    // 1. Determine previous 3 months indices
+    const prevMonths = [];
+    for (let i = 1; i <= 3; i++) {
+      let m = selectedMonth - i;
+      let y = selectedYear;
+      if (m < 0) {
+        m += 12;
+        y -= 1;
+      }
+      prevMonths.push({ m, y });
+    }
+
+    // 2. Sum income for those months
+    let totalPrevIncome = 0;
+    let monthsWithData = 0;
+
+    prevMonths.forEach(({ m, y }) => {
+      const monthIncomeItems = data.income.filter(item => {
+        if (!item.date) return false;
+        const [iy, im] = item.date.split('-').map(Number);
+        return (im - 1) === m && iy === y && notSpecial(item);
+      });
+
+      const monthTotal = monthIncomeItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+      if (monthTotal > 0) {
+        totalPrevIncome += monthTotal;
+        monthsWithData++;
+      }
+    });
+
+    const averageMonthlyIncome = monthsWithData > 0 ? totalPrevIncome / monthsWithData : 0;
+
+    // Final Projected Income: Max of (Smart Projection, Average History, Current Actuals)
+    // We haven't calculated actuals yet, so let's defer or calc here
+    const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+    // Logic: Use Average if available and higher than smart projection, but never lower than actuals
+    const totalIncome = Math.max(smartProjectedIncome, averageMonthlyIncome, actualIncomeCurrentMonth);
     // Use deduplicated active recurring + one-time expenses for consistency with chart
     const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
     const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
@@ -1195,7 +1236,7 @@ export default function App() {
 
     // 3. Actuals Calculation (Strictly transactions in this month)
     // 3. Actuals Calculation (Strictly transactions in this month)
-    const actualIncome = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualIncome = actualIncomeCurrentMonth;
     const actualExpenses = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
     const actualNet = actualIncome - actualExpenses;
 
