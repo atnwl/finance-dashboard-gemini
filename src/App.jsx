@@ -7,7 +7,7 @@ import {
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
   Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw, Check,
-  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil, NotebookPen
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -614,6 +614,200 @@ const CategoryManager = ({ isOpen, onClose, categories, onSave }) => {
   );
 };
 
+// --- Notes Components ---
+const NoteEditor = ({ isOpen, note, onSave, onDelete, onClose }) => {
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+
+  useEffect(() => {
+    if (note) {
+      setTitle(note.title || '');
+      setBody(note.body || '');
+    } else {
+      setTitle('');
+      setBody('');
+    }
+  }, [note, isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim() && !body.trim()) return;
+    onSave({
+      ...note,
+      title: title.trim(),
+      body: body.trim()
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="p-4 border-b border-border flex justify-between items-center bg-card sticky top-0 z-10">
+          <h3 className="font-bold text-lg">{note?.id ? 'Edit Note' : 'New Note'}</h3>
+          <div className="flex items-center gap-2">
+            {note?.id && (
+              <button
+                onClick={() => onDelete(note.id)}
+                className="p-2 hover:bg-danger/20 rounded-lg text-muted hover:text-danger transition-colors"
+                title="Delete Note"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted hover:text-white transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <input
+              type="text"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-transparent border-none text-xl font-bold placeholder:text-muted/50 focus:outline-none focus:ring-0"
+              autoFocus
+            />
+            <textarea
+              placeholder="Write your note..."
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              className="w-full flex-1 min-h-[200px] bg-transparent border-none text-sm placeholder:text-muted/50 focus:outline-none focus:ring-0 resize-none"
+              rows={10}
+            />
+          </div>
+
+          {/* Footer with timestamp */}
+          <div className="p-4 border-t border-border bg-card/50 flex items-center justify-between">
+            {note?.updatedAt && (
+              <span className="text-xs text-muted">
+                Last updated: {new Date(note.updatedAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit'
+                })}
+              </span>
+            )}
+            {!note?.updatedAt && <span />}
+            <button
+              type="submit"
+              disabled={!title.trim() && !body.trim()}
+              className="px-6 py-2 bg-primary text-black rounded-xl font-bold text-sm disabled:opacity-50 transition-all active:scale-95 hover:bg-primary/90"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
+  // Sort notes by updatedAt descending (most recent first)
+  const sortedNotes = useMemo(() => {
+    return [...(notes || [])].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }, [notes]);
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border/40">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <NotebookPen size={24} className="text-primary" />
+            <h1 className="text-2xl font-bold">Notes</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onNewNote}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm hover:bg-primary/90 active:scale-95 transition-all"
+            >
+              <Plus size={18} />
+              New Note
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/10 rounded-lg text-muted hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Grid */}
+      <div className="max-w-6xl mx-auto p-4 pb-24">
+        {sortedNotes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <NotebookPen size={40} className="text-muted" />
+            </div>
+            <h2 className="text-lg font-semibold text-muted mb-2">No notes yet</h2>
+            <p className="text-sm text-muted/70 mb-4">Create your first note to get started</p>
+            <button
+              onClick={onNewNote}
+              className="flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary border border-primary/30 rounded-xl font-medium text-sm hover:bg-primary/30 transition-all"
+            >
+              <Plus size={16} />
+              Create Note
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {sortedNotes.map((note) => (
+              <div
+                key={note.id}
+                onClick={() => onNoteClick(note)}
+                className="group bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer flex flex-col h-[200px] overflow-hidden"
+              >
+                {/* Title */}
+                {note.title && (
+                  <h3 className="font-bold text-base mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                    {note.title}
+                  </h3>
+                )}
+
+                {/* Body */}
+                <p className="text-sm text-muted flex-1 overflow-hidden line-clamp-5">
+                  {note.body || <span className="italic text-muted/50">No content</span>}
+                </p>
+
+                {/* Date */}
+                <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-between">
+                  <span className="text-xs text-muted/70">
+                    {formatDate(note.updatedAt)}
+                  </span>
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Edit2 size={12} className="text-muted" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -672,6 +866,7 @@ export default function App() {
     expenses: [],
     statements: [],
     balanceTransfers: [],
+    notes: [],
     categories: { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }
   });
 
@@ -687,6 +882,11 @@ export default function App() {
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingStatement, setPendingStatement] = useState(null);
+
+  // Notes State
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(null);
+  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
 
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -881,6 +1081,7 @@ export default function App() {
         expenses: [],
         statements: [],
         balanceTransfers: [],
+        notes: [],
         categories: { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }
       }); // Reset state
       localStorage.setItem('hasWipedLegacyData_v2', 'true');
@@ -896,6 +1097,7 @@ export default function App() {
             expenses: [],
             statements: [],
             balanceTransfers: [],
+            notes: [],
             ...parsed,
             categories: {
               income: parsed.categories?.income || DEFAULT_INCOME_CATEGORIES,
@@ -1452,6 +1654,44 @@ export default function App() {
       ...prev,
       balanceTransfers: (prev.balanceTransfers || []).filter(i => i.id !== id)
     }));
+  };
+
+  // --- Notes Handlers ---
+  const handleSaveNote = (note) => {
+    const now = new Date().toISOString();
+    setData(prev => {
+      const notes = prev.notes || [];
+      if (note.id) {
+        // Update existing note
+        return {
+          ...prev,
+          notes: notes.map(n => n.id === note.id ? { ...note, updatedAt: now } : n)
+        };
+      }
+      // Create new note
+      return {
+        ...prev,
+        notes: [...notes, { ...note, id: crypto.randomUUID(), createdAt: now, updatedAt: now }]
+      };
+    });
+    setIsNoteEditorOpen(false);
+    setEditingNote(null);
+  };
+
+  const handleDeleteNote = (id) => {
+    if (window.confirm('Are you sure you want to delete this note?')) {
+      setData(prev => ({
+        ...prev,
+        notes: (prev.notes || []).filter(n => n.id !== id)
+      }));
+      setIsNoteEditorOpen(false);
+      setEditingNote(null);
+    }
+  };
+
+  const openNoteEditor = (note = null) => {
+    setEditingNote(note);
+    setIsNoteEditorOpen(true);
   };
 
   // --- Auth & Sync Handlers ---
@@ -3043,6 +3283,15 @@ export default function App() {
             >
               <Plus size={24} strokeWidth={3} />
             </button>
+            {/* Desktop Notes Button */}
+            <button
+              onClick={() => setIsNotesOpen(true)}
+              className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 bg-secondary/20 hover:bg-secondary text-secondary hover:text-black rounded-full shadow-lg hover:shadow-secondary/20 hover:scale-105 active:scale-95 transition-all"
+              title="Notes"
+            >
+              <NotebookPen size={18} className="md:hidden" />
+              <NotebookPen size={20} className="hidden md:block" />
+            </button>
           </div>
 
           <nav className="hidden md:flex items-center gap-1 mx-auto px-2 shrink-0 overflow-x-auto whitespace-nowrap scrollbar-hide max-w-[50vw]">
@@ -3397,6 +3646,25 @@ export default function App() {
         onClose={() => setIsCategoryModalOpen(false)}
         categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
         onSave={(newCats, renameAction) => saveCategories(newCats, renameAction)}
+      />
+
+      {/* Notes View */}
+      {isNotesOpen && (
+        <NotesView
+          notes={data.notes || []}
+          onNoteClick={(note) => openNoteEditor(note)}
+          onNewNote={() => openNoteEditor(null)}
+          onClose={() => setIsNotesOpen(false)}
+        />
+      )}
+
+      {/* Note Editor Modal */}
+      <NoteEditor
+        isOpen={isNoteEditorOpen}
+        note={editingNote}
+        onSave={handleSaveNote}
+        onDelete={handleDeleteNote}
+        onClose={() => { setIsNoteEditorOpen(false); setEditingNote(null); }}
       />
     </div>
   );
