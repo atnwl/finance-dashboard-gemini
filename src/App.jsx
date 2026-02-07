@@ -1126,11 +1126,42 @@ export default function App() {
       };
     });
 
+    // Calculate Category Yearly Data for category drill-down (each month's expenses by category)
+    const categoryYearlyData = MONTHS.map((monthName, index) => {
+      const monthFilter = (item) => {
+        if (!item.date) return false;
+        const [y, m] = item.date.split('-').map(Number);
+        return (m - 1) === index && y === selectedYear;
+      };
+
+      // Get all expense categories for this month
+      const monthExpenses = data.expenses.filter(e => monthFilter(e) && notSpecial(e));
+      const categoryTotals = monthExpenses.reduce((acc, item) => {
+        const amt = parseFloat(item.amount) || 0;
+        acc[item.category] = (acc[item.category] || 0) + amt;
+        return acc;
+      }, {});
+
+      // Also add recurring expenses (prorated monthly) if they haven't been captured
+      const recurringForMonth = data.expenses
+        .filter(e => isRecurring(e) && notSpecial(e))
+        .forEach(item => {
+          const monthlyAmt = normalizeToMonthly(item.amount, item.frequency);
+          categoryTotals[item.category] = (categoryTotals[item.category] || 0) + monthlyAmt;
+        });
+
+      return {
+        name: monthName.slice(0, 3),
+        year: selectedYear,
+        ...categoryTotals
+      };
+    });
+
     // Calculate Total Recurring for Budget Line (Smart)
     // 1. Group by Merchant Name (normalized)
     // 2. Take only the LATEST transaction
 
-    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, totalRecurringExpenses };
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, categoryYearlyData, totalRecurringExpenses };
   }, [data, selectedMonth, selectedYear]);
 
   const financials = useMemo(() => {
