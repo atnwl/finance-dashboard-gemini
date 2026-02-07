@@ -1948,10 +1948,10 @@ export default function App() {
                         </div>
                         <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
-                            {financials.savingsRate >= 0 ? '+' : ''}{financials.savingsRate.toFixed(1)}% Save
+                            TBD
                           </div>
                           <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
-                            {financials.expenseRatio.toFixed(1)}% Spend
+                            TBD
                           </div>
                         </div>
                       </div>
@@ -1960,20 +1960,6 @@ export default function App() {
                           {formatAccounting(financials.net)}
                         </p>
                       </div>
-                    </div>
-                    <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
-                      <button
-                        onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
-                        className="py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5"
-                      >
-                        <span>Income Detail</span>
-                      </button>
-                      <button
-                        onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
-                        className="py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5"
-                      >
-                        <span>Expense Detail</span>
-                      </button>
                     </div>
                     <ArrowRightLeft size={160} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors text-black/5" />
                   </Card>
