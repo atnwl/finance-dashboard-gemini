@@ -1140,7 +1140,7 @@ export default function App() {
     const newExpenses = migrate(data.expenses);
 
     if (hasChanges) {
-      setData({ income: newIncome, expenses: newExpenses });
+      setData(prev => ({ ...prev, income: newIncome, expenses: newExpenses }));
     }
   }, [data.income.length, data.expenses.length]); // Only run when counts change to avoid loops
 
@@ -1833,9 +1833,19 @@ export default function App() {
 
   // Delete All Transactions
   const handleDeleteAllData = () => {
-    if (window.confirm('⚠️ Are you sure you want to delete ALL transactions?\\n\\nThis clears local data only. You can still restore from your cloud backup.')) {
-      setData({ income: [], expenses: [] });
-      localStorage.setItem('financeData', JSON.stringify({ income: [], expenses: [] }));
+    if (window.confirm('⚠️ Are you sure you want to delete ALL transactions?\n\nThis clears local data only. You can still restore from your cloud backup.')) {
+      setData(prev => {
+        const newState = {
+          ...prev,
+          income: [],
+          expenses: [],
+          notes: [],
+          balanceTransfers: [],
+          statements: []
+        };
+        localStorage.setItem('financeData', JSON.stringify(newState));
+        return newState;
+      });
       setShowUserMenu(false);
       setSyncStatus('All transactions deleted');
       setTimeout(() => setSyncStatus(''), 3000);
