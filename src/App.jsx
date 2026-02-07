@@ -41,6 +41,10 @@ const EXPENSE_CATEGORIES = [
   'Kids: Activities', 'Kids: Clothes', 'Kids: Health', 'Kids: Toys', 'Other', 'Personal', 'Restaurants', 'Shopping', 'Software', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities'
 ];
 
+// Aliases for default categories
+const DEFAULT_INCOME_CATEGORIES = INCOME_CATEGORIES;
+const DEFAULT_EXPENSE_CATEGORIES = EXPENSE_CATEGORIES;
+
 const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D', '#9B8AA5', '#D4A5A5', '#7AA67A'];
 
 const isRecurring = (item) => item.frequency !== 'one-time';
@@ -471,6 +475,145 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 };
 
 
+// --- Category Management Component ---
+const CategoryManager = ({ isOpen, onClose, categories, onSave }) => {
+  const [activeType, setActiveType] = useState('expenses'); // 'income' | 'expenses'
+  const [editMode, setEditMode] = useState(null); // { index, value }
+  const [newValue, setNewValue] = useState('');
+  const [localCategories, setLocalCategories] = useState(categories);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  if (!isOpen) return null;
+
+  const handleAdd = () => {
+    if (!newValue.trim()) return;
+    if (localCategories[activeType].includes(newValue.trim())) {
+      alert("Category already exists");
+      return;
+    }
+    const updated = {
+      ...localCategories,
+      [activeType]: [...localCategories[activeType], newValue.trim()].sort()
+    };
+    onSave(updated);
+    setNewValue('');
+  };
+
+  const handleDelete = (name) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"? Transactions in this category will be moved to "Other".`)) {
+      const updated = {
+        ...localCategories,
+        [activeType]: localCategories[activeType].filter(c => c !== name)
+      };
+      onSave(updated, { type: activeType, oldName: name, newName: null });
+    }
+  };
+
+  const handleRename = (index, oldName) => {
+    if (!newValue.trim() || newValue.trim() === oldName) {
+      setEditMode(null);
+      setNewValue('');
+      return;
+    }
+    const updatedList = [...localCategories[activeType]];
+    updatedList[index] = newValue.trim();
+    const updated = {
+      ...localCategories,
+      [activeType]: updatedList.sort()
+    };
+    onSave(updated, { type: activeType, oldName: oldName, newName: newValue.trim() });
+    setEditMode(null);
+    setNewValue('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-border flex justify-between items-center bg-card sticky top-0 z-10">
+          <h3 className="font-bold text-lg">Manage Categories</h3>
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg text-muted transition-colors"><X size={20} /></button>
+        </div>
+
+        <div className="flex p-1 bg-background border-b border-border">
+          <button
+            onClick={() => setActiveType('expenses')}
+            className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-all", activeType === 'expenses' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white")}
+          >
+            Expenses
+          </button>
+          <button
+            onClick={() => setActiveType('income')}
+            className={cn("flex-1 py-2 text-sm font-medium rounded-lg transition-all", activeType === 'income' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white")}
+          >
+            Income
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {localCategories[activeType].map((cat, idx) => (
+            <div key={cat} className="group flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+              {editMode?.index === idx ? (
+                <div className="flex-1 flex gap-2">
+                  <input
+                    autoFocus
+                    className="flex-1 bg-background border border-primary rounded-lg px-2 py-1 text-sm text-white focus:outline-none"
+                    value={newValue}
+                    onChange={(e) => setNewValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRename(idx, cat)}
+                  />
+                  <button onClick={() => handleRename(idx, cat)} className="text-primary p-1"><Check size={16} /></button>
+                  <button onClick={() => { setEditMode(null); setNewValue(''); }} className="text-muted p-1"><X size={16} /></button>
+                </div>
+              ) : (
+                <>
+                  <span className="text-sm font-medium text-white/90">{cat}</span>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => { setEditMode({ index: idx, value: cat }); setNewValue(cat); }}
+                      className="p-1.5 hover:bg-white/10 rounded-lg text-muted hover:text-primary transition-colors"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(cat)}
+                      className="p-1.5 hover:bg-white/10 rounded-lg text-muted hover:text-danger transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-border bg-card">
+          <div className="flex gap-2">
+            <input
+              placeholder={`New ${activeType === 'income' ? 'Income' : 'Expense'} Category...`}
+              className="flex-1 bg-background border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary transition-all"
+              value={editMode ? '' : newValue}
+              disabled={!!editMode}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            />
+            <button
+              onClick={handleAdd}
+              disabled={!!editMode || !newValue.trim()}
+              className="px-4 py-2 bg-primary text-black rounded-xl font-bold text-sm disabled:opacity-50 transition-all active:scale-95"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -514,10 +657,17 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editingBalanceTransfer, setEditingBalanceTransfer] = useState(null);
-  const [data, setData] = useState({ income: [], expenses: [], statements: [], balanceTransfers: [] });
+  const [data, setData] = useState({
+    income: [],
+    expenses: [],
+    statements: [],
+    balanceTransfers: [],
+    categories: { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }
+  });
 
   // Date Filtering State
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -709,7 +859,13 @@ export default function App() {
     const hasWiped = localStorage.getItem('hasWipedLegacyData_v2');
     if (!hasWiped) {
       localStorage.removeItem('financeData');
-      setData({ income: [], expenses: [], statements: [], balanceTransfers: [] }); // Reset state
+      setData({
+        income: [],
+        expenses: [],
+        statements: [],
+        balanceTransfers: [],
+        categories: { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }
+      }); // Reset state
       localStorage.setItem('hasWipedLegacyData_v2', 'true');
       console.log("Legacy data wiped for fresh start.");
     } else {
@@ -717,7 +873,18 @@ export default function App() {
       const saved = localStorage.getItem('financeData');
       if (saved) {
         try {
-          setData({ income: [], expenses: [], statements: [], balanceTransfers: [], ...JSON.parse(saved) });
+          const parsed = JSON.parse(saved);
+          setData({
+            income: [],
+            expenses: [],
+            statements: [],
+            balanceTransfers: [],
+            ...parsed,
+            categories: {
+              income: parsed.categories?.income || DEFAULT_INCOME_CATEGORIES,
+              expenses: parsed.categories?.expenses || DEFAULT_EXPENSE_CATEGORIES
+            }
+          });
         } catch (e) {
           console.error("Failed to load data", e);
         }
@@ -1179,6 +1346,34 @@ export default function App() {
       return;
     }
     await handleRestore(syncPassword);
+  };
+
+  // --- Category Handlers ---
+  const syncCategoryChanges = (type, oldName, newName) => {
+    setData(prev => {
+      const updateTxns = (txns) => txns.map(t => t.category === oldName ? { ...t, category: newName || 'Other' } : t);
+      const next = { ...prev };
+      if (type === 'income') next.income = updateTxns(prev.income);
+      else next.expenses = updateTxns(prev.expenses);
+
+      // Also update intelligence cache
+      const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
+      Object.keys(cache).forEach(key => {
+        if (cache[key].category === oldName && cache[key].isIncome === (type === 'income')) {
+          cache[key].category = newName || 'Other';
+        }
+      });
+      localStorage.setItem('intelligenceCache', JSON.stringify(cache));
+
+      return next;
+    });
+  };
+
+  const saveCategories = (newCategories, renameAction = null) => {
+    if (renameAction) {
+      syncCategoryChanges(renameAction.type, renameAction.oldName, renameAction.newName);
+    }
+    setData(prev => ({ ...prev, categories: newCategories }));
   };
 
   // Delete All Transactions
@@ -1921,6 +2116,7 @@ export default function App() {
           <Card className="min-h-[400px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold">Expense Breakdown</h3>
+              <span className="text-[10px] text-muted/60 italic">Click to filter bar chart</span>
             </div>
             <div className="h-[300px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
@@ -1937,23 +2133,52 @@ export default function App() {
                     paddingAngle={5}
                     dataKey="value"
                     isAnimationActive={false}
+                    onClick={(data, index) => {
+                      if (data && data.name) {
+                        setSelectedCategory(prev => prev === data.name ? null : data.name);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     {Object.entries(financials.byCategory)
                       .filter(([name, value]) => value > 0.01)
-                      .map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                      ))}
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([name], index) => {
+                        const isSelected = selectedCategory === name;
+                        const isOther = selectedCategory && selectedCategory !== name;
+                        return (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            stroke={isSelected ? "#ffffff" : "none"}
+                            strokeWidth={isSelected ? 3 : 0}
+                            fillOpacity={isOther ? 0.3 : 1}
+                            style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                          />
+                        );
+                      })}
                   </Pie>
                   <Tooltip
                     contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
                     itemStyle={{ color: '#E5E7EB' }}
-                    formatter={(value) => `$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    formatter={(value, name) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name]}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                <span className="text-xs text-muted">Total</span>
-                <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                {selectedCategory ? (
+                  <>
+                    <span className="text-[10px] text-warning">{selectedCategory}</span>
+                    <p className="font-bold text-white text-sm">
+                      ${Number(financials.byCategory[selectedCategory] || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs text-muted">Total</span>
+                    <p className="font-bold text-white">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                  </>
+                )}
               </div>
             </div>
             <div className="mt-4 flex gap-4 text-xs">
@@ -1969,10 +2194,21 @@ export default function App() {
                   <div className="flex-1 space-y-2">
                     {items.map(([name, value], i) => {
                       const actualIdx = offsetIndex + i;
+                      const isSelected = selectedCategory === name;
+                      const isOther = selectedCategory && selectedCategory !== name;
                       return (
-                        <div key={name} className="flex items-center gap-2 group relative cursor-help">
+                        <div
+                          key={name}
+                          className={cn(
+                            "flex items-center gap-2 group relative cursor-pointer rounded-md px-1 py-0.5 -mx-1 transition-all",
+                            isSelected && "bg-white/10 ring-1 ring-white/20",
+                            isOther && "opacity-40",
+                            !selectedCategory && "hover:bg-white/5"
+                          )}
+                          onClick={() => setSelectedCategory(prev => prev === name ? null : name)}
+                        >
                           <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[actualIdx % COLORS.length] }} />
-                          <span className="text-muted truncate flex-1">{name}</span>
+                          <span className={cn("truncate flex-1", isSelected ? "text-white" : "text-muted")}>{name}</span>
                           <span className="text-white font-medium shrink-0">
                             {Math.round(value / financials.totalExpenses * 100)}%
                           </span>
@@ -2109,6 +2345,11 @@ export default function App() {
       return matchesName || matchesCategory || matchesAmount;
     }).sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
+    const searchTotal = isSearchActive ? searchItems.reduce((acc, item) => {
+      const amt = parseFloat(item.amount) || 0;
+      return item._type === 'income' ? acc + amt : acc - amt;
+    }, 0) : 0;
+
 
 
     let items = isSearchActive ? searchItems : (isSubView
@@ -2163,6 +2404,18 @@ export default function App() {
                 <h2 className="font-bold text-xl">Transaction History</h2>
               )}
             </div>
+
+            {isSearchActive && (
+              <div className="text-right">
+                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">Search Total</p>
+                <div className={cn(
+                  "text-xl font-display font-bold tracking-tight",
+                  searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                )}>
+                  {formatAccounting(searchTotal)}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Filter Pills */}
@@ -2315,7 +2568,7 @@ export default function App() {
 
                         {/* Text Info */}
                         <div className="min-w-[80px] shrink flex-1">
-                          <h4 className="font-bold text-base text-white truncate">{item.name}</h4>
+                          <h4 className="font-bold text-base text-white truncate">{item.displayName || item.name}</h4>
 
                           {isSubView ? (
                             <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -2326,8 +2579,8 @@ export default function App() {
                                 {item.frequency || 'Monthly'}
                               </span>
                               <span className="text-xs text-muted font-medium flex items-center gap-2">
-                                <span>on {nextPaymentText}</span>
-                                <span className="opacity-50">|</span>
+                                <span>{sourceStatement ? `${sourceStatement.provider} ****${sourceStatement.last4}` : (item.category || '')}</span>
+                                {(sourceStatement || item.category) && <span className="opacity-50">|</span>}
                                 {(() => {
                                   const isPaidThisMonth = dateObj.getMonth() === new Date().getMonth() && dateObj.getFullYear() === new Date().getFullYear();
                                   return (
@@ -2525,6 +2778,17 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* Category Management */}
+                  <div className="border-t border-border/50">
+                    <button
+                      onClick={() => { setIsCategoryModalOpen(true); setShowUserMenu(false); }}
+                      className="w-full px-4 py-2 flex items-center gap-2 text-xs text-muted hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <Pencil size={14} />
+                      Manage Categories
+                    </button>
+                  </div>
+
                   {/* Developer Menu */}
                   <div className="border-t border-border/50">
                     <button
@@ -2670,6 +2934,7 @@ export default function App() {
           onSync={handleSync}
           onRestore={handleRestore}
           syncStatus={syncStatus}
+          categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
         />
       </div>
 
@@ -2688,6 +2953,7 @@ export default function App() {
           onRestore={handleRestore}
           syncStatus={syncStatus}
           isDesktopPanel={true}
+          categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
         />
       </div>
 
@@ -2731,6 +2997,13 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <CategoryManager
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
+        onSave={(newCats, renameAction) => saveCategories(newCats, renameAction)}
+      />
     </div>
   );
 }
@@ -2990,7 +3263,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     } : {
       name: '',
       amount: '',
-      category: 'Groceries', // Updated default
+      category: (initialData.type === 'income' ? (data.categories?.income[0] || 'Salary') : (data.categories?.expenses[0] || 'Groceries')),
       frequency: 'one-time',
       type: 'variable',
       isIncome: false,
@@ -3002,6 +3275,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       })() // Local "YYYY-MM-DD"
     }
   );
+  const categories = data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES };
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiFlash, setAiFlash] = useState(false); // Visual cue for AI actions
   const [bulkItems, setBulkItems] = useState([]); // Array of parsed items for review
@@ -3056,8 +3330,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     Classify transaction: "${formData.name}"
 
     Context lists:
-    - Income Categories: ${INCOME_CATEGORIES.join(', ')}
-    - Expense Categories: ${EXPENSE_CATEGORIES.join(', ')}
+    - Income Categories: ${categories.income.join(', ')}
+    - Expense Categories: ${categories.expenses.join(', ')}
 
     Return STRICT JSON only:
     {
@@ -3077,9 +3351,9 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           console.log("Gemini Prediction:", prediction);
 
           // Validate Category
-          const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+          const validCats = prediction.isIncome ? categories.income : categories.expenses;
           if (!validCats.includes(prediction.category)) {
-            prediction.category = 'Other'; // Safer default than index 0 (which might be Alcohol)
+            prediction.category = validCats.includes('Other') ? 'Other' : validCats[0];
           }
 
           const suggestion = {
@@ -3090,7 +3364,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           };
 
           if (!suggestion.category) {
-            suggestion.category = suggestion.isIncome ? INCOME_CATEGORIES[0] : 'Other';
+            suggestion.category = suggestion.isIncome ? categories.income[0] : (categories.expenses.includes('Other') ? 'Other' : categories.expenses[0]);
           }
 
           setFormData(prev => ({ ...prev, ...suggestion }));
@@ -3112,13 +3386,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     };
   }, [formData.name, initialData]);
 
-  // Ensure Category validity when type switches
   useEffect(() => {
-    const validCategories = formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+    const validCategories = formData.isIncome ? categories.income : categories.expenses;
     if (!validCategories.includes(formData.category)) {
       setFormData(prev => ({ ...prev, category: validCategories[0] }));
     }
-  }, [formData.isIncome, formData.category]);
+  }, [formData.isIncome, formData.category, categories]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -3216,7 +3489,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     - Date (date) in YYYY-MM-DD format
     - Amount (amount) - number only (absolute value)
     - Is Income (isIncome) - boolean. See rules above for proper classification.
-    - Category (category) - best guess from: ${INCOME_CATEGORIES.join(', ')}, ${EXPENSE_CATEGORIES.join(', ')}
+    - Category (category) - best guess from: ${categories.income.join(', ')}, ${categories.expenses.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
     
     USER CATEGORIZATION RULES (PRIORITIZE THESE IF MERCHANT MATCHES):
@@ -3619,7 +3892,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         <Select
           className={aiClass}
           label="Category" name="category" value={formData.category} onChange={handleChange} options={
-            (formData.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => ({ value: c, label: c }))
+            (formData.isIncome ? categories.income : categories.expenses).map(c => ({ value: c, label: c }))
           } />
         {!formData.isIncome && (
           <Select
