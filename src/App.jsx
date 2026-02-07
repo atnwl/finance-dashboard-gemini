@@ -943,15 +943,42 @@ export default function App() {
     return amt * (map[frequency] || 0);
   };
 
+  // Normalize transaction names by stripping unique identifiers (PayPal transaction IDs, etc.)
+  const normalizeSubscriptionName = (name) => {
+    if (!name) return '';
+    let normalized = name.trim();
+
+    // PayPal pattern: PP*MERCHANT*UNIQUEID -> PP*MERCHANT
+    // Common patterns: PP*SPOTIFY*P3E77027F1, PP*NETFLIX*ABC123, PAYPAL*MERCHANTNAME REF#123
+    const paypalMatch = normalized.match(/^(PP\*[A-Z0-9]+)\*[A-Z0-9]+$/i);
+    if (paypalMatch) {
+      normalized = paypalMatch[1];
+    }
+
+    // PayPal with space pattern: PAYPAL *MERCHANT 402-xxx-xxxx
+    normalized = normalized.replace(/(PAYPAL\s*\*[^\s]+)\s+[\d\-]+$/i, '$1');
+
+    // Strip trailing reference numbers/IDs: "MERCHANT REF#12345" or "MERCHANT #12345"
+    normalized = normalized.replace(/\s+(REF)?#?[A-Z0-9]{6,}$/i, '');
+
+    // Strip trailing phone numbers: "MERCHANT 800-123-4567"
+    normalized = normalized.replace(/\s+\d{3}[\-\s]?\d{3}[\-\s]?\d{4}$/i, '');
+
+    return normalized;
+  };
+
   const subscriptionItems = useMemo(() => {
     const isSub = activeTab === 'subscriptions';
     const raw = isSub ? (demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription')) : [];
     const uniqueSubs = new Map();
     raw.forEach(item => {
-      const key = item.name.toLowerCase().trim();
+      // Use normalized name for grouping to avoid duplicates from transaction IDs
+      const normalizedName = normalizeSubscriptionName(item.name);
+      const key = normalizedName.toLowerCase().trim();
       const existing = uniqueSubs.get(key);
       if (!existing || new Date(item.date) > new Date(existing.date)) {
-        uniqueSubs.set(key, item);
+        // Store with a display name (normalized) and original item data
+        uniqueSubs.set(key, { ...item, displayName: normalizedName || item.name });
       }
     });
     return Array.from(uniqueSubs.values())
