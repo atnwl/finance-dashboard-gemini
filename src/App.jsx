@@ -1852,10 +1852,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Centered Amount */}
-                  <div className="flex-1 flex items-center justify-center">
+                  {/* Centered Amount & Debug Info */}
+                  <div className="flex-1 flex flex-col items-center justify-center">
                     <p className="text-6xl font-display font-bold tracking-tight">
                       {formatAccounting(financials[cashFlowMode]?.net || 0)}
+                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-1">
+                      Inc: {formatAccounting(financials[cashFlowMode]?.income || 0)} • Exp: {formatAccounting(financials[cashFlowMode]?.expenses || 0)}
                     </p>
                   </div>
                 </div>
@@ -2027,6 +2030,9 @@ export default function App() {
                       <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
                         <p className="text-6xl font-display font-bold tracking-tight">
                           {formatAccounting(financials[cashFlowMode]?.net || 0)}
+                        </p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-black/40 mt-2">
+                          Inc: {formatAccounting(financials[cashFlowMode]?.income || 0)} • Exp: {formatAccounting(financials[cashFlowMode]?.expenses || 0)}
                         </p>
                       </div>
                     </div>
