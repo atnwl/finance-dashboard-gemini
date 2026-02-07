@@ -712,10 +712,24 @@ const NoteEditor = ({ isOpen, note, onSave, onDelete, onClose }) => {
 };
 
 const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Sort notes by updatedAt descending (most recent first)
   const sortedNotes = useMemo(() => {
     return [...(notes || [])].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   }, [notes]);
+
+  // Filter notes based on search query
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) return sortedNotes;
+
+    const query = searchQuery.toLowerCase();
+    return sortedNotes.filter(note => {
+      const titleMatch = (note.title || '').toLowerCase().includes(query);
+      const bodyMatch = (note.body || '').toLowerCase().includes(query);
+      return titleMatch || bodyMatch;
+    });
+  }, [sortedNotes, searchQuery]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
@@ -751,6 +765,30 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
             </button>
           </div>
         </div>
+
+        {/* Search Bar */}
+        {sortedNotes.length > 0 && (
+          <div className="max-w-6xl mx-auto px-4 pb-4">
+            <div className="relative">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-card border border-border/50 rounded-xl text-sm placeholder:text-muted/50 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notes Grid */}
@@ -770,9 +808,23 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
               Create Note
             </button>
           </div>
+        ) : filteredNotes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <Search size={40} className="text-muted" />
+            </div>
+            <h2 className="text-lg font-semibold text-muted mb-2">No notes found</h2>
+            <p className="text-sm text-muted/70 mb-4">Try a different search term</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 text-muted border border-white/10 rounded-xl font-medium text-sm hover:bg-white/10 transition-all"
+            >
+              Clear Search
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sortedNotes.map((note) => (
+            {filteredNotes.map((note) => (
               <div
                 key={note.id}
                 onClick={() => onNoteClick(note)}
