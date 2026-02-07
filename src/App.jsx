@@ -475,7 +475,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [subscriptionFilter, setSubscriptionFilter] = useState(null);
+  const [subscriptionFilter, setSubscriptionFilter] = useState('Monthly');
 
   // Handle Android Back Gesture / Browser History
   useEffect(() => {
@@ -1927,6 +1927,7 @@ export default function App() {
                 <PieChart>
                   <Pie
                     data={Object.entries(financials.byCategory)
+                      .filter(([name, value]) => value > 0.01)
                       .map(([name, value]) => ({ name, value }))
                       .sort((a, b) => b.value - a.value)}
                     cx="50%"
@@ -1937,9 +1938,11 @@ export default function App() {
                     dataKey="value"
                     isAnimationActive={false}
                   >
-                    {Object.entries(financials.byCategory).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                    ))}
+                    {Object.entries(financials.byCategory)
+                      .filter(([name, value]) => value > 0.01)
+                      .map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                      ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{ backgroundColor: '#161B21', borderColor: '#374151', borderRadius: '8px' }}
@@ -3150,7 +3153,16 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         // Calculate file-based date (oldest modification time found)
         const fileTimestamps = files.map(f => f.lastModified).filter(Boolean);
         const minTimestamp = fileTimestamps.length ? Math.min(...fileTimestamps) : Date.now();
-        const fileDate = new Date(minTimestamp).toISOString().split('T')[0];
+
+        // Format date in EST timezone
+        const estDate = new Date(minTimestamp).toLocaleString('en-US', {
+          timeZone: 'America/New_York',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+        const [month, day, year] = estDate.split('/');
+        const fileDate = `${year}-${month}-${day}`;
 
         // Helper: Convert File to Gemini InlineData Part
         const fileToPart = (file) => new Promise((resolve, reject) => {
@@ -3306,11 +3318,11 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
 
           setPendingStatement({
             provider,
-            last4: resolvedLast4,
+            last4: resolvedLast4 ? resolvedLast4.slice(-4) : '', // Ensure only rightmost 4 digits
             date: stmtDate,
             type: metadata?.type || 'credit_card',
             balance: metadata?.balance || null, // Use extracted balance if found, else null (---)
-            possibleLast4s // Pass choices to UI
+            possibleLast4s: possibleLast4s.map(l => l.slice(-4)) // Sanitize all options
           });
 
           setBulkItems(items.map(i => ({
@@ -3713,8 +3725,12 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
                 type="text"
                 className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
                 placeholder="1234"
+                maxLength="4"
                 value={stmt.last4 || ''}
-                onChange={(e) => updateStmt('last4', e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(-4);
+                  updateStmt('last4', value);
+                }}
               />
             )}
           </div>
