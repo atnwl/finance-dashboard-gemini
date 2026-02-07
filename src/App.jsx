@@ -647,6 +647,8 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const [cashFlowMode, setCashFlowMode] = useState('actual');
+
   const handleNavigation = (tabName) => {
     if (activeTab === tabName) return;
     setActiveTab(tabName);
@@ -1171,10 +1173,39 @@ export default function App() {
     // 1. Group by Merchant Name (normalized)
     // 2. Take only the LATEST transaction
 
+    // 3. Actuals Calculation (Strictly transactions in this month)
+    const actualIncome = monthlyIncome.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualExpenses = monthlyExpenses.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualNet = actualIncome - actualExpenses;
+
     const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
     const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
 
-    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, categoryYearlyData, totalRecurringExpenses, savingsRate, expenseRatio };
+    return {
+      totalIncome,
+      totalExpenses,
+      totalCcPayments,
+      net,
+      byCategory,
+      totalSubscriptionsCost,
+      activeSubscriptionCount,
+      yearlyData,
+      categoryYearlyData,
+      totalRecurringExpenses,
+      savingsRate,
+      expenseRatio,
+      // New: Explicit Actual vs Projected
+      actual: {
+        income: actualIncome,
+        expenses: actualExpenses,
+        net: actualNet
+      },
+      projected: {
+        income: totalIncome,
+        expenses: totalExpenses,
+        net: net
+      }
+    };
   }, [data, selectedMonth, selectedYear]);
 
   const financials = useMemo(() => {
@@ -1201,7 +1232,17 @@ export default function App() {
       byCategory: monthData.byCategory,
       savingsRate: monthData.income > 0 ? (monthData.net / monthData.income) * 100 : 0,
       expenseRatio: monthData.income > 0 ? (monthData.expenses / monthData.income) * 100 : 0,
-      categoryYearlyData
+      categoryYearlyData,
+      actual: {
+        income: monthData.income,
+        expenses: monthData.expenses,
+        net: monthData.net
+      },
+      projected: {
+        income: monthData.income,
+        expenses: monthData.expenses,
+        net: monthData.net
+      }
     };
   }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
@@ -1769,20 +1810,32 @@ export default function App() {
                     </h3>
 
                     {/* Metrics Pills */}
-                    <div className="flex rounded-full p-0.5 backdrop-blur-md bg-black/10">
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
-                        TBD
-                      </div>
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
-                        TBD
-                      </div>
+                    <div className="flex rounded-lg p-1 backdrop-blur-md bg-black/10 gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCashFlowMode('actual'); }}
+                        className={cn(
+                          "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                          cashFlowMode === 'actual' ? "bg-black/20 text-black/80" : "text-black/40 hover:bg-black/5"
+                        )}
+                      >
+                        Actual
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCashFlowMode('projected'); }}
+                        className={cn(
+                          "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                          cashFlowMode === 'projected' ? "bg-black/20 text-black/80" : "text-black/40 hover:bg-black/5"
+                        )}
+                      >
+                        Projected
+                      </button>
                     </div>
                   </div>
 
                   {/* Centered Amount */}
                   <div className="flex-1 flex items-center justify-center">
                     <p className="text-6xl font-display font-bold tracking-tight">
-                      {formatAccounting(financials.net)}
+                      {formatAccounting(financials[cashFlowMode]?.net || 0)}
                     </p>
                   </div>
                 </div>
@@ -1930,18 +1983,30 @@ export default function App() {
                         <div className="absolute left-1/2 -translate-x-1/2 top-1.5 z-10 w-full text-center">
                           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
                         </div>
-                        <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
-                          <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
-                            TBD
-                          </div>
-                          <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
-                            TBD
-                          </div>
+                        <div className="flex rounded-lg p-1 backdrop-blur-md z-20 bg-black/10 gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCashFlowMode('actual'); }}
+                            className={cn(
+                              "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                              cashFlowMode === 'actual' ? "bg-black/20 text-black/80" : "text-black/40 hover:bg-black/5"
+                            )}
+                          >
+                            Actual
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCashFlowMode('projected'); }}
+                            className={cn(
+                              "px-3 py-1 rounded-md text-[10px] font-bold transition-all",
+                              cashFlowMode === 'projected' ? "bg-black/20 text-black/80" : "text-black/40 hover:bg-black/5"
+                            )}
+                          >
+                            Projected
+                          </button>
                         </div>
                       </div>
                       <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
                         <p className="text-6xl font-display font-bold tracking-tight">
-                          {formatAccounting(financials.net)}
+                          {formatAccounting(financials[cashFlowMode]?.net || 0)}
                         </p>
                       </div>
                     </div>
