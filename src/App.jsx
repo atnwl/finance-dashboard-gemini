@@ -1076,6 +1076,10 @@ export default function App() {
     const totalSubscriptionsCost = activeSubscriptions.reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
     const activeSubscriptionCount = activeSubscriptions.length;
 
+    // Annual Subscriptions Only
+    const annualSubscriptions = activeSubscriptions.filter(i => (i.frequency || '').toLowerCase() === 'annual');
+    const totalAnnualSubscriptionsCost = annualSubscriptions.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
+
     // 2. Standard Expenses
     const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
@@ -1252,6 +1256,7 @@ export default function App() {
       net,
       byCategory,
       totalSubscriptionsCost,
+      totalAnnualSubscriptionsCost,
       activeSubscriptionCount,
       yearlyData,
       categoryYearlyData,
@@ -1941,7 +1946,7 @@ export default function App() {
             onClick={() => handleNavigation('subscriptions')}
             className="col-span-6 p-4 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
           >
-            <div>
+            <div className="flex-1">
               <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Subscriptions ({financials.activeSubscriptionCount})</h3>
               <div className="mt-2 flex items-baseline gap-4">
                 <p className="text-2xl font-display font-bold text-warning tracking-tight">
@@ -1951,6 +1956,12 @@ export default function App() {
                   ${(financials.totalSubscriptionsCost * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[10px] font-normal text-muted ml-0.5">yr</span>
                 </p>
               </div>
+            </div>
+            <div className="border-l border-white/10 pl-4">
+              <h3 className="text-muted text-xs font-medium uppercase tracking-wide">Annual Only</h3>
+              <p className="text-xl font-display font-bold text-warning/80 tracking-tight mt-2">
+                ${financials.totalAnnualSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted ml-1">annual</span>
+              </p>
             </div>
             <Calendar size={28} className="text-warning opacity-40" />
           </Card>
