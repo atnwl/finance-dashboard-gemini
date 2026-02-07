@@ -1958,7 +1958,9 @@ export default function App() {
             </div>
             <div className="mt-4 flex gap-4 text-xs">
               {(() => {
-                const sortedItems = Object.entries(financials.byCategory).sort(([, a], [, b]) => b - a);
+                const sortedItems = Object.entries(financials.byCategory)
+                  .filter(([, value]) => Math.round(value / financials.totalExpenses * 100) > 0)
+                  .sort(([, a], [, b]) => b - a);
                 const mid = Math.ceil(sortedItems.length / 2);
                 const left = sortedItems.slice(0, mid);
                 const right = sortedItems.slice(mid);
@@ -3325,13 +3327,29 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             possibleLast4s: possibleLast4s.map(l => l.slice(-4)) // Sanitize all options
           });
 
-          setBulkItems(items.map(i => ({
+          // Detect potential duplicates within the scanned items
+          const itemsWithIds = items.map(i => ({
             ...i,
             id: Math.random().toString(36).substr(2, 9),
             isIncome: i.isIncome ?? false,
             type: i.type || 'variable',
             frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
-          })));
+          }));
+
+          // Mark potential duplicates (same name + date + amount within set)
+          const seenKeys = new Map();
+          const itemsWithDupeFlag = itemsWithIds.map(item => {
+            const key = `${item.name.toLowerCase().trim()}|${item.date}|${parseFloat(item.amount).toFixed(2)}`;
+            if (seenKeys.has(key)) {
+              // This is a duplicate of an earlier item
+              return { ...item, isPotentialDuplicate: true, duplicateOf: seenKeys.get(key) };
+            } else {
+              seenKeys.set(key, item.id);
+              return item;
+            }
+          });
+
+          setBulkItems(itemsWithDupeFlag);
         }
 
       } catch (err) {
@@ -3759,11 +3777,26 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
 
       <div className="overflow-y-auto flex-1 pr-2 space-y-3">
         {items.map((item, idx) => (
-          <div key={idx} className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-3 group relative">
+          <div key={idx} className={cn(
+            "bg-white/5 rounded-lg p-3 border flex flex-col gap-3 group relative",
+            item.isPotentialDuplicate ? "border-yellow-500/50 bg-yellow-500/5" : "border-white/5"
+          )}>
+            {/* Duplicate Warning Badge */}
+            {item.isPotentialDuplicate && (
+              <div className="absolute -top-2 left-3 px-2 py-0.5 bg-yellow-500 text-black text-[10px] font-bold rounded-full flex items-center gap-1">
+                <AlertCircle size={10} />
+                Possible Duplicate
+              </div>
+            )}
             <button
               onClick={() => onRemove(idx)}
-              className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-danger/20 text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-all"
-              title="Remove Item"
+              className={cn(
+                "absolute top-2 right-2 p-1.5 rounded-md transition-all",
+                item.isPotentialDuplicate
+                  ? "bg-yellow-500/20 text-yellow-500 hover:bg-danger/20 hover:text-danger opacity-100"
+                  : "hover:bg-danger/20 text-muted hover:text-danger opacity-0 group-hover:opacity-100"
+              )}
+              title={item.isPotentialDuplicate ? "Remove Duplicate" : "Remove Item"}
             >
               <Trash2 size={14} />
             </button>
