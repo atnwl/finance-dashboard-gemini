@@ -935,6 +935,13 @@ export default function App() {
     }));
   };
 
+  const handleUpdateStatement = (id, updates) => {
+    setData(prev => ({
+      ...prev,
+      statements: prev.statements.map(s => s.id === id ? { ...s, ...updates } : s)
+    }));
+  };
+
   const handleSave = (item) => {
     // Remove transient UI flags
     const cleanItem = { ...item };
@@ -2049,6 +2056,7 @@ export default function App() {
                   key={`${account.provider}-${account.last4}`}
                   account={account}
                   onDelete={handleDeleteStatement}
+                  onUpdate={handleUpdateStatement}
                 />
               ))}
             </div>
@@ -2710,10 +2718,11 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
   );
 }
 
-function AccountCard({ account, onDelete }) {
+function AccountCard({ account, onDelete, onUpdate }) {
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
-
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBalance, setEditBalance] = useState('');
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -2727,6 +2736,11 @@ function AccountCard({ account, onDelete }) {
     const num = parseFloat(val);
     const amount = `$${Math.abs(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     return num < 0 ? `-${amount}` : amount;
+  };
+
+  const handleSaveBalance = () => {
+    onUpdate(latest.id, { balance: editBalance });
+    setIsEditing(false);
   };
 
   return (
@@ -2743,20 +2757,49 @@ function AccountCard({ account, onDelete }) {
           </div>
         </div>
 
-        {/* Only show balance hero if it's a credit card or has a balance */}
-        {latest.balance !== undefined && (
-          <div className="text-right">
-            <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
-            <span className={cn(
-              "text-2xl font-bold",
-              account.type === 'bank_account'
-                ? (parseFloat(latest.balance) >= 0 ? "text-primary" : "text-danger")
-                : (parseFloat(latest.balance) > 0 ? "text-danger" : (parseFloat(latest.balance) < 0 ? "text-primary" : "text-[#E8F5E9]"))
-            )}>
-              {formatBalance(latest.balance)}
-            </span>
-          </div>
-        )}
+        {/* Balance Display / Edit */}
+        <div className="text-right">
+          <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
+
+          {isEditing ? (
+            <div className="flex items-center gap-2 justify-end animate-in fade-in zoom-in-95">
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                className="w-24 bg-white/5 border border-white/10 rounded px-2 py-1 text-right text-sm font-bold focus:outline-none focus:border-primary"
+                value={editBalance}
+                onChange={(e) => setEditBalance(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveBalance();
+                  if (e.key === 'Escape') setIsEditing(false);
+                }}
+              />
+              <button onClick={handleSaveBalance} className="p-1 hover:text-primary"><Check size={14} /></button>
+              <button onClick={() => setIsEditing(false)} className="p-1 hover:text-danger"><X size={14} /></button>
+            </div>
+          ) : (
+            <div
+              onClick={() => {
+                setEditBalance(latest.balance || '');
+                setIsEditing(true);
+              }}
+              className="group/balance cursor-pointer flex items-center justify-end gap-2"
+              title="Click to edit balance"
+            >
+              <span className={cn(
+                "text-2xl font-bold group-hover/balance:opacity-80 transition-opacity",
+                account.type === 'bank_account'
+                  ? (parseFloat(latest.balance) >= 0 ? "text-primary" : "text-danger")
+                  : (parseFloat(latest.balance) > 0 ? "text-danger" : (parseFloat(latest.balance) < 0 ? "text-primary" : "text-[#E8F5E9]"))
+              )}>
+                {latest.balance === undefined || latest.balance === null || latest.balance === '' ? '—' : formatBalance(latest.balance)}
+              </span>
+              <Pencil size={12} className="opacity-0 group-hover/balance:opacity-50 transition-opacity text-muted" />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Last Statement Uploaded */}
@@ -3048,9 +3091,13 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     const startTime = Date.now();
 
     // Small delay to allow React to render the loading spinner before processing starts
-    // Small delay to allow React to render the loading spinner before processing starts
     setTimeout(async () => {
       try {
+        // Calculate file-based date (oldest modification time found)
+        const fileTimestamps = files.map(f => f.lastModified).filter(Boolean);
+        const minTimestamp = fileTimestamps.length ? Math.min(...fileTimestamps) : Date.now();
+        const fileDate = new Date(minTimestamp).toISOString().split('T')[0];
+
         // Helper: Convert File to Gemini InlineData Part
         const fileToPart = (file) => new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -3112,8 +3159,6 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       "metadata": {
         "type": "credit_card" OR "bank_account", 
         "provider": "Chase",
-        "last4": "1234",
-        "statementEndDate": "2026-01-24",
         "balance": "1240.50"
       },
       "transactions": [
@@ -3125,21 +3170,10 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     IMPORTANT for metadata:
     - type: "credit_card" or "bank_account". Use the rules above (e.g. Fold = bank_account).
     - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
-    - last4: Last 4 digits of the account/card number (look for "Account Number: XXXX XXXX XXXX 1234" or similar)
-    - statementEndDate: Look for "Statement Date" (explicit single date) FIRST.
-      If found, use that date.
-      If not found, look for "Statement Period" or "Closing Date" and extract the END date.
-      CRITICAL: "Statement Date" takes precedence over the end of a "Period Covered".
-      CRITICAL: If year is shown as 2 digits (e.g., "25" or "26"), interpret as 2025 or 2026 (current decade).
-      Return in YYYY-MM-DD format (e.g., "2026-01-24" for "01/24/26").
     - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
-      Credit Cards: Positive number = Owed debt. Negative number = Credit.
-      Bank Accounts: Positive number = Available funds.
-    - balanceTransferOffer: Look for ACTIVE "Balance Transfer" or "Promo Balance" sections.
-      If a specific promotional balance is listed (e.g. "0.00% APR Balance"), extract it.
-      Return object: { "amount": "1234.50", "promoEndDate": "2026-07-15", "apr": "0" }.
-      If none found, omit this field or return null.
-      Return as a pure number (no currency symbols).
+      Credit Cards: positive number. Bank Accounts: positive number.
+      If NOT CLEARLY VISIBLE in the image, return null or omit.
+    - DO NOT extract accounts numbers or dates. Focus on Provider Name and Balance only.
     `;
 
         const result = await model.generateContent([prompt, ...imageParts]);
@@ -3154,7 +3188,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           rawItems = parsed;
         } else if (parsed.transactions && Array.isArray(parsed.transactions)) {
           rawItems = parsed.transactions;
-          metadata = parsed.metadata;
+          metadata = parsed.metadata || {};
+          metadata.transactions = undefined; // cleanup
         } else {
           rawItems = [parsed];
         }
@@ -3187,13 +3222,6 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         if (items.length === 1) {
           // Single Item Mode (Old Behavior)
           const prediction = items[0];
-          console.log("Gemini Prediction:", prediction);
-
-          const validCats = prediction.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-          if (!validCats.includes(prediction.category)) {
-            prediction.category = 'Other'; // Safer default than index 0 (Alcohol)
-          }
-
           setFormData(prev => ({
             ...prev,
             name: prediction.name,
@@ -3205,24 +3233,44 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           triggerAiFlash();
         } else {
           // Bulk Mode
-          if (metadata) {
-            setPendingStatement(metadata);
-          } else {
-            setPendingStatement(null);
+          // 1. Resolve Statement ID / Last 4
+          const provider = metadata?.provider || 'Unknown';
+          const stmtDate = fileDate; // Use file date as source of truth
+
+          // Find existing accounts for this provider
+          const existingStatements = data.statements.filter(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
+          const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
+
+          let resolvedLast4 = '';
+          let possibleLast4s = [];
+
+          if (distinctLast4s.length === 1) {
+            resolvedLast4 = distinctLast4s[0]; // Auto-match single account
+          } else if (distinctLast4s.length > 1) {
+            possibleLast4s = distinctLast4s; // Ambiguous - user must choose
           }
+
+          setPendingStatement({
+            provider,
+            last4: resolvedLast4,
+            date: stmtDate,
+            type: metadata?.type || 'credit_card',
+            balance: metadata?.balance || null, // Use extracted balance if found, else null (---)
+            possibleLast4s // Pass choices to UI
+          });
+
           setBulkItems(items.map(i => ({
             ...i,
             id: Math.random().toString(36).substr(2, 9),
             isIncome: i.isIncome ?? false,
             type: i.type || 'variable',
-            // PRESERVE cached frequency! Only default if no frequency exists.
             frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
           })));
         }
 
       } catch (err) {
         console.error("Receipt scanning failed:", err);
-
+        // ... error handling ...
         let errorMessage = "Failed to scan receipt. ";
         if (err.message?.includes("API key")) {
           errorMessage += "API key issue - check your Gemini API key.";
@@ -3230,16 +3278,12 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           errorMessage += "Could not parse AI response. The image might be unclear.";
         } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
           errorMessage += "API rate limit reached. Try again in a minute.";
-        } else if (err.message?.includes("RECITATION") || err.message?.includes("SAFETY")) {
-          errorMessage += "Content was blocked by AI safety filters.";
         } else {
           errorMessage += err.message || "Unknown error occurred.";
         }
-
         alert(errorMessage);
       } finally {
         setIsAiLoading(false);
-        // Reset file input value so same file can be selected again if needed
         e.target.value = '';
       }
     }, 10);
@@ -3592,13 +3636,33 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
           </div>
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
-            <input
-              type="text"
-              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
-              placeholder="1234"
-              value={stmt.last4 || ''}
-              onChange={(e) => updateStmt('last4', e.target.value)}
-            />
+            {stmt.possibleLast4s && stmt.possibleLast4s.length > 0 ? (
+              <select
+                className="w-full bg-[#161B21] border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-white"
+                value={stmt.last4 || ''}
+                onChange={(e) => {
+                  if (e.target.value === 'NEW') {
+                    setPendingStatement({ ...stmt, possibleLast4s: null, last4: '' });
+                  } else {
+                    updateStmt('last4', e.target.value);
+                  }
+                }}
+              >
+                <option value="" disabled>Select Account</option>
+                {stmt.possibleLast4s.map(l4 => (
+                  <option key={l4} value={l4}>{l4}</option>
+                ))}
+                <option value="NEW">+ New Account</option>
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+                placeholder="1234"
+                value={stmt.last4 || ''}
+                onChange={(e) => updateStmt('last4', e.target.value)}
+              />
+            )}
           </div>
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Balance</label>
@@ -3606,7 +3670,7 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
               type="number"
               step="0.01"
               className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
-              placeholder="0.00"
+              placeholder="---"
               value={stmt.balance || ''}
               onChange={(e) => updateStmt('balance', e.target.value)}
             />
@@ -3614,10 +3678,10 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Closing Date</label>
             <input
-              type="date"
-              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-gray-400"
+              type="text"
+              readOnly
+              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-muted cursor-not-allowed"
               value={stmt.statementEndDate || stmt.statementDate || stmt.date || ''}
-              onChange={(e) => updateStmt('date', e.target.value)}
             />
           </div>
         </div>
