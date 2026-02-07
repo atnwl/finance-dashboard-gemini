@@ -1161,7 +1161,10 @@ export default function App() {
     // 1. Group by Merchant Name (normalized)
     // 2. Take only the LATEST transaction
 
-    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, categoryYearlyData, totalRecurringExpenses };
+    const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
+    const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
+
+    return { totalIncome, totalExpenses, totalCcPayments, net, byCategory, totalSubscriptionsCost, activeSubscriptionCount, yearlyData, categoryYearlyData, totalRecurringExpenses, savingsRate, expenseRatio };
   }, [data, selectedMonth, selectedYear]);
 
   const financials = useMemo(() => {
@@ -1174,7 +1177,9 @@ export default function App() {
       totalIncome: monthData.income,
       totalExpenses: monthData.expenses,
       net: monthData.net,
-      byCategory: monthData.byCategory
+      byCategory: monthData.byCategory,
+      savingsRate: monthData.income > 0 ? (monthData.net / monthData.income) * 100 : 0,
+      expenseRatio: monthData.income > 0 ? (monthData.expenses / monthData.income) * 100 : 0
     };
   }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
@@ -1698,7 +1703,7 @@ export default function App() {
                 isNegative ? "bg-danger shadow-xl shadow-danger/20" : "bg-primary shadow-xl shadow-primary/20"
               )}>
                 <div className="p-4 flex-1 relative z-10 flex flex-col">
-                  {/* Top Row: Month badge, centered title, TBD pills */}
+                  {/* Top Row: Month badge, centered title, metrics pills */}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-0.5 -ml-2">
                       <button
@@ -1741,10 +1746,14 @@ export default function App() {
                       Cash Flow
                     </h3>
 
-                    {/* Small TBD Pills */}
+                    {/* Metrics Pills */}
                     <div className="flex rounded-full p-0.5 backdrop-blur-md bg-black/10">
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-60">TBD</div>
-                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">TBD</div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
+                        {financials.savingsRate >= 0 ? '+' : ''}{financials.savingsRate.toFixed(1)}% Save
+                      </div>
+                      <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
+                        {financials.expenseRatio.toFixed(1)}% Spend
+                      </div>
                     </div>
                   </div>
 
@@ -1756,13 +1765,19 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Bottom TBD Action Buttons */}
+                {/* Action Buttons */}
                 <div className="p-3 grid grid-cols-2 gap-2">
-                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
-                    <span>TBD</span>
+                  <button
+                    onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
+                    className="py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors"
+                  >
+                    <span>Income Detail</span>
                   </button>
-                  <button className="py-3 rounded-xl text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors">
-                    <span>TBD</span>
+                  <button
+                    onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
+                    className="py-3 rounded-xl text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5 transition-colors"
+                  >
+                    <span>Expense Detail</span>
                   </button>
                 </div>
 
@@ -1910,8 +1925,12 @@ export default function App() {
                           <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/60">Cash Flow</h3>
                         </div>
                         <div className="flex rounded-full p-0.5 backdrop-blur-md z-20 bg-black/10">
-                          <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-50">TBD</div>
-                          <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-30">TBD</div>
+                          <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-black/10 opacity-70">
+                            {financials.savingsRate >= 0 ? '+' : ''}{financials.savingsRate.toFixed(1)}% Save
+                          </div>
+                          <div className="px-3 py-1 rounded-full text-[10px] font-bold opacity-40">
+                            {financials.expenseRatio.toFixed(1)}% Spend
+                          </div>
                         </div>
                       </div>
                       <div className="mt-8 text-center flex flex-col items-center justify-center flex-1">
@@ -1921,11 +1940,17 @@ export default function App() {
                       </div>
                     </div>
                     <div className="p-4 grid grid-cols-2 gap-3 mt-auto">
-                      <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
-                        <span>TBD</span>
+                      <button
+                        onClick={() => { setTransactionFilter('income'); handleNavigation('transactions'); }}
+                        className="py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5"
+                      >
+                        <span>Income Detail</span>
                       </button>
-                      <button className="py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5">
-                        <span>TBD</span>
+                      <button
+                        onClick={() => { setTransactionFilter('expenses'); handleNavigation('transactions'); }}
+                        className="py-3 rounded-xl transition-all text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 backdrop-blur-sm shadow-sm border bg-black/10 hover:bg-black/20 border-black/5"
+                      >
+                        <span>Expense Detail</span>
                       </button>
                     </div>
                     <ArrowRightLeft size={160} className="absolute bottom-[-20px] right-[-20px] rotate-[-15deg] pointer-events-none transition-colors text-black/5" />
@@ -2507,6 +2532,11 @@ export default function App() {
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
+    const filteredTotal = items.reduce((acc, item) => {
+      const amt = parseFloat(item.amount) || 0;
+      return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
+    }, 0);
+
     if (transactionFilter && !isSearchActive && !isSubView) {
       if (transactionFilter === 'income') {
         items = items.filter(i => i._type === 'income');
@@ -2552,7 +2582,12 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <h2 className="font-bold text-xl">Transaction History</h2>
+                <div className="flex items-center gap-2">
+                  {isSearchActive && <Search size={18} className="text-muted/50" />}
+                  <h2 className="font-bold text-xl">
+                    {isSearchActive ? 'Search Results' : 'Transaction History'}
+                  </h2>
+                </div>
               )}
             </div>
 
@@ -2564,6 +2599,22 @@ export default function App() {
                   searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
                 )}>
                   {formatAccounting(searchTotal)}
+                </div>
+              </div>
+            )}
+
+            {!isSearchActive && (transactionFilter || isSubView) && (
+              <div className="text-right">
+                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
+                  {isSubView ? 'Monthly Cost' : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : 'Net Total'))}
+                </p>
+                <div className={cn(
+                  "text-xl font-display font-bold tracking-tight",
+                  filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                )}>
+                  {isSubView
+                    ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : formatAccounting(filteredTotal)}
                 </div>
               </div>
             )}
