@@ -3061,8 +3061,8 @@ export default function App() {
           "md:border border-none rounded-none md:rounded-xl"
         )}>
           {/* Header */}
-          <div className="sticky top-16 md:static z-30 bg-background/98 backdrop-blur-xl border-b border-white/10 transition-all">
-            <div className="px-4 py-3 md:py-6 flex items-center justify-between md:border-b md:border-white/5">
+          <div className="sticky top-16 md:static z-30 bg-background border-b border-border/10 transition-all">
+            <div className="px-4 py-4 md:py-6 flex items-center justify-between md:border-b md:border-border/5">
               <div className="flex items-center gap-3">
                 {/* X Button for Search */}
                 {isSearchActive && (
