@@ -3056,10 +3056,13 @@ export default function App() {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
-        <Card className="p-0 overflow-hidden border-border/50 bg-background md:bg-card border-none md:border">
+        <Card className={cn(
+          "p-0 overflow-hidden border-border/50 bg-background md:bg-card transition-all",
+          "md:border border-none rounded-none md:rounded-xl"
+        )}>
           {/* Header */}
-          <div className="sticky top-16 z-30 bg-background/95 backdrop-blur-md border-b border-white/5 md:static md:bg-transparent md:border-none transition-all">
-            <div className="px-4 py-6 flex items-center justify-between md:border-b md:border-white/5">
+          <div className="sticky top-16 md:static z-30 bg-background/98 backdrop-blur-xl border-b border-white/10 transition-all">
+            <div className="px-4 py-3 md:py-6 flex items-center justify-between md:border-b md:border-white/5">
               <div className="flex items-center gap-3">
                 {/* X Button for Search */}
                 {isSearchActive && (
@@ -3125,7 +3128,7 @@ export default function App() {
             {/* Filter Pills */}
             {
               !isSearchActive && (
-                <div className="px-4 pb-4 flex gap-2 overflow-x-auto scrollbar-hide">
+                <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
                   {!isSubView ? (
                     <>
                       <button
@@ -3196,7 +3199,7 @@ export default function App() {
                 <p>No transactions found for {MONTHS[selectedMonth]} {selectedYear}.</p>
               </div>
             ) : (
-              <div className="space-y-px bg-white/5">
+              <div className="space-y-px bg-white/5 pb-24 md:pb-0">
                 {items.map((item, index) => {
                   // Parse original date
                   const [y, m, d] = item.date.split('-').map(Number);
@@ -3593,11 +3596,13 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-32 animate-in fade-in duration-500 transition-all duration-300",
+        "flex-1 w-full mx-auto animate-in fade-in duration-500 transition-all duration-300",
         "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
+        // List views should be flush to the header on mobile
+        (activeTab === 'transactions' || activeTab === 'subscriptions' || searchQuery.length >= 2) ? "p-0 md:p-6" : "p-4 md:p-6",
+        "pb-24 md:pb-32",
         isChatOpen && "lg:pr-[440px]"
       )}>
-
 
         {renderContent()}
 
