@@ -828,7 +828,7 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
               <div
                 key={note.id}
                 onClick={() => onNoteClick(note)}
-                className="group bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer flex flex-col h-[200px] overflow-hidden"
+                className="group bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer flex flex-col h-auto max-h-[200px] overflow-hidden"
               >
                 {/* Title */}
                 {note.title && (
@@ -2429,7 +2429,7 @@ export default function App() {
                   <ArrowDownLeft size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Income</h3>
-                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${(financials[cashFlowMode]?.income || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Expenses Card */}
@@ -2441,7 +2441,7 @@ export default function App() {
                   <ArrowUpRight size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Expenses</h3>
-                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${(financials[cashFlowMode]?.expenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Subscriptions Card */}
@@ -2449,13 +2449,24 @@ export default function App() {
                 onClick={() => handleNavigation('subscriptions')}
                 className="col-span-2 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
               >
-                <div>
-                  <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
-                  <p className="text-xl font-display font-bold mt-1 text-white tracking-tight">
-                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted/70 ml-1">per month</span>
+                <div className="flex-1">
+                  <h3 className="text-muted text-[10px] uppercase tracking-wide font-medium">Monthly Subs</h3>
+                  <div className="mt-1">
+                    <p className="text-xl font-display font-bold text-warning tracking-tight">
+                      ${subscriptionTotals.totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-xs font-normal text-muted ml-0.5">mo</span>
+                    </p>
+                    <p className="text-[10px] font-medium text-muted">
+                      ${(subscriptionTotals.totalMonthly * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[9px] font-normal text-muted ml-0.5">yr</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex-1 border-l border-white/10 pl-4">
+                  <h3 className="text-muted text-[10px] uppercase tracking-wide font-medium">Annual Subs</h3>
+                  <p className="text-lg font-display font-bold text-warning tracking-tight mt-1">
+                    ${subscriptionTotals.totalAnnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-xs font-normal text-muted ml-0.5">yr</span>
                   </p>
                 </div>
-                <Calendar size={24} className="text-warning opacity-50" />
+                <Calendar size={24} className="text-warning opacity-50 ml-2" />
               </Card>
             </>
           )}
@@ -2464,7 +2475,7 @@ export default function App() {
             <>
               <div
                 onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
-                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
+                className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[100px]"
               >
                 <div>
                   <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
@@ -3047,131 +3058,133 @@ export default function App() {
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
         <Card className="p-0 overflow-hidden border-border/50 bg-background md:bg-card border-none md:border">
           {/* Header */}
-          <div className="px-4 py-6 border-b border-white/5 flex items-center justify-between sticky top-16 z-30 bg-background/95 backdrop-blur-md md:static md:bg-transparent">
-            <div className="flex items-center gap-3">
-              {/* X Button for Search */}
-              {isSearchActive && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
-                >
-                  <X size={20} />
-                </button>
-              )}
-              {isSubView ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
-                    <Calendar size={20} />
+          <div className="sticky top-16 z-30 bg-background/95 backdrop-blur-md border-b border-white/5 md:static md:bg-transparent md:border-none transition-all">
+            <div className="px-4 py-6 flex items-center justify-between md:border-b md:border-white/5">
+              <div className="flex items-center gap-3">
+                {/* X Button for Search */}
+                {isSearchActive && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+                {isSubView ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
+                      <Calendar size={20} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-xl">Subscriptions</h2>
+                      <p className="text-xs text-muted leading-none mt-1">Active recurring charges</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-bold text-xl">Subscriptions</h2>
-                    <p className="text-xs text-muted leading-none mt-1">Active recurring charges</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {isSearchActive && <Search size={18} className="text-muted/50" />}
+                    <h2 className="font-bold text-xl">
+                      {isSearchActive ? 'Search Results' : 'Transaction History'}
+                    </h2>
+                  </div>
+                )}
+              </div>
+
+              {isSearchActive && (
+                <div className="text-right">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">Search Total</p>
+                  <div className={cn(
+                    "text-xl font-display font-bold tracking-tight",
+                    searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                  )}>
+                    {formatAccounting(searchTotal)}
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {isSearchActive && <Search size={18} className="text-muted/50" />}
-                  <h2 className="font-bold text-xl">
-                    {isSearchActive ? 'Search Results' : 'Transaction History'}
-                  </h2>
+              )}
+
+              {!isSearchActive && (
+                <div className="text-right">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
+                    {isSubView ?
+                      (!subscriptionFilter ? 'Annual Cost' : (subscriptionFilter.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost'))
+                      : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
+                    }
+                  </p>
+                  <div className={cn(
+                    "text-xl font-display font-bold tracking-tight",
+                    isSubView ? "text-danger" : (filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]")
+                  )}>
+                    {isSubView
+                      ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : formatAccounting(filteredTotal)}
+                  </div>
                 </div>
               )}
             </div>
 
-            {isSearchActive && (
-              <div className="text-right">
-                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">Search Total</p>
-                <div className={cn(
-                  "text-xl font-display font-bold tracking-tight",
-                  searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
-                )}>
-                  {formatAccounting(searchTotal)}
-                </div>
-              </div>
-            )}
-
-            {!isSearchActive && (
-              <div className="text-right">
-                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
-                  {isSubView ?
-                    (!subscriptionFilter ? 'Annual Cost' : (subscriptionFilter.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost'))
-                    : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
-                  }
-                </p>
-                <div className={cn(
-                  "text-xl font-display font-bold tracking-tight",
-                  isSubView ? "text-danger" : (filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]")
-                )}>
-                  {isSubView
-                    ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : formatAccounting(filteredTotal)}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Filter Pills */}
-          {
-            !isSearchActive && (
-              <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
-                {!isSubView ? (
-                  <>
-                    <button
-                      onClick={() => setTransactionFilter(null)}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setTransactionFilter('expenses')}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      Expenses
-                    </button>
-                    <button
-                      onClick={() => setTransactionFilter('income')}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      Income
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setSubscriptionFilter(null)}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                        !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      All
-                    </button>
-                    {availableFrequencies.map(freq => (
+            {/* Filter Pills */}
+            {
+              !isSearchActive && (
+                <div className="px-4 pb-4 flex gap-2 overflow-x-auto scrollbar-hide">
+                  {!isSubView ? (
+                    <>
                       <button
-                        key={freq}
-                        onClick={() => setSubscriptionFilter(freq)}
+                        onClick={() => setTransactionFilter(null)}
                         className={cn(
-                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                          subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
                         )}
                       >
-                        {freq}
+                        All
                       </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )
-          }
+                      <button
+                        onClick={() => setTransactionFilter('expenses')}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        Expenses
+                      </button>
+                      <button
+                        onClick={() => setTransactionFilter('income')}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        Income
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setSubscriptionFilter(null)}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                          !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        All
+                      </button>
+                      {availableFrequencies.map(freq => (
+                        <button
+                          key={freq}
+                          onClick={() => setSubscriptionFilter(freq)}
+                          className={cn(
+                            "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                            subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                          )}
+                        >
+                          {freq}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )
+            }
+          </div>
 
           {/* List View or Empty State */}
           {
