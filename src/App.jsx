@@ -3062,7 +3062,7 @@ export default function App() {
         )}>
           {/* Header */}
           <div className="sticky top-16 md:static z-30 bg-background border-b border-border/10 transition-all">
-            <div className="px-4 py-4 md:py-6 flex items-center justify-between md:border-b md:border-border/5">
+            <div className="px-4 py-2 md:py-6 flex items-center justify-between md:border-b md:border-border/5">
               <div className="flex items-center gap-3">
                 {/* X Button for Search */}
                 {isSearchActive && (
@@ -3128,7 +3128,7 @@ export default function App() {
             {/* Filter Pills */}
             {
               !isSearchActive && (
-                <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
+                <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
                   {!isSubView ? (
                     <>
                       <button
