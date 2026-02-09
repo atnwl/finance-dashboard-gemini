@@ -860,6 +860,38 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
   );
 };
 
+// --- Data Migration & Versioning ---
+const CURRENT_DATA_VERSION = 1;
+
+const migrateData = (oldData) => {
+  let data = { ...oldData };
+  const version = data.version || 0;
+
+  if (version < 1) {
+    // Migration from v0 (No version) to v1
+    // Example: Ensure all arrays exist
+    data.income = data.income || [];
+    data.expenses = data.expenses || [];
+    data.statements = data.statements || [];
+    data.balanceTransfers = data.balanceTransfers || [];
+    data.notes = data.notes || [];
+
+    // Ensure category structure is complete
+    if (!data.categories) {
+      data.categories = { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES };
+    } else {
+      data.categories.income = data.categories.income || DEFAULT_INCOME_CATEGORIES;
+      data.categories.expenses = data.categories.expenses || DEFAULT_EXPENSE_CATEGORIES;
+    }
+  }
+
+  // Future migrations can go here:
+  // if (version < 2) { ... }
+
+  data.version = CURRENT_DATA_VERSION;
+  return data;
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -1145,18 +1177,8 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setData({
-            income: [],
-            expenses: [],
-            statements: [],
-            balanceTransfers: [],
-            notes: [],
-            ...parsed,
-            categories: {
-              income: parsed.categories?.income || DEFAULT_INCOME_CATEGORIES,
-              expenses: parsed.categories?.expenses || DEFAULT_EXPENSE_CATEGORIES
-            }
-          });
+          const migrated = migrateData(parsed);
+          setData(migrated);
         } catch (e) {
           console.error("Failed to load data", e);
         }
@@ -1877,7 +1899,9 @@ export default function App() {
     if (!user) return;
     setSyncStatus('Encrypting...');
     try {
-      const encrypted = await encryptData(data, password);
+      // Inject Version before saving
+      const dataToSave = { ...data, version: CURRENT_DATA_VERSION };
+      const encrypted = await encryptData(dataToSave, password);
       setSyncStatus('Uploading...');
 
       const now = new Date().toISOString();
@@ -1920,8 +1944,11 @@ export default function App() {
       setSyncStatus('Decrypting...');
       const decrypted = await decryptData(JSON.parse(rows.encrypted_blob), password);
 
-      setData(decrypted);
-      localStorage.setItem('financeData', JSON.stringify(decrypted));
+      // Run Migration
+      const migrated = migrateData(decrypted);
+
+      setData(migrated);
+      localStorage.setItem('financeData', JSON.stringify(migrated));
 
       // Sync the freshness badge from server timestamp
       if (rows.updated_at) {
