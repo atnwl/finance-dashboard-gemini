@@ -1361,7 +1361,8 @@ export default function App() {
     const totalMonthlySubscriptionsCost = monthlySubscriptions.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
     // 2. Standard Expenses
-    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
+    // Use proper active recurring items instead of all history
+    const recurringExpenses = activeRecurringItems;
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
@@ -1495,25 +1496,56 @@ export default function App() {
         return (m - 1) === index && y === selectedYear;
       };
 
-      // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = totalRecurringExpenses;
+      // 1. Calculate Actuals for this month
+      const actualInc = data.income.filter(monthFilter).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const actualExp = data.expenses.filter(monthFilter).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
-      // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notSpecial(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const now = new Date();
+      // Adjust now to local YYYY-MM logic if needed, but getMonth() is 0-indexed local time usually.
+      // Simplest is direct comparison:
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
 
-      const inc = mRecurringInc + mOneTimeInc;
-      const exp = mRecurringExp + mOneTimeExp;
+      const isPast = selectedYear < nowYear || (selectedYear === nowYear && index < nowMonth);
 
-      // Show all months that have recurring OR one-time data, or just show all 12 for alignment
+      let finalInc = actualInc;
+      let finalExp = actualExp;
+
+      // For Current or Future months, add Missing Recurring (Projections)
+      if (!isPast) {
+        // Income
+        const monthIncomeNames = new Set(data.income.filter(monthFilter).map(i => i.name.toLowerCase().trim()));
+        let missingInc = 0;
+        activeRecurringIncomeItems.forEach(item => {
+          const name = item.name.toLowerCase().trim();
+          const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
+          if (!monthIncomeNames.has(name) && !isSkipped) {
+            missingInc += normalizeToMonthly(item.amount, item.frequency);
+          }
+        });
+        finalInc += missingInc;
+
+        // Expenses
+        const monthExpenseNames = new Set(data.expenses.filter(monthFilter).map(e => e.name.toLowerCase().trim()));
+        let missingExp = 0;
+        activeRecurringItems.forEach(item => {
+          const name = item.name.toLowerCase().trim();
+          const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
+          if (!monthExpenseNames.has(name) && !isSkipped) {
+            missingExp += normalizeToMonthly(item.amount, item.frequency);
+          }
+        });
+        finalExp += missingExp;
+      }
+
       const shouldShow = true;
 
       return {
         name: monthName.slice(0, 3),
         year: selectedYear,
-        income: inc,
-        expenses: exp,
+        income: finalInc,
+        expenses: finalExp,
+        net: finalInc - finalExp,
         hasData: shouldShow
       };
     });
@@ -3082,8 +3114,11 @@ export default function App() {
       }
     }
 
-    // Inject Projected Transactions
-    if (!isSearchActive && !isSubView && cashFlowMode === 'projected') {
+    // Inject Projected Transactions (Current & Future Only)
+    const now = new Date();
+    const isPast = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+
+    if (!isPast && !isSearchActive && !isSubView && cashFlowMode === 'projected') {
       // Build set of names from ACTUAL posted items this month (before filter was applied)
       const allMonthlyActualNames = new Set(
         getMonthlyItems.map(i => i.name.toLowerCase().trim())
