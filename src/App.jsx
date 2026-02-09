@@ -908,6 +908,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
+  const [sortOption, setSortOption] = useState('date'); // 'date' | 'amount-high' | 'amount-low'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
@@ -1532,6 +1533,8 @@ export default function App() {
       yearlyData,
       categoryYearlyData,
       totalRecurringExpenses,
+      activeRecurringItems,
+      activeRecurringIncomeItems,
       savingsRate,
       expenseRatio,
       // New: Explicit Actual vs Projected
@@ -3014,6 +3017,61 @@ export default function App() {
       }
     }
 
+    // Inject Projected Transactions
+    if (!isSearchActive && !isSubView && cashFlowMode === 'projected') {
+      const currentNames = new Set(items.map(i => i.name.toLowerCase().trim()));
+      const targetDate = (dString) => {
+        const d = new Date(dString);
+        const day = d.getDate(); // Keep original day
+        const maxDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const safeDay = Math.min(day, maxDays);
+        return `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${safeDay.toString().padStart(2, '0')}`;
+      };
+
+      const projectedItems = [];
+      const addProjected = (sourceList, type) => {
+        (sourceList || []).forEach(item => {
+          if (!currentNames.has(item.name.toLowerCase().trim())) {
+            // Only add if it matches current transaction filter (if any)
+            if (transactionFilter) {
+              if (transactionFilter === 'income' && type !== 'income') return;
+              if (transactionFilter === 'expenses' && type !== 'expenses') return;
+              if (transactionFilter === 'cc-payments') return; // Don't project CC payments usually
+            }
+
+            projectedItems.push({
+              ...item,
+              id: `projected-${item.id}`,
+              date: targetDate(item.date),
+              _type: type,
+              isIncome: type === 'income',
+              isProjected: true
+            });
+          }
+        });
+      };
+
+      addProjected(financials.activeRecurringItems, 'expenses');
+      addProjected(financials.activeRecurringIncomeItems, 'income');
+
+      items = [...items, ...projectedItems];
+    }
+
+    // Apply User Sort
+    items = [...items].sort((a, b) => {
+      switch (sortOption) {
+        case 'amount-high':
+          return parseFloat(b.amount) - parseFloat(a.amount);
+        case 'amount-low':
+          return parseFloat(a.amount) - parseFloat(b.amount);
+        case 'name':
+          return (a.displayName || a.name).localeCompare(b.displayName || b.name);
+        case 'date':
+        default:
+          return new Date(b.date) - new Date(a.date);
+      }
+    });
+
     // For subscriptions view, calculate appropriate total based on filter
     let filteredTotal = 0;
     if (isSubView) {
@@ -3131,6 +3189,29 @@ export default function App() {
                 <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
                   {!isSubView ? (
                     <>
+                      {/* Actual / Projected Toggle */}
+                      <div className="flex bg-card border border-white/10 p-1 rounded-full mr-2 shrink-0 self-center">
+                        <button
+                          onClick={() => setCashFlowMode('actual')}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider",
+                            cashFlowMode === 'actual' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white"
+                          )}
+                        >
+                          Actual
+                        </button>
+                        <button
+                          onClick={() => setCashFlowMode('projected')}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider",
+                            cashFlowMode === 'projected' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white"
+                          )}
+                        >
+                          Projected
+                        </button>
+                      </div>
+                      <div className="w-px h-6 bg-white/10 mr-2 self-center shrink-0" />
+
                       <button
                         onClick={() => setTransactionFilter(null)}
                         className={cn(
@@ -3158,6 +3239,23 @@ export default function App() {
                       >
                         Income
                       </button>
+
+                      <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
+
+                      {/* Sort Dropdown */}
+                      <div className="w-32 shrink-0 self-center">
+                        <Select
+                          value={sortOption}
+                          onChange={(e) => setSortOption(e.target.value)}
+                          options={[
+                            { value: 'date', label: 'Date' },
+                            { value: 'amount-high', label: 'Amount (High)' },
+                            { value: 'amount-low', label: 'Amount (Low)' },
+                            { value: 'name', label: 'Name' }
+                          ]}
+                          className="!py-1.5 !px-3 text-xs"
+                        />
+                      </div>
                     </>
                   ) : (
                     <>
@@ -3251,6 +3349,9 @@ export default function App() {
                     ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                     : (isIncome ? 'Income' : 'Expense');
 
+                  // Projected Indicator
+                  const isProjected = item.isProjected;
+
                   // Determine frequency badge styling
                   let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
                   if (frequency) {
@@ -3308,7 +3409,7 @@ export default function App() {
                                 <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
                                 <span>•</span>
                                 <span className="capitalize truncate max-w-[120px]">
-                                  {sourceText}
+                                  {isProjected ? <span className="text-secondary italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
                                 </span>
                               </p>
                             )}
@@ -3318,7 +3419,8 @@ export default function App() {
                         {/* Amount */}
                         <div className={cn(
                           "text-right font-bold text-base shrink-0 min-w-[70px]",
-                          isIncome ? "text-[#34D399]" : "text-[#F87171]"
+                          isIncome ? "text-[#34D399]" : "text-[#F87171]",
+                          isProjected && "opacity-60 italic"
                         )}>
                           {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
