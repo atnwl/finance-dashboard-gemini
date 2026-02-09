@@ -5078,13 +5078,14 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
                 </select>
               )}
 
-              {/* Smart Frequency Badge (Bills/Subs only) */}
-              {(!item.isIncome && (item.type === 'bill' || item.type === 'subscription')) && (
+              {/* Smart Frequency Badge (Bills/Subs/Income) */}
+              {(item.isIncome || (!item.isIncome && (item.type === 'bill' || item.type === 'subscription'))) && (
                 <select
                   className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-primary focus:outline-none font-bold"
-                  value={item.frequency || 'monthly'}
+                  value={item.frequency || (item.isIncome ? 'one-time' : 'monthly')}
                   onChange={(e) => onUpdate(idx, 'frequency', e.target.value)}
                 >
+                  <option value="one-time">Once</option>
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Bi-Wkly</option>
                   <option value="monthly">Monthly</option>
