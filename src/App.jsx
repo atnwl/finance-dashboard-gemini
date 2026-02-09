@@ -908,7 +908,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
-  const [sortOption, setSortOption] = useState('date'); // 'date' | 'amount-high' | 'amount-low'
+  const [sortOption, setSortOption] = useState('amount-high'); // 'date' | 'amount-high' | 'amount-low'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
@@ -1520,7 +1520,7 @@ export default function App() {
       let finalExp = actualExp;
 
       // For Current or Future months, add Missing Recurring (Projections)
-      if (!isPast) {
+      if (!isPast && cashFlowMode === 'projected') {
         // Income
         const monthIncomeNames = new Set(data.income.filter(monthFilter).map(i => i.name.toLowerCase().trim()));
         let missingInc = 0;
@@ -1633,7 +1633,7 @@ export default function App() {
         net: net
       }
     };
-  }, [data, selectedMonth, selectedYear]);
+  }, [data, selectedMonth, selectedYear, cashFlowMode]);
 
   const financials = useMemo(() => {
     if (!demoFinancials) return calculatedFinancials;
@@ -3188,7 +3188,7 @@ export default function App() {
           return (a.displayName || a.name).localeCompare(b.displayName || b.name);
         case 'date':
         default:
-          return new Date(b.date) - new Date(a.date);
+          return b.date.localeCompare(a.date);
       }
     });
 
@@ -3644,8 +3644,10 @@ export default function App() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
                 type="search"
-                name="search"
-                autoComplete="off"
+                name="lume_global_search"
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
