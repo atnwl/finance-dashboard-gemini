@@ -7,7 +7,7 @@ import {
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
   Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw, Check,
-  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil, NotebookPen
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil, NotebookPen, EyeOff
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1619,6 +1619,19 @@ export default function App() {
     }));
   };
 
+  const handleSkipProjection = (item) => {
+    if (!window.confirm("Remove this projected item for this month only?")) return;
+    const skipRecord = {
+      sourceId: item.id, // Original source ID
+      month: selectedMonth,
+      year: selectedYear
+    };
+    setData(prev => ({
+      ...prev,
+      skippedProjections: [...(prev.skippedProjections || []), skipRecord]
+    }));
+  };
+
   const handleUpdateStatement = (id, updates) => {
     setData(prev => ({
       ...prev,
@@ -3053,11 +3066,18 @@ export default function App() {
         return `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${safeDay.toString().padStart(2, '0')}`;
       };
 
+      // Check skipped projections
+      const isSkipped = (itemId) => {
+        return (data.skippedProjections || []).some(s =>
+          s.sourceId === itemId && s.month === selectedMonth && s.year === selectedYear
+        );
+      };
+
       const projectedItems = [];
       const addProjected = (sourceList, type) => {
         (sourceList || []).forEach(item => {
-          // Only add if this recurring item hasn't posted this month yet
-          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim())) {
+          // Only add if this recurring item hasn't posted this month yet AND isn't skipped
+          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim()) && !isSkipped(item.id)) {
             // Only add if it matches current transaction filter (if any)
             if (transactionFilter) {
               if (transactionFilter === 'income' && type !== 'income') return;
@@ -3290,10 +3310,10 @@ export default function App() {
                           value={sortOption}
                           onChange={(e) => setSortOption(e.target.value)}
                           options={[
-                            { value: 'date', label: 'Date' },
-                            { value: 'amount-high', label: 'Amount (High)' },
-                            { value: 'amount-low', label: 'Amount (Low)' },
-                            { value: 'name', label: 'Name' }
+                            { value: 'date', label: 'Sort by: Date' },
+                            { value: 'amount-high', label: 'Sort: Amount (High)' },
+                            { value: 'amount-low', label: 'Sort: Amount (Low)' },
+                            { value: 'name', label: 'Sort: Name' }
                           ]}
                           className="!py-1.5 !px-3 text-xs"
                         />
@@ -3421,7 +3441,8 @@ export default function App() {
                             id: actualId,
                             type: itemType,
                             isIncome: isIncomeItem,
-                            isProjected: undefined // Clear projected flag for editing
+                            isProjected: undefined, // Clear projected flag for form compatibility
+                            _isProjectedInstance: item.isProjected // Keep internal flag for deletion logic
                           });
                           setIsFormOpen(true);
                         }}
@@ -3869,6 +3890,7 @@ export default function App() {
               onSaveBalanceTransfer={handleSaveBalanceTransfer}
               onSave={handleSave}
               onDelete={handleDelete}
+              onSkipProjection={handleSkipProjection}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
                 setIsFormOpen(false); // Close form to show settings... or maybe keep form open?
@@ -4160,7 +4182,7 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete }) {
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
@@ -4819,15 +4841,21 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             variant="outline"
             className="text-red-400 border-red-400/50 hover:bg-red-400/10 hover:text-red-300"
             onClick={() => {
-              if (window.confirm('Are you sure you want to delete this item?')) {
-                // Ensure correct type is derived from initialData
-                const type = (initialData.isIncome || initialData._type === 'income') ? 'income' : 'expenses';
-                onDelete(type, initialData.id, true); // Pass true to skip second confirmation
+              if (initialData._isProjectedInstance && onSkipProjection) {
+                // It's a projection - skip it instead of deleting source
+                onSkipProjection(initialData);
                 onCancel();
+              } else {
+                if (window.confirm('Are you sure you want to delete this item?')) {
+                  // Ensure correct type is derived from initialData
+                  const type = (initialData.isIncome || initialData._type === 'income') ? 'income' : 'expenses';
+                  onDelete(type, initialData.id, true); // Pass true to skip second confirmation
+                  onCancel();
+                }
               }
             }}
           >
-            <Trash2 size={16} />
+            {initialData._isProjectedInstance ? <EyeOff size={16} /> : <Trash2 size={16} />}
           </Button>
         )}
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
