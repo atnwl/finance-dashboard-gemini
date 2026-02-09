@@ -3868,6 +3868,7 @@ export default function App() {
               onSaveStatement={handleSaveStatement}
               onSaveBalanceTransfer={handleSaveBalanceTransfer}
               onSave={handleSave}
+              onDelete={handleDelete}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
                 setIsFormOpen(false); // Close form to show settings... or maybe keep form open?
@@ -4159,7 +4160,7 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings }) {
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
@@ -4812,6 +4813,22 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       </div>
 
       <div className="pt-4 flex gap-3">
+        {initialData && onDelete && (
+          <Button
+            type="button"
+            variant="outline"
+            className="text-red-400 border-red-400/50 hover:bg-red-400/10 hover:text-red-300"
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this item?')) {
+                const type = initialData.isIncome ? 'income' : 'expenses';
+                onDelete(type, initialData.id);
+                onCancel();
+              }
+            }}
+          >
+            <Trash2 size={16} />
+          </Button>
+        )}
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button type="submit" className="flex-1">Save Item</Button>
       </div>
