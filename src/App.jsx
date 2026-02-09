@@ -1611,8 +1611,8 @@ export default function App() {
   }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
   // Handlers
-  const handleDelete = (type, id) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+  const handleDelete = (type, id, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("Are you sure you want to delete this item?")) return;
     setData(prev => ({
       ...prev,
       [type]: prev[type].filter(item => item.id !== id)
@@ -4820,8 +4820,9 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
             className="text-red-400 border-red-400/50 hover:bg-red-400/10 hover:text-red-300"
             onClick={() => {
               if (window.confirm('Are you sure you want to delete this item?')) {
-                const type = initialData.isIncome ? 'income' : 'expenses';
-                onDelete(type, initialData.id);
+                // Ensure correct type is derived from initialData
+                const type = (initialData.isIncome || initialData._type === 'income') ? 'income' : 'expenses';
+                onDelete(type, initialData.id, true); // Pass true to skip second confirmation
                 onCancel();
               }
             }}
