@@ -1505,8 +1505,8 @@ export default function App() {
       };
 
       // 1. Calculate Actuals for this month
-      const actualInc = data.income.filter(monthFilter).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const actualExp = data.expenses.filter(monthFilter).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const actualInc = data.income.filter(monthFilter).filter(notSpecial).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const actualExp = data.expenses.filter(monthFilter).filter(notSpecial).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const now = new Date();
       // Adjust now to local YYYY-MM logic if needed, but getMonth() is 0-indexed local time usually.
