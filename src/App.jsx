@@ -1421,10 +1421,33 @@ export default function App() {
     const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
     const actualExpensesCurrentMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
 
-    // Projected Totals = Average of Prior Months (or actuals if higher)
-    const totalIncome = Math.max(averageMonthlyIncome, actualIncomeCurrentMonth);
-    const totalExpenses = Math.max(averageMonthlyExpenses, actualExpensesCurrentMonth);
+    // Projected Totals = Actuals + Missing Recurring
+    const skipped = data.skippedProjections || [];
 
+    // Smart Income Projection
+    const actualIncomeNames = new Set(monthlyIncome.map(i => i.name.toLowerCase().trim()));
+    let projectedIncomeSmart = actualIncomeCurrentMonth;
+    activeRecurringIncomeItems.forEach(item => {
+      const name = item.name.toLowerCase().trim();
+      const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
+      if (!actualIncomeNames.has(name) && !isSkipped) {
+        projectedIncomeSmart += normalizeToMonthly(item.amount, item.frequency);
+      }
+    });
+
+    // Smart Expense Projection
+    const actualExpenseNames = new Set(monthlyExpenses.map(i => i.name.toLowerCase().trim()));
+    let projectedExpensesSmart = actualExpensesCurrentMonth;
+    activeRecurringItems.forEach(item => {
+      const name = item.name.toLowerCase().trim();
+      const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
+      if (!actualExpenseNames.has(name) && !isSkipped) {
+        projectedExpensesSmart += normalizeToMonthly(item.amount, item.frequency);
+      }
+    });
+
+    const totalIncome = projectedIncomeSmart;
+    const totalExpenses = projectedExpensesSmart;
     const net = totalIncome - totalExpenses;
 
 
