@@ -3041,6 +3041,14 @@ export default function App() {
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
+    // If 'Actual' mode, filter out future items (Projected view shows them)
+    if (cashFlowMode === 'actual' && !isSearchActive && !isSubView) {
+      const d = new Date();
+      const offset = d.getTimezoneOffset() * 60000;
+      const todayParams = new Date(d.getTime() - offset).toISOString().split('T')[0];
+      items = items.filter(item => item.date <= todayParams);
+    }
+
     if (transactionFilter && !isSearchActive && !isSubView) {
       if (transactionFilter === 'income') {
         items = items.filter(i => i._type === 'income');
