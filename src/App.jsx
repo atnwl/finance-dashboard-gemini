@@ -3031,7 +3031,11 @@ export default function App() {
 
     // Inject Projected Transactions
     if (!isSearchActive && !isSubView && cashFlowMode === 'projected') {
-      const currentNames = new Set(items.map(i => i.name.toLowerCase().trim()));
+      // Build set of names from ACTUAL posted items this month (before filter was applied)
+      const allMonthlyActualNames = new Set(
+        getMonthlyItems.map(i => i.name.toLowerCase().trim())
+      );
+
       const targetDate = (dString) => {
         const d = new Date(dString);
         const day = d.getDate(); // Keep original day
@@ -3043,7 +3047,8 @@ export default function App() {
       const projectedItems = [];
       const addProjected = (sourceList, type) => {
         (sourceList || []).forEach(item => {
-          if (!currentNames.has(item.name.toLowerCase().trim())) {
+          // Only add if this recurring item hasn't posted this month yet
+          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim())) {
             // Only add if it matches current transaction filter (if any)
             if (transactionFilter) {
               if (transactionFilter === 'income' && type !== 'income') return;
@@ -3437,7 +3442,7 @@ export default function App() {
                                 <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
                                 <span>•</span>
                                 <span className="capitalize truncate max-w-[120px]">
-                                  {isProjected ? <span className="text-secondary italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
+                                  {isProjected ? <span className="text-[#60A5FA] italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
                                 </span>
                               </p>
                             )}
