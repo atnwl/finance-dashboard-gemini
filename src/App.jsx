@@ -1398,13 +1398,32 @@ export default function App() {
 
     // Final Projected Income: Max of (Smart Projection, Average History, Current Actuals)
     // We haven't calculated actuals yet, so let's defer or calc here
-    const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    // Final Projected Income Calculation (Matching Transaction List Logic)
+    // List Logic: "Actuals" + "Projected Items not yet posted"
+    // To match this, we need to identify which Recurring Income items have NOT posted this month.
 
-    // Logic: Use Average if available and higher than smart projection, but never lower than actuals
-    const totalIncome = Math.max(smartProjectedIncome, averageMonthlyIncome, actualIncomeCurrentMonth);
-    // Use deduplicated active recurring + one-time expenses for consistency with chart
-    const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
-    const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
+    const isPostedInMonth = (item, month, year) => {
+      if (!item || !item.date) return false;
+      const [y, m] = item.date.split('-').map(Number);
+      return y === year && (m - 1) === month;
+    };
+
+    const remainingRecurringIncome = activeRecurringIncomeItems
+      .filter(item => !isPostedInMonth(item, selectedMonth, selectedYear))
+      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    const remainingRecurringExpenses = activeRecurringItems
+      .filter(item => !isPostedInMonth(item, selectedMonth, selectedYear))
+      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
+
+    // Actuals (Calculated earlier or here)
+    const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualExpensesCurrentMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+    // Projected Totals = Actuals + Remaining Expected
+    const totalIncome = actualIncomeCurrentMonth + remainingRecurringIncome;
+    const totalExpenses = actualExpensesCurrentMonth + remainingRecurringExpenses;
+
     const net = totalIncome - totalExpenses;
 
 
@@ -1513,8 +1532,9 @@ export default function App() {
     // 2. Take only the LATEST transaction
 
     // 3. Actuals Calculation (Strictly transactions in this month)
+    // 3. Actuals Calculation
     const actualIncome = actualIncomeCurrentMonth;
-    const actualExpenses = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const actualExpenses = actualExpensesCurrentMonth;
     const actualNet = actualIncome - actualExpenses;
 
     const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
