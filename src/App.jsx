@@ -1313,8 +1313,15 @@ export default function App() {
       .forEach(item => { uniqueRecurring[item.name.toLowerCase().trim()] = item; });
 
     // Group Income by Source (Latest wins)
+    // Also detect "implicit" recurring: if same name appears 2+ times historically, treat as recurring
+    const incomeCountByName = {};
+    data.income.filter(notSpecial).forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      incomeCountByName[key] = (incomeCountByName[key] || 0) + 1;
+    });
+
     data.income
-      .filter(i => isRecurring(i) && notSpecial(i))
+      .filter(i => notSpecial(i) && (isRecurring(i) || incomeCountByName[i.name.toLowerCase().trim()] >= 2))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .forEach(item => { uniqueRecurringIncome[item.name.toLowerCase().trim()] = item; });
 
@@ -1331,7 +1338,9 @@ export default function App() {
       const itemDate = new Date(item.date);
       const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
       // Allow slightly longer gap for income (e.g. irregularities) but generally same rule
-      if (item.frequency === 'monthly' && daysSince > 60) return false;
+      // For implicit recurring (no frequency set), use 90-day window
+      const maxDays = item.frequency === 'monthly' ? 60 : 90;
+      if (daysSince > maxDays) return false;
       return true;
     });
 
