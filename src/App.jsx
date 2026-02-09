@@ -1418,16 +1418,24 @@ export default function App() {
     const averageMonthlyIncome = incomeMonthsWithData > 0 ? totalPrevIncome / incomeMonthsWithData : 0;
     const averageMonthlyExpenses = expenseMonthsWithData > 0 ? totalPrevExpenses / expenseMonthsWithData : 0;
 
-    // Actuals for this month
-    const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
-    const actualExpensesCurrentMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    // Actuals for this month (Total scheduled/posted)
+    const totalActualIncomeInMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const totalActualExpensesInMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+    // Actuals POSTED (<= Today) - for "Actual" View consistency
+    const dLocal = new Date();
+    const offset = dLocal.getTimezoneOffset() * 60000;
+    const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
+
+    const postedIncome = monthlyIncome.filter(i => notSpecial(i) && i.date <= todayParams).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const postedExpenses = monthlyExpenses.filter(i => notSpecial(i) && i.date <= todayParams).reduce((acc, item) => acc + parseFloat(item.amount), 0);
 
     // Projected Totals = Actuals + Missing Recurring
     const skipped = data.skippedProjections || [];
 
     // Smart Income Projection
     const actualIncomeNames = new Set(monthlyIncome.map(i => i.name.toLowerCase().trim()));
-    let projectedIncomeSmart = actualIncomeCurrentMonth;
+    let projectedIncomeSmart = totalActualIncomeInMonth;
     activeRecurringIncomeItems.forEach(item => {
       const name = item.name.toLowerCase().trim();
       const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
@@ -1438,7 +1446,7 @@ export default function App() {
 
     // Smart Expense Projection
     const actualExpenseNames = new Set(monthlyExpenses.map(i => i.name.toLowerCase().trim()));
-    let projectedExpensesSmart = actualExpensesCurrentMonth;
+    let projectedExpensesSmart = totalActualExpensesInMonth;
     activeRecurringItems.forEach(item => {
       const name = item.name.toLowerCase().trim();
       const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
@@ -1589,8 +1597,8 @@ export default function App() {
 
     // 3. Actuals Calculation (Strictly transactions in this month)
     // 3. Actuals Calculation
-    const actualIncome = actualIncomeCurrentMonth;
-    const actualExpenses = actualExpensesCurrentMonth;
+    const actualIncome = postedIncome;
+    const actualExpenses = postedExpenses;
     const actualNet = actualIncome - actualExpenses;
 
     const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
