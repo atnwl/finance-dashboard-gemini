@@ -3419,8 +3419,11 @@ export default function App() {
                     ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                     : (isIncome ? 'Income' : 'Expense');
 
-                  // Projected Indicator
-                  const isProjected = item.isProjected;
+                  // Projected Indicator (Includes explicit projections OR future actuals)
+                  const dLocal = new Date();
+                  const offset = dLocal.getTimezoneOffset() * 60000;
+                  const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
+                  const isProjected = item.isProjected || (item.date > todayParams);
 
                   // Determine frequency badge styling
                   let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
