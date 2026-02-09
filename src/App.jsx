@@ -3415,20 +3415,35 @@ export default function App() {
 
                       <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
 
-                      {/* Sort Dropdown */}
-                      <div className="w-32 shrink-0 self-center">
-                        <Select
-                          value={sortOption}
-                          onChange={(e) => setSortOption(e.target.value)}
-                          options={[
-                            { value: 'date', label: 'Sort by: Date' },
-                            { value: 'amount-high', label: 'Sort: Amount (High)' },
-                            { value: 'amount-low', label: 'Sort: Amount (Low)' },
-                            { value: 'name', label: 'Sort: Name' }
-                          ]}
-                          className="!py-1.5 !px-3 text-xs"
-                        />
-                      </div>
+                      {/* Sort Toggle Button */}
+                      <button
+                        onClick={() => {
+                          if (sortOption === 'date') setSortOption('amount-high');
+                          else if (sortOption === 'amount-high') setSortOption('amount-low');
+                          else setSortOption('date');
+                        }}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-muted hover:text-white hover:bg-white/10 transition-all whitespace-nowrap self-center shrink-0 flex items-center gap-2"
+                      >
+                        {sortOption === 'date' && (
+                          <>
+                            <Calendar size={12} />
+                            <span>Sort: Date</span>
+                          </>
+                        )}
+                        {sortOption === 'amount-high' && (
+                          <>
+                            <ArrowDown size={12} />
+                            <span>Amount: High</span>
+                          </>
+                        )}
+                        {sortOption === 'amount-low' && (
+                          <>
+                            <ArrowUp size={12} />
+                            <span>Amount: Low</span>
+                          </>
+                        )}
+                        {sortOption === 'name' && <span>Sort: Name</span>} {/* Fallback */}
+                      </button>
                     </>
                   ) : (
                     <>
