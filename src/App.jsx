@@ -1376,53 +1376,45 @@ export default function App() {
       prevMonths.push({ m, y });
     }
 
-    // 2. Sum income for those months
+    // 2. Sum income and expenses for those months
     let totalPrevIncome = 0;
-    let monthsWithData = 0;
+    let totalPrevExpenses = 0;
+    let incomeMonthsWithData = 0;
+    let expenseMonthsWithData = 0;
 
     prevMonths.forEach(({ m, y }) => {
-      const monthIncomeItems = data.income.filter(item => {
+      const monthFilter = (item) => {
         if (!item.date) return false;
         const [iy, im] = item.date.split('-').map(Number);
         return (im - 1) === m && iy === y && notSpecial(item);
-      });
+      };
 
-      const monthTotal = monthIncomeItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
-      if (monthTotal > 0) {
-        totalPrevIncome += monthTotal;
-        monthsWithData++;
+      const monthIncomeItems = data.income.filter(monthFilter);
+      const monthExpenseItems = data.expenses.filter(monthFilter);
+
+      const incomeTotal = monthIncomeItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+      const expenseTotal = monthExpenseItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+      if (incomeTotal > 0) {
+        totalPrevIncome += incomeTotal;
+        incomeMonthsWithData++;
+      }
+      if (expenseTotal > 0) {
+        totalPrevExpenses += expenseTotal;
+        expenseMonthsWithData++;
       }
     });
 
-    const averageMonthlyIncome = monthsWithData > 0 ? totalPrevIncome / monthsWithData : 0;
+    const averageMonthlyIncome = incomeMonthsWithData > 0 ? totalPrevIncome / incomeMonthsWithData : 0;
+    const averageMonthlyExpenses = expenseMonthsWithData > 0 ? totalPrevExpenses / expenseMonthsWithData : 0;
 
-    // Final Projected Income: Max of (Smart Projection, Average History, Current Actuals)
-    // We haven't calculated actuals yet, so let's defer or calc here
-    // Final Projected Income Calculation (Matching Transaction List Logic)
-    // List Logic: "Actuals" + "Projected Items not yet posted"
-    // To match this, we need to identify which Recurring Income items have NOT posted this month.
-
-    const isPostedInMonth = (item, month, year) => {
-      if (!item || !item.date) return false;
-      const [y, m] = item.date.split('-').map(Number);
-      return y === year && (m - 1) === month;
-    };
-
-    const remainingRecurringIncome = activeRecurringIncomeItems
-      .filter(item => !isPostedInMonth(item, selectedMonth, selectedYear))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
-
-    const remainingRecurringExpenses = activeRecurringItems
-      .filter(item => !isPostedInMonth(item, selectedMonth, selectedYear))
-      .reduce((acc, item) => acc + normalizeToMonthly(item.amount, item.frequency), 0);
-
-    // Actuals (Calculated earlier or here)
+    // Actuals for this month
     const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
     const actualExpensesCurrentMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
 
-    // Projected Totals = Actuals + Remaining Expected
-    const totalIncome = actualIncomeCurrentMonth + remainingRecurringIncome;
-    const totalExpenses = actualExpensesCurrentMonth + remainingRecurringExpenses;
+    // Projected Totals = Average of Prior Months (or actuals if higher)
+    const totalIncome = Math.max(averageMonthlyIncome, actualIncomeCurrentMonth);
+    const totalExpenses = Math.max(averageMonthlyExpenses, actualExpensesCurrentMonth);
 
     const net = totalIncome - totalExpenses;
 
@@ -3111,16 +3103,32 @@ export default function App() {
         }, 0);
       }
     } else {
-      // For transaction filters
-      filteredTotal = items.filter(item => {
-        // If filtering for CC Payments, we WANT to see them.
-        // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
-        if (transactionFilter === 'cc-payments') return true;
-        return notSpecial(item);
-      }).reduce((acc, item) => {
-        const amt = parseFloat(item.amount) || 0;
-        return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
-      }, 0);
+      // For transaction filters - use financials values for consistency
+      if (cashFlowMode === 'projected') {
+        // Use the projected totals from financials for consistency with dashboard
+        if (transactionFilter === 'income') {
+          filteredTotal = financials.projected.income;
+        } else if (transactionFilter === 'expenses') {
+          filteredTotal = -financials.projected.expenses;
+        } else if (transactionFilter === 'cc-payments') {
+          filteredTotal = -items.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        } else {
+          // "All" - Net
+          filteredTotal = financials.projected.net;
+        }
+      } else {
+        // Actual mode - sum from actual items
+        if (transactionFilter === 'income') {
+          filteredTotal = financials.actual.income;
+        } else if (transactionFilter === 'expenses') {
+          filteredTotal = -financials.actual.expenses;
+        } else if (transactionFilter === 'cc-payments') {
+          filteredTotal = -items.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        } else {
+          // "All" - Net
+          filteredTotal = financials.actual.net;
+        }
+      }
     }
 
     const today = new Date();
