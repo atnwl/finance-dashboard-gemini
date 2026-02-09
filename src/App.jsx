@@ -908,7 +908,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
-  const [sortOption, setSortOption] = useState('amount-high'); // 'date' | 'amount-high' | 'amount-low'
+  const [sortOption, setSortOption] = useState('date'); // 'date' | 'amount-high' | 'amount-low'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
@@ -1505,8 +1505,18 @@ export default function App() {
       };
 
       // 1. Calculate Actuals for this month
-      const actualInc = data.income.filter(monthFilter).filter(notSpecial).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const actualExp = data.expenses.filter(monthFilter).filter(notSpecial).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      // If 'Actual' Mode: only count items <= Today
+      const dLocal = new Date();
+      const offset = dLocal.getTimezoneOffset() * 60000;
+      const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
+
+      const dateFilter = (item) => {
+        if (cashFlowMode === 'actual') return item.date <= todayParams;
+        return true;
+      };
+
+      const actualInc = data.income.filter(monthFilter).filter(dateFilter).filter(notSpecial).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const actualExp = data.expenses.filter(monthFilter).filter(dateFilter).filter(notSpecial).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
       const now = new Date();
       // Adjust now to local YYYY-MM logic if needed, but getMonth() is 0-indexed local time usually.
