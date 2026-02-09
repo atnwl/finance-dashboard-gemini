@@ -3406,7 +3406,25 @@ export default function App() {
                     <React.Fragment key={item.id}>
                       {monthHeader}
                       <div
-                        onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                        onClick={() => {
+                          // Determine the item type from _type flag or context
+                          const itemType = item._type || (item.isIncome ? 'income' : 'expenses');
+                          const isIncomeItem = itemType === 'income';
+
+                          // For projected items, use the original ID (strip 'projected-' prefix)
+                          const actualId = item.isProjected && item.id?.startsWith('projected-')
+                            ? item.id.replace('projected-', '')
+                            : item.id;
+
+                          setEditingItem({
+                            ...item,
+                            id: actualId,
+                            type: itemType,
+                            isIncome: isIncomeItem,
+                            isProjected: undefined // Clear projected flag for editing
+                          });
+                          setIsFormOpen(true);
+                        }}
                         className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
