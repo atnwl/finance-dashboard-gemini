@@ -7,7 +7,7 @@ import {
   DollarSign, Activity, Wallet, Bell, Search, LayoutDashboard,
   MessageSquare, Send, X, Settings, Sparkles, User, Bot, AlertCircle, Camera, Loader2,
   Cloud, Upload, Download, LogOut, FileText, ChevronLeft, ChevronRight, FileX, Copy, Calendar, ArrowUpRight, ArrowDownLeft, ArrowRightLeft, RefreshCcw, Check,
-  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil, NotebookPen
+  Tv, Music, Globe, Smartphone, Wifi, Zap, ShoppingBag, Briefcase, Server, Facebook, Instagram, Linkedin, Twitter, Youtube, Github, Chrome, Twitch, Gamepad2, Coffee, Headphones, Film, Car, PenTool, Image, Pencil, NotebookPen, EyeOff
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -828,7 +828,7 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
               <div
                 key={note.id}
                 onClick={() => onNoteClick(note)}
-                className="group bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer flex flex-col h-[200px] overflow-hidden"
+                className="group bg-card border border-border/50 rounded-xl p-4 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all cursor-pointer flex flex-col h-auto max-h-[200px] overflow-hidden"
               >
                 {/* Title */}
                 {note.title && (
@@ -908,6 +908,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('cashflow'); // 'cashflow' | 'credit'
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [transactionFilter, setTransactionFilter] = useState(null);
+  const [sortOption, setSortOption] = useState('date'); // 'date' | 'amount-high' | 'amount-low'
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isBalanceFormOpen, setIsBalanceFormOpen] = useState(false);
@@ -1312,8 +1313,15 @@ export default function App() {
       .forEach(item => { uniqueRecurring[item.name.toLowerCase().trim()] = item; });
 
     // Group Income by Source (Latest wins)
+    // Also detect "implicit" recurring: if same name appears 2+ times historically, treat as recurring
+    const incomeCountByName = {};
+    data.income.filter(notSpecial).forEach(item => {
+      const key = item.name.toLowerCase().trim();
+      incomeCountByName[key] = (incomeCountByName[key] || 0) + 1;
+    });
+
     data.income
-      .filter(i => isRecurring(i) && notSpecial(i))
+      .filter(i => notSpecial(i) && (isRecurring(i) || incomeCountByName[i.name.toLowerCase().trim()] >= 2))
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .forEach(item => { uniqueRecurringIncome[item.name.toLowerCase().trim()] = item; });
 
@@ -1330,7 +1338,9 @@ export default function App() {
       const itemDate = new Date(item.date);
       const daysSince = (NOW - itemDate) / (1000 * 60 * 60 * 24);
       // Allow slightly longer gap for income (e.g. irregularities) but generally same rule
-      if (item.frequency === 'monthly' && daysSince > 60) return false;
+      // For implicit recurring (no frequency set), use 90-day window
+      const maxDays = item.frequency === 'monthly' ? 60 : 90;
+      if (daysSince > maxDays) return false;
       return true;
     });
 
@@ -1351,7 +1361,8 @@ export default function App() {
     const totalMonthlySubscriptionsCost = monthlySubscriptions.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
 
     // 2. Standard Expenses
-    const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
+    // Use proper active recurring items instead of all history
+    const recurringExpenses = activeRecurringItems;
     const oneTimeExpenses = data.expenses.filter(e => !isRecurring(e) && filterByDate(e) && notSpecial(e));
     const effectiveExpenses = [...recurringExpenses, ...oneTimeExpenses];
 
@@ -1375,35 +1386,77 @@ export default function App() {
       prevMonths.push({ m, y });
     }
 
-    // 2. Sum income for those months
+    // 2. Sum income and expenses for those months
     let totalPrevIncome = 0;
-    let monthsWithData = 0;
+    let totalPrevExpenses = 0;
+    let incomeMonthsWithData = 0;
+    let expenseMonthsWithData = 0;
 
     prevMonths.forEach(({ m, y }) => {
-      const monthIncomeItems = data.income.filter(item => {
+      const monthFilter = (item) => {
         if (!item.date) return false;
         const [iy, im] = item.date.split('-').map(Number);
         return (im - 1) === m && iy === y && notSpecial(item);
-      });
+      };
 
-      const monthTotal = monthIncomeItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
-      if (monthTotal > 0) {
-        totalPrevIncome += monthTotal;
-        monthsWithData++;
+      const monthIncomeItems = data.income.filter(monthFilter);
+      const monthExpenseItems = data.expenses.filter(monthFilter);
+
+      const incomeTotal = monthIncomeItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+      const expenseTotal = monthExpenseItems.reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+      if (incomeTotal > 0) {
+        totalPrevIncome += incomeTotal;
+        incomeMonthsWithData++;
+      }
+      if (expenseTotal > 0) {
+        totalPrevExpenses += expenseTotal;
+        expenseMonthsWithData++;
       }
     });
 
-    const averageMonthlyIncome = monthsWithData > 0 ? totalPrevIncome / monthsWithData : 0;
+    const averageMonthlyIncome = incomeMonthsWithData > 0 ? totalPrevIncome / incomeMonthsWithData : 0;
+    const averageMonthlyExpenses = expenseMonthsWithData > 0 ? totalPrevExpenses / expenseMonthsWithData : 0;
 
-    // Final Projected Income: Max of (Smart Projection, Average History, Current Actuals)
-    // We haven't calculated actuals yet, so let's defer or calc here
-    const actualIncomeCurrentMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    // Actuals for this month (Total scheduled/posted)
+    const totalActualIncomeInMonth = monthlyIncome.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const totalActualExpensesInMonth = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
 
-    // Logic: Use Average if available and higher than smart projection, but never lower than actuals
-    const totalIncome = Math.max(smartProjectedIncome, averageMonthlyIncome, actualIncomeCurrentMonth);
-    // Use deduplicated active recurring + one-time expenses for consistency with chart
-    const oneTimeExpensesTotal = oneTimeExpenses.reduce((acc, item) => acc + parseFloat(item.amount || 0), 0);
-    const totalExpenses = totalRecurringExpenses + oneTimeExpensesTotal;
+    // Actuals POSTED (<= Today) - for "Actual" View consistency
+    const dLocal = new Date();
+    const offset = dLocal.getTimezoneOffset() * 60000;
+    const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
+
+    const postedIncome = monthlyIncome.filter(i => notSpecial(i) && i.date <= todayParams).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    const postedExpenses = monthlyExpenses.filter(i => notSpecial(i) && i.date <= todayParams).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+
+    // Projected Totals = Actuals + Missing Recurring
+    const skipped = data.skippedProjections || [];
+
+    // Smart Income Projection
+    const actualIncomeNames = new Set(monthlyIncome.map(i => i.name.toLowerCase().trim()));
+    let projectedIncomeSmart = totalActualIncomeInMonth;
+    activeRecurringIncomeItems.forEach(item => {
+      const name = item.name.toLowerCase().trim();
+      const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
+      if (!actualIncomeNames.has(name) && !isSkipped) {
+        projectedIncomeSmart += normalizeToMonthly(item.amount, item.frequency);
+      }
+    });
+
+    // Smart Expense Projection
+    const actualExpenseNames = new Set(monthlyExpenses.map(i => i.name.toLowerCase().trim()));
+    let projectedExpensesSmart = totalActualExpensesInMonth;
+    activeRecurringItems.forEach(item => {
+      const name = item.name.toLowerCase().trim();
+      const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
+      if (!actualExpenseNames.has(name) && !isSkipped) {
+        projectedExpensesSmart += normalizeToMonthly(item.amount, item.frequency);
+      }
+    });
+
+    const totalIncome = projectedIncomeSmart;
+    const totalExpenses = projectedExpensesSmart;
     const net = totalIncome - totalExpenses;
 
 
@@ -1451,25 +1504,66 @@ export default function App() {
         return (m - 1) === index && y === selectedYear;
       };
 
-      // Recurring logic applies to all months
-      const mRecurringInc = data.income.filter(i => isRecurring(i) && notSpecial(i)).reduce((acc, i) => acc + normalizeToMonthly(i.amount, i.frequency), 0);
-      const mRecurringExp = totalRecurringExpenses;
+      // 1. Calculate Actuals for this month
+      // If 'Actual' Mode: only count items <= Today
+      const dLocal = new Date();
+      const offset = dLocal.getTimezoneOffset() * 60000;
+      const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
 
-      // One-time logic specific to this month
-      const mOneTimeInc = data.income.filter(i => !isRecurring(i) && monthFilter(i) && notSpecial(i)).reduce((acc, i) => acc + parseFloat(i.amount), 0);
-      const mOneTimeExp = data.expenses.filter(e => !isRecurring(e) && monthFilter(e) && notSpecial(e)).reduce((acc, e) => acc + parseFloat(e.amount), 0);
+      const dateFilter = (item) => {
+        if (cashFlowMode === 'actual') return item.date <= todayParams;
+        return true;
+      };
 
-      const inc = mRecurringInc + mOneTimeInc;
-      const exp = mRecurringExp + mOneTimeExp;
+      const actualInc = data.income.filter(monthFilter).filter(dateFilter).filter(notSpecial).reduce((acc, i) => acc + parseFloat(i.amount), 0);
+      const actualExp = data.expenses.filter(monthFilter).filter(dateFilter).filter(notSpecial).reduce((acc, e) => acc + parseFloat(e.amount), 0);
 
-      // Show all months that have recurring OR one-time data, or just show all 12 for alignment
+      const now = new Date();
+      // Adjust now to local YYYY-MM logic if needed, but getMonth() is 0-indexed local time usually.
+      // Simplest is direct comparison:
+      const nowYear = now.getFullYear();
+      const nowMonth = now.getMonth();
+
+      const isPast = selectedYear < nowYear || (selectedYear === nowYear && index < nowMonth);
+
+      let finalInc = actualInc;
+      let finalExp = actualExp;
+
+      // For Current or Future months, add Missing Recurring (Projections)
+      if (!isPast && cashFlowMode === 'projected') {
+        // Income
+        const monthIncomeNames = new Set(data.income.filter(monthFilter).map(i => i.name.toLowerCase().trim()));
+        let missingInc = 0;
+        activeRecurringIncomeItems.forEach(item => {
+          const name = item.name.toLowerCase().trim();
+          const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
+          if (!monthIncomeNames.has(name) && !isSkipped) {
+            missingInc += normalizeToMonthly(item.amount, item.frequency);
+          }
+        });
+        finalInc += missingInc;
+
+        // Expenses
+        const monthExpenseNames = new Set(data.expenses.filter(monthFilter).map(e => e.name.toLowerCase().trim()));
+        let missingExp = 0;
+        activeRecurringItems.forEach(item => {
+          const name = item.name.toLowerCase().trim();
+          const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
+          if (!monthExpenseNames.has(name) && !isSkipped) {
+            missingExp += normalizeToMonthly(item.amount, item.frequency);
+          }
+        });
+        finalExp += missingExp;
+      }
+
       const shouldShow = true;
 
       return {
         name: monthName.slice(0, 3),
         year: selectedYear,
-        income: inc,
-        expenses: exp,
+        income: finalInc,
+        expenses: finalExp,
+        net: finalInc - finalExp,
         hasData: shouldShow
       };
     });
@@ -1512,8 +1606,9 @@ export default function App() {
     // 2. Take only the LATEST transaction
 
     // 3. Actuals Calculation (Strictly transactions in this month)
-    const actualIncome = actualIncomeCurrentMonth;
-    const actualExpenses = monthlyExpenses.filter(notSpecial).reduce((acc, item) => acc + parseFloat(item.amount), 0);
+    // 3. Actuals Calculation
+    const actualIncome = postedIncome;
+    const actualExpenses = postedExpenses;
     const actualNet = actualIncome - actualExpenses;
 
     const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
@@ -1532,6 +1627,8 @@ export default function App() {
       yearlyData,
       categoryYearlyData,
       totalRecurringExpenses,
+      activeRecurringItems,
+      activeRecurringIncomeItems,
       savingsRate,
       expenseRatio,
       // New: Explicit Actual vs Projected
@@ -1546,7 +1643,7 @@ export default function App() {
         net: net
       }
     };
-  }, [data, selectedMonth, selectedYear]);
+  }, [data, selectedMonth, selectedYear, cashFlowMode]);
 
   const financials = useMemo(() => {
     if (!demoFinancials) return calculatedFinancials;
@@ -1587,11 +1684,24 @@ export default function App() {
   }, [demoFinancials, calculatedFinancials, selectedMonth]);
 
   // Handlers
-  const handleDelete = (type, id) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+  const handleDelete = (type, id, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("Are you sure you want to delete this item?")) return;
     setData(prev => ({
       ...prev,
       [type]: prev[type].filter(item => item.id !== id)
+    }));
+  };
+
+  const handleSkipProjection = (item) => {
+    if (!window.confirm("Remove this projected item for this month only?")) return;
+    const skipRecord = {
+      sourceId: item.id, // Original source ID
+      month: selectedMonth,
+      year: selectedYear
+    };
+    setData(prev => ({
+      ...prev,
+      skippedProjections: [...(prev.skippedProjections || []), skipRecord]
     }));
   };
 
@@ -2429,7 +2539,7 @@ export default function App() {
                   <ArrowDownLeft size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Income</h3>
-                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${financials.totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-primary tracking-tight">${(financials[cashFlowMode]?.income || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Expenses Card */}
@@ -2441,7 +2551,7 @@ export default function App() {
                   <ArrowUpRight size={40} />
                 </div>
                 <h3 className="text-muted text-xs font-medium">Expenses</h3>
-                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${financials.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xl md:text-2xl font-display font-bold mt-1 text-secondary tracking-tight">${(financials[cashFlowMode]?.expenses || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               </Card>
 
               {/* Subscriptions Card */}
@@ -2449,13 +2559,24 @@ export default function App() {
                 onClick={() => handleNavigation('subscriptions')}
                 className="col-span-2 p-4 md:p-6 bg-gradient-to-br from-card to-card/50 relative overflow-hidden group border-warning/10 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-lg hover:shadow-warning/10 flex items-center justify-between"
               >
-                <div>
-                  <h3 className="text-muted text-xs font-medium">Subscriptions ({financials.activeSubscriptionCount})</h3>
-                  <p className="text-xl font-display font-bold mt-1 text-white tracking-tight">
-                    ${financials.totalSubscriptionsCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-sm font-normal text-muted/70 ml-1">per month</span>
+                <div className="flex-1">
+                  <h3 className="text-muted text-[10px] uppercase tracking-wide font-medium">Monthly Subs</h3>
+                  <div className="mt-1">
+                    <p className="text-xl font-display font-bold text-warning tracking-tight">
+                      ${subscriptionTotals.totalMonthly.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-xs font-normal text-muted ml-0.5">mo</span>
+                    </p>
+                    <p className="text-[10px] font-medium text-muted">
+                      ${(subscriptionTotals.totalMonthly * 12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-[9px] font-normal text-muted ml-0.5">yr</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex-1 border-l border-white/10 pl-4">
+                  <h3 className="text-muted text-[10px] uppercase tracking-wide font-medium">Annual Subs</h3>
+                  <p className="text-lg font-display font-bold text-warning tracking-tight mt-1">
+                    ${subscriptionTotals.totalAnnual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<span className="text-xs font-normal text-muted ml-0.5">yr</span>
                   </p>
                 </div>
-                <Calendar size={24} className="text-warning opacity-50" />
+                <Calendar size={24} className="text-warning opacity-50 ml-2" />
               </Card>
             </>
           )}
@@ -2464,7 +2585,7 @@ export default function App() {
             <>
               <div
                 onClick={() => { setTransactionFilter('cc-payments'); handleNavigation('transactions'); }}
-                className="bg-card/30 border border-border/50 rounded-xl p-6 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[140px]"
+                className="bg-card/30 border border-border/50 rounded-xl p-4 flex flex-col justify-between group hover:border-secondary/30 transition-all cursor-pointer hover:bg-card/50 relative overflow-hidden min-h-[100px]"
               >
                 <div>
                   <h4 className="text-muted text-xs font-semibold uppercase tracking-wider mb-2">CC Payments</h4>
@@ -2993,6 +3114,14 @@ export default function App() {
       ? subscriptionItems.filter(i => !subscriptionFilter || (i.frequency || 'Monthly').toLowerCase() === subscriptionFilter.toLowerCase())
       : getMonthlyItems);
 
+    // If 'Actual' mode, filter out future items (Projected view shows them)
+    if (cashFlowMode === 'actual' && !isSearchActive && !isSubView) {
+      const d = new Date();
+      const offset = d.getTimezoneOffset() * 60000;
+      const todayParams = new Date(d.getTime() - offset).toISOString().split('T')[0];
+      items = items.filter(item => item.date <= todayParams);
+    }
+
     if (transactionFilter && !isSearchActive && !isSubView) {
       if (transactionFilter === 'income') {
         items = items.filter(i => i._type === 'income');
@@ -3002,6 +3131,76 @@ export default function App() {
         items = items.filter(i => i.category === 'Credit Card Payment');
       }
     }
+
+    // Inject Projected Transactions (Current & Future Only)
+    const now = new Date();
+    const isPast = selectedYear < now.getFullYear() || (selectedYear === now.getFullYear() && selectedMonth < now.getMonth());
+
+    if (!isPast && !isSearchActive && !isSubView && cashFlowMode === 'projected') {
+      // Build set of names from ACTUAL posted items this month (before filter was applied)
+      const allMonthlyActualNames = new Set(
+        getMonthlyItems.map(i => i.name.toLowerCase().trim())
+      );
+
+      const targetDate = (dString) => {
+        const d = new Date(dString);
+        const day = d.getDate(); // Keep original day
+        const maxDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const safeDay = Math.min(day, maxDays);
+        return `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}-${safeDay.toString().padStart(2, '0')}`;
+      };
+
+      // Check skipped projections
+      const isSkipped = (itemId) => {
+        return (data.skippedProjections || []).some(s =>
+          s.sourceId === itemId && s.month === selectedMonth && s.year === selectedYear
+        );
+      };
+
+      const projectedItems = [];
+      const addProjected = (sourceList, type) => {
+        (sourceList || []).forEach(item => {
+          // Only add if this recurring item hasn't posted this month yet AND isn't skipped
+          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim()) && !isSkipped(item.id)) {
+            // Only add if it matches current transaction filter (if any)
+            if (transactionFilter) {
+              if (transactionFilter === 'income' && type !== 'income') return;
+              if (transactionFilter === 'expenses' && type !== 'expenses') return;
+              if (transactionFilter === 'cc-payments') return; // Don't project CC payments usually
+            }
+
+            projectedItems.push({
+              ...item,
+              id: `projected-${item.id}`,
+              date: targetDate(item.date),
+              _type: type,
+              isIncome: type === 'income',
+              isProjected: true
+            });
+          }
+        });
+      };
+
+      addProjected(financials.activeRecurringItems, 'expenses');
+      addProjected(financials.activeRecurringIncomeItems, 'income');
+
+      items = [...items, ...projectedItems];
+    }
+
+    // Apply User Sort
+    items = [...items].sort((a, b) => {
+      switch (sortOption) {
+        case 'amount-high':
+          return parseFloat(b.amount) - parseFloat(a.amount);
+        case 'amount-low':
+          return parseFloat(a.amount) - parseFloat(b.amount);
+        case 'name':
+          return (a.displayName || a.name).localeCompare(b.displayName || b.name);
+        case 'date':
+        default:
+          return b.date.localeCompare(a.date);
+      }
+    });
 
     // For subscriptions view, calculate appropriate total based on filter
     let filteredTotal = 0;
@@ -3022,16 +3221,32 @@ export default function App() {
         }, 0);
       }
     } else {
-      // For transaction filters
-      filteredTotal = items.filter(item => {
-        // If filtering for CC Payments, we WANT to see them.
-        // Otherwise (All, Income, Expenses), we exclude special transfers/payments from totals.
-        if (transactionFilter === 'cc-payments') return true;
-        return notSpecial(item);
-      }).reduce((acc, item) => {
-        const amt = parseFloat(item.amount) || 0;
-        return (item.isIncome || item._type === 'income') ? acc + amt : acc - amt;
-      }, 0);
+      // For transaction filters - use financials values for consistency
+      if (cashFlowMode === 'projected') {
+        // Use the projected totals from financials for consistency with dashboard
+        if (transactionFilter === 'income') {
+          filteredTotal = financials.projected.income;
+        } else if (transactionFilter === 'expenses') {
+          filteredTotal = -financials.projected.expenses;
+        } else if (transactionFilter === 'cc-payments') {
+          filteredTotal = -items.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        } else {
+          // "All" - Net
+          filteredTotal = financials.projected.net;
+        }
+      } else {
+        // Actual mode - sum from actual items
+        if (transactionFilter === 'income') {
+          filteredTotal = financials.actual.income;
+        } else if (transactionFilter === 'expenses') {
+          filteredTotal = -financials.actual.expenses;
+        } else if (transactionFilter === 'cc-payments') {
+          filteredTotal = -items.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        } else {
+          // "All" - Net
+          filteredTotal = financials.actual.net;
+        }
+      }
     }
 
     const today = new Date();
@@ -3045,133 +3260,178 @@ export default function App() {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 md:pb-0">
-        <Card className="p-0 overflow-hidden border-border/50 bg-background md:bg-card border-none md:border">
+        <Card className={cn(
+          "p-0 overflow-hidden border-border/50 bg-background md:bg-card transition-all",
+          "md:border border-none rounded-none md:rounded-xl"
+        )}>
           {/* Header */}
-          <div className="px-4 py-6 border-b border-white/5 flex items-center justify-between sticky top-16 z-30 bg-background/95 backdrop-blur-md md:static md:bg-transparent">
-            <div className="flex items-center gap-3">
-              {/* X Button for Search */}
-              {isSearchActive && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
-                >
-                  <X size={20} />
-                </button>
-              )}
-              {isSubView ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
-                    <Calendar size={20} />
+          <div className="sticky top-16 md:static z-30 bg-background border-b border-border/10 transition-all">
+            <div className="px-4 py-2 md:py-6 flex items-center justify-between md:border-b md:border-border/5">
+              <div className="flex items-center gap-3">
+                {/* X Button for Search */}
+                {isSearchActive && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-white/5 active:scale-95 transition-all text-text"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+                {isSubView ? (
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
+                      <Calendar size={20} />
+                    </div>
+                    <div>
+                      <h2 className="font-bold text-xl">Subscriptions</h2>
+                      <p className="text-xs text-muted leading-none mt-1">Active recurring charges</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-bold text-xl">Subscriptions</h2>
-                    <p className="text-xs text-muted leading-none mt-1">Active recurring charges</p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {isSearchActive && <Search size={18} className="text-muted/50" />}
+                    <h2 className="font-bold text-xl">
+                      {isSearchActive ? 'Search Results' : 'Transaction History'}
+                    </h2>
+                  </div>
+                )}
+              </div>
+
+              {isSearchActive && (
+                <div className="text-right">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">Search Total</p>
+                  <div className={cn(
+                    "text-xl font-display font-bold tracking-tight",
+                    searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                  )}>
+                    {formatAccounting(searchTotal)}
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  {isSearchActive && <Search size={18} className="text-muted/50" />}
-                  <h2 className="font-bold text-xl">
-                    {isSearchActive ? 'Search Results' : 'Transaction History'}
-                  </h2>
+              )}
+
+              {!isSearchActive && (
+                <div className="text-right">
+                  <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
+                    {isSubView ?
+                      (!subscriptionFilter ? 'Annual Cost' : (subscriptionFilter.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost'))
+                      : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
+                    }
+                  </p>
+                  <div className={cn(
+                    "text-xl font-display font-bold tracking-tight",
+                    isSubView ? "text-danger" : (filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]")
+                  )}>
+                    {isSubView
+                      ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : formatAccounting(filteredTotal)}
+                  </div>
                 </div>
               )}
             </div>
 
-            {isSearchActive && (
-              <div className="text-right">
-                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">Search Total</p>
-                <div className={cn(
-                  "text-xl font-display font-bold tracking-tight",
-                  searchTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
-                )}>
-                  {formatAccounting(searchTotal)}
-                </div>
-              </div>
-            )}
+            {/* Filter Pills */}
+            {
+              !isSearchActive && (
+                <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
+                  {!isSubView ? (
+                    <>
+                      {/* Actual / Projected Toggle */}
+                      <div className="flex bg-card border border-white/10 p-1 rounded-full mr-2 shrink-0 self-center">
+                        <button
+                          onClick={() => setCashFlowMode('actual')}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider",
+                            cashFlowMode === 'actual' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white"
+                          )}
+                        >
+                          Actual
+                        </button>
+                        <button
+                          onClick={() => setCashFlowMode('projected')}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wider",
+                            cashFlowMode === 'projected' ? "bg-white/10 text-white shadow-sm" : "text-muted hover:text-white"
+                          )}
+                        >
+                          Projected
+                        </button>
+                      </div>
+                      <div className="w-px h-6 bg-white/10 mr-2 self-center shrink-0" />
 
-            {!isSearchActive && (
-              <div className="text-right">
-                <p className="text-[10px] text-muted font-bold uppercase tracking-widest mb-0.5">
-                  {isSubView ?
-                    (!subscriptionFilter ? 'Annual Cost' : (subscriptionFilter.toLowerCase().includes('annual') ? 'Annual Cost' : 'Monthly Cost'))
-                    : (transactionFilter === 'expenses' ? 'Expense Total' : (transactionFilter === 'income' ? 'Income Total' : (transactionFilter === 'cc-payments' ? 'Total Payments' : 'Net Total')))
-                  }
-                </p>
-                <div className={cn(
-                  "text-xl font-display font-bold tracking-tight",
-                  isSubView ? "text-danger" : (filteredTotal >= 0 ? "text-[#34D399]" : "text-[#F87171]")
-                )}>
-                  {isSubView
-                    ? `$${Math.abs(filteredTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                    : formatAccounting(filteredTotal)}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Filter Pills */}
-          {
-            !isSearchActive && (
-              <div className="px-4 pb-4 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
-                {!isSubView ? (
-                  <>
-                    <button
-                      onClick={() => setTransactionFilter(null)}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setTransactionFilter('expenses')}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      Expenses
-                    </button>
-                    <button
-                      onClick={() => setTransactionFilter('income')}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
-                        transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      Income
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => setSubscriptionFilter(null)}
-                      className={cn(
-                        "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                        !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
-                      )}
-                    >
-                      All
-                    </button>
-                    {availableFrequencies.map(freq => (
                       <button
-                        key={freq}
-                        onClick={() => setSubscriptionFilter(freq)}
+                        onClick={() => setTransactionFilter(null)}
                         className={cn(
-                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
-                          subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          !transactionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
                         )}
                       >
-                        {freq}
+                        All
                       </button>
-                    ))}
-                  </>
-                )}
-              </div>
-            )
-          }
+                      <button
+                        onClick={() => setTransactionFilter('expenses')}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          transactionFilter === 'expenses' ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        Expenses
+                      </button>
+                      <button
+                        onClick={() => setTransactionFilter('income')}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                          transactionFilter === 'income' ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        Income
+                      </button>
+
+                      <div className="w-px h-6 bg-white/10 mx-2 self-center shrink-0" />
+
+                      {/* Sort Dropdown */}
+                      <div className="w-32 shrink-0 self-center">
+                        <Select
+                          value={sortOption}
+                          onChange={(e) => setSortOption(e.target.value)}
+                          options={[
+                            { value: 'date', label: 'Sort by: Date' },
+                            { value: 'amount-high', label: 'Sort: Amount (High)' },
+                            { value: 'amount-low', label: 'Sort: Amount (Low)' },
+                            { value: 'name', label: 'Sort: Name' }
+                          ]}
+                          className="!py-1.5 !px-3 text-xs"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setSubscriptionFilter(null)}
+                        className={cn(
+                          "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                          !subscriptionFilter ? "bg-primary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                        )}
+                      >
+                        All
+                      </button>
+                      {availableFrequencies.map(freq => (
+                        <button
+                          key={freq}
+                          onClick={() => setSubscriptionFilter(freq)}
+                          className={cn(
+                            "px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap capitalize",
+                            subscriptionFilter === freq ? "bg-secondary text-black" : "bg-card border border-white/10 text-muted hover:text-white"
+                          )}
+                        >
+                          {freq}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )
+            }
+          </div>
 
           {/* List View or Empty State */}
           {
@@ -3183,7 +3443,7 @@ export default function App() {
                 <p>No transactions found for {MONTHS[selectedMonth]} {selectedYear}.</p>
               </div>
             ) : (
-              <div className="space-y-px bg-white/5">
+              <div className="space-y-px bg-white/5 pb-24 md:pb-0">
                 {items.map((item, index) => {
                   // Parse original date
                   const [y, m, d] = item.date.split('-').map(Number);
@@ -3235,6 +3495,12 @@ export default function App() {
                     ? `${sourceStatement.provider} ****${sourceStatement.last4}`
                     : (isIncome ? 'Income' : 'Expense');
 
+                  // Projected Indicator (Includes explicit projections OR future actuals)
+                  const dLocal = new Date();
+                  const offset = dLocal.getTimezoneOffset() * 60000;
+                  const todayParams = new Date(dLocal.getTime() - offset).toISOString().split('T')[0];
+                  const isProjected = item.isProjected || (item.date > todayParams);
+
                   // Determine frequency badge styling
                   let freqStyle = "bg-[#88A0AF] text-[#0F1115]"; // Default (Monthly)
                   if (frequency) {
@@ -3247,7 +3513,26 @@ export default function App() {
                     <React.Fragment key={item.id}>
                       {monthHeader}
                       <div
-                        onClick={() => { setEditingItem(item); setIsFormOpen(true); }}
+                        onClick={() => {
+                          // Determine the item type from _type flag or context
+                          const itemType = item._type || (item.isIncome ? 'income' : 'expenses');
+                          const isIncomeItem = itemType === 'income';
+
+                          // For projected items, use the original ID (strip 'projected-' prefix)
+                          const actualId = item.isProjected && item.id?.startsWith('projected-')
+                            ? item.id.replace('projected-', '')
+                            : item.id;
+
+                          setEditingItem({
+                            ...item,
+                            id: actualId,
+                            type: itemType,
+                            isIncome: isIncomeItem,
+                            isProjected: undefined, // Clear projected flag for form compatibility
+                            _isProjectedInstance: item.isProjected // Keep internal flag for deletion logic
+                          });
+                          setIsFormOpen(true);
+                        }}
                         className="bg-background p-4 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors border-b border-border/10 last:border-0 gap-3"
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
@@ -3292,7 +3577,7 @@ export default function App() {
                                 <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
                                 <span>•</span>
                                 <span className="capitalize truncate max-w-[120px]">
-                                  {sourceText}
+                                  {isProjected ? <span className="text-[#60A5FA] italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
                                 </span>
                               </p>
                             )}
@@ -3302,7 +3587,8 @@ export default function App() {
                         {/* Amount */}
                         <div className={cn(
                           "text-right font-bold text-base shrink-0 min-w-[70px]",
-                          isIncome ? "text-[#34D399]" : "text-[#F87171]"
+                          isIncome ? "text-[#34D399]" : "text-[#F87171]",
+                          isProjected && "opacity-60 italic"
                         )}>
                           {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
@@ -3368,8 +3654,10 @@ export default function App() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" size={14} />
               <input
                 type="search"
-                name="search"
-                autoComplete="off"
+                name="lume_global_search"
+                autoComplete="new-password"
+                data-1p-ignore
+                data-lpignore="true"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -3580,11 +3868,13 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 w-full mx-auto p-4 md:p-6 pb-24 md:pb-32 animate-in fade-in duration-500 transition-all duration-300",
+        "flex-1 w-full mx-auto animate-in fade-in duration-500 transition-all duration-300",
         "max-w-7xl lg:max-w-none lg:px-8 xl:px-12",
+        // List views should be flush to the header on mobile
+        (activeTab === 'transactions' || activeTab === 'subscriptions' || searchQuery.length >= 2) ? "p-0 md:p-6" : "p-4 md:p-6",
+        "pb-24 md:pb-32",
         isChatOpen && "lg:pr-[440px]"
       )}>
-
 
         {renderContent()}
 
@@ -3688,6 +3978,8 @@ export default function App() {
               onSaveStatement={handleSaveStatement}
               onSaveBalanceTransfer={handleSaveBalanceTransfer}
               onSave={handleSave}
+              onDelete={handleDelete}
+              onSkipProjection={handleSkipProjection}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
                 setIsFormOpen(false); // Close form to show settings... or maybe keep form open?
@@ -3979,7 +4271,7 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings }) {
+function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
@@ -4632,6 +4924,29 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
       </div>
 
       <div className="pt-4 flex gap-3">
+        {initialData && onDelete && (
+          <Button
+            type="button"
+            variant="outline"
+            className="text-red-400 border-red-400/50 hover:bg-red-400/10 hover:text-red-300"
+            onClick={() => {
+              if (initialData._isProjectedInstance && onSkipProjection) {
+                // It's a projection - skip it instead of deleting source
+                onSkipProjection(initialData);
+                onCancel();
+              } else {
+                if (window.confirm('Are you sure you want to delete this item?')) {
+                  // Ensure correct type is derived from initialData
+                  const type = (initialData.isIncome || initialData._type === 'income') ? 'income' : 'expenses';
+                  onDelete(type, initialData.id, true); // Pass true to skip second confirmation
+                  onCancel();
+                }
+              }
+            }}
+          >
+            {initialData._isProjectedInstance ? <EyeOff size={16} /> : <Trash2 size={16} />}
+          </Button>
+        )}
         <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button type="submit" className="flex-1">Save Item</Button>
       </div>
@@ -4852,13 +5167,14 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
                 </select>
               )}
 
-              {/* Smart Frequency Badge (Bills/Subs only) */}
-              {(!item.isIncome && (item.type === 'bill' || item.type === 'subscription')) && (
+              {/* Smart Frequency Badge (Bills/Subs/Income) */}
+              {(item.isIncome || (!item.isIncome && (item.type === 'bill' || item.type === 'subscription'))) && (
                 <select
                   className="bg-white/5 border border-white/10 rounded text-[10px] px-1 py-1 text-primary focus:outline-none font-bold"
-                  value={item.frequency || 'monthly'}
+                  value={item.frequency || (item.isIncome ? 'one-time' : 'monthly')}
                   onChange={(e) => onUpdate(idx, 'frequency', e.target.value)}
                 >
+                  <option value="one-time">Once</option>
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Bi-Wkly</option>
                   <option value="monthly">Monthly</option>
