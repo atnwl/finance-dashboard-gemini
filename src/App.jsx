@@ -5000,7 +5000,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
 };
 
 // HELPER: Formatted Amount Input for Review
-const ReviewAmountInput = ({ value, onChange }) => {
+const ReviewAmountInput = ({ value, onChange, className }) => {
   const [localValue, setLocalValue] = useState('');
 
   useEffect(() => {
@@ -5032,7 +5032,7 @@ const ReviewAmountInput = ({ value, onChange }) => {
   };
 
   return (
-    <div className="relative w-32">
+    <div className={cn("relative w-24 shrink-0", className)}>
       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted">$</span>
       <input
         type="text"
@@ -5181,7 +5181,7 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               {/* Expense/Income Toggle */}
               <button
                 onClick={() => onUpdate(idx, 'isIncome', !item.isIncome)}
@@ -5230,7 +5230,7 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
 
               {/* Category Select (Simplified) */}
               <select
-                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none truncate"
+                className="bg-white/5 border border-white/10 rounded text-xs px-2 py-1 flex-1 text-gray-300 focus:outline-none truncate min-w-[100px]"
                 value={item.category}
                 onChange={(e) => onUpdate(idx, 'category', e.target.value)}
               >
