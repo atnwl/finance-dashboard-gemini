@@ -4611,6 +4611,18 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
               isRuleApplied: true
             };
           }
+
+          // Keyword-based Transfer Detection (Override AI for likely transfers)
+          const n = lowerName;
+          if (n.includes('transfer') || n.includes('xfer') || n.includes('funding') ||
+            n.includes('from savings') || n.includes('to savings') ||
+            n.includes('from checking') || n.includes('to checking') ||
+            n.includes('paypal') || n.includes('venmo') || n.includes('cash app') || n.includes('zelle') ||
+            n.includes('robinhood') || n.includes('fidelity') || n.includes('vanguard') || n.includes('betterment') || n.includes('schwab') || n.includes('sofi') ||
+            n.includes('nc529') || n.includes('coinbase') || n.includes('crypto') || n.includes('overdraft')) {
+            return { ...item, category: 'Transfer', isRuleApplied: true };
+          }
+
           return item;
         });
 
