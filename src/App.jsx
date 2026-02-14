@@ -4571,11 +4571,13 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     
     IMPORTANT for metadata:
     - type: "credit_card" or "bank_account". Use the rules above (e.g. Fold = bank_account).
-    - provider: The bank/card issuer name (Chase, Fidelity, Amex, Fold, Robinhood, etc.). LOOK FOR THE LOGO explicitly.
+    - provider: The bank/card issuer name (e.g. SoFi, Chase, Fidelity, Amex). 
+      - LOOK FOR THE LOGO at the very top of the document.
+      - If you see "SoFi" and "Fidelity" (e.g. transfer to Fidelity), the PROVIDER is SoFi (the issuer of the statement).
     - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
       Credit Cards: positive number. Bank Accounts: positive number.
       If NOT CLEARLY VISIBLE in the image, return null or omit.
-    - DO NOT extract accounts numbers or dates. Focus on Provider Name and Balance only.
+    - last4: The last 4 digits of the account number, if visible (usually near "Account Number" or "Ending in").
     `;
 
         const result = await model.generateContent([prompt, ...imageParts]);
@@ -4636,20 +4638,28 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
         } else {
           // Bulk Mode
           // 1. Resolve Statement ID / Last 4
-          const provider = metadata?.provider || 'Unknown';
+
+          const provider = (metadata?.provider || 'Unknown').trim();
           const stmtDate = fileDate; // Use file date as source of truth
 
           // Find existing accounts for this provider
           const existingStatements = data.statements.filter(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
           const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
 
-          let resolvedLast4 = '';
+          let resolvedLast4 = metadata?.last4 || ''; // Use extracted last4 if available
           let possibleLast4s = [];
 
-          if (distinctLast4s.length === 1) {
-            resolvedLast4 = distinctLast4s[0]; // Auto-match single account
-          } else if (distinctLast4s.length > 1) {
-            possibleLast4s = distinctLast4s; // Ambiguous - user must choose
+          if (!resolvedLast4) {
+            // Fallback to existing logic if extraction failed
+            if (distinctLast4s.length === 1) {
+              resolvedLast4 = distinctLast4s[0]; // Auto-match single account
+            } else if (distinctLast4s.length > 1) {
+              possibleLast4s = distinctLast4s; // Ambiguous - user must choose
+            }
+          } else {
+            // If we extracted a last4, check if it matches any existing ones to consolidate potential duplicates (e.g. 1234 vs ****1234)
+            const match = distinctLast4s.find(l4 => l4.endsWith(resolvedLast4));
+            if (match) resolvedLast4 = match;
           }
 
           setPendingStatement({
