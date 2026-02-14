@@ -899,7 +899,10 @@ export default function App() {
   const [subscriptionFilter, setSubscriptionFilter] = useState('Monthly');
 
   // --- Global Helpers ---
-  const isSpecial = (item) => item.category === 'Transfer' || item.category === 'Credit Card Payment';
+  const isSpecial = (item) => {
+    const cat = (item.category || '').toLowerCase().trim();
+    return cat === 'transfer' || cat === 'credit card payment';
+  };
   const notSpecial = (item) => !isSpecial(item);
 
   // Handle Android Back Gesture / Browser History
@@ -1305,7 +1308,7 @@ export default function App() {
       return (m - 1) === selectedMonth && y === selectedYear;
     };
 
-    const monthlyIncome = data.income.filter(filterByDate);
+    const monthlyIncome = data.income.filter(i => filterByDate(i) && notSpecial(i));
     const monthlyExpenses = data.expenses.filter(filterByDate);
 
     // Helpers
@@ -3151,9 +3154,9 @@ export default function App() {
 
     if (transactionFilter && !isSearchActive && !isSubView) {
       if (transactionFilter === 'income') {
-        items = items.filter(i => i._type === 'income');
+        items = items.filter(i => i._type === 'income' && notSpecial(i));
       } else if (transactionFilter === 'expenses') {
-        items = items.filter(i => i._type === 'expenses' && i.category !== 'Credit Card Payment');
+        items = items.filter(i => i._type === 'expenses' && notSpecial(i));
       } else if (transactionFilter === 'cc-payments') {
         items = items.filter(i => i.category === 'Credit Card Payment');
       }
