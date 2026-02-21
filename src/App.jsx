@@ -1300,12 +1300,24 @@ export default function App() {
   const isDueThisMonth = (item, monthVal) => {
     const freq = (item.frequency || 'monthly').toLowerCase();
     if (!item.date || typeof item.date !== 'string') return true;
-    const parts = item.date.split('-');
-    if (parts.length >= 2) {
-      const itemM = parseInt(parts[1], 10) - 1; // 0-indexed month
-      if (freq === 'annual' || freq === 'yearly') return itemM === monthVal;
-      if (freq === 'quarterly') return (monthVal % 3) === (itemM % 3);
+
+    let itemM = -1;
+    if (item.date.includes('-')) {
+      const parts = item.date.split('-');
+      if (parts.length >= 2) itemM = parseInt(parts[1], 10) - 1;
+    } else if (item.date.includes('/')) {
+      const parts = item.date.split('/');
+      if (parts.length >= 2) itemM = parseInt(parts[0], 10) - 1; // Assuming MM/DD/YYYY
+    } else {
+      const d = new Date(item.date);
+      if (!isNaN(d.getTime())) itemM = d.getMonth();
     }
+
+    if (itemM === -1) return true;
+
+    if (freq === 'annual' || freq === 'yearly') return itemM === monthVal;
+    if (freq === 'quarterly') return (monthVal % 3) === (itemM % 3);
+
     return true;
   };
 
@@ -3220,6 +3232,7 @@ export default function App() {
             projectedItems.push({
               ...item,
               id: `projected-${item.id}`,
+              _originalDate: item.date,
               date: targetDate(item.date),
               _type: type,
               isIncome: type === 'income',
@@ -3589,6 +3602,7 @@ export default function App() {
                           setEditingItem({
                             ...item,
                             id: actualId,
+                            date: item._originalDate || item.date,
                             type: itemType,
                             isIncome: isIncomeItem,
                             isProjected: undefined, // Clear projected flag for form compatibility
