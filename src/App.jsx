@@ -1297,6 +1297,18 @@ export default function App() {
     };
   }, [subscriptionItems]);
 
+  const isDueThisMonth = (item, monthVal) => {
+    const freq = (item.frequency || 'monthly').toLowerCase();
+    if (!item.date || typeof item.date !== 'string') return true;
+    const parts = item.date.split('-');
+    if (parts.length >= 2) {
+      const itemM = parseInt(parts[1], 10) - 1; // 0-indexed month
+      if (freq === 'annual' || freq === 'yearly') return itemM === monthVal;
+      if (freq === 'quarterly') return (monthVal % 3) === (itemM % 3);
+    }
+    return true;
+  };
+
   const calculatedFinancials = useMemo(() => {
     // Filter data by selected Month and Year
     const filterByDate = (item) => {
@@ -1313,19 +1325,6 @@ export default function App() {
 
     // Helpers
     const isRecurring = (item) => item.frequency !== 'one-time';
-
-    const isDueThisMonth = (item, monthVal) => {
-      const freq = (item.frequency || 'monthly').toLowerCase();
-      if (!item.date || typeof item.date !== 'string') return true;
-      const parts = item.date.split('-');
-      if (parts.length >= 2) {
-        const itemM = parseInt(parts[1], 10) - 1; // 0-indexed month
-        if (freq === 'annual' || freq === 'yearly') return itemM === monthVal;
-        if (freq === 'quarterly') return (monthVal % 3) === (itemM % 3);
-      }
-      return true;
-    };
-
     // isSpecial and notSpecial are hoisted
 
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
