@@ -4540,12 +4540,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
-      - Charges/purchases = EXPENSES (isIncome: false)
-      - Payments/credits TO the card = SKIP THESE ENTIRELY (do NOT include in transactions array)
+      - Normal charges/purchases = EXPENSES (isIncome: false)
+      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = INCOME (isIncome: true)
+      - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
-        The actual CC payment will be captured when importing the bank statement.
     - If this is a BANK STATEMENT:
-      - Deposits = INCOME (isIncome: true)
+      - Deposits/Refunds = INCOME (isIncome: true)
       - Withdrawals/debits = EXPENSES (isIncome: false)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false
       - NOTE: "Fold" is always a BANK ACCOUNT.
