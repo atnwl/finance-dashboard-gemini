@@ -2075,15 +2075,9 @@ export default function App() {
     setIsFormOpen(true);
   };
 
-  // Renderers
-  const renderDashboard = () => {
-    const chartData = financials.yearlyData;
-    const spendingByCat = Object.entries(financials.byCategory)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    // --- Credit Card Balances Data Preparation ---
-    const creditCardAccounts = (data.statements || []).reduce((acc, s) => {
+  // --- Account List Calculation ---
+  const creditCardAccounts = useMemo(() => {
+    return (data.statements || []).reduce((acc, s) => {
       const key = `${s.provider}-${s.last4 || 'unknown'}`;
       if (!acc[key]) {
         acc[key] = { provider: s.provider, last4: s.last4, latestDate: s.date, latestBalance: s.balance, type: s.type };
@@ -2096,8 +2090,18 @@ export default function App() {
       }
       return acc;
     }, {});
+  }, [data.statements]);
 
-    const accountList = demoFinancials ? demoFinancials.demoAccounts : Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+  const accountList = useMemo(() => {
+    return demoFinancials ? demoFinancials.demoAccounts : Object.values(creditCardAccounts).sort((a, b) => new Date(b.latestDate) - new Date(a.latestDate));
+  }, [demoFinancials, creditCardAccounts]);
+
+  // Renderers
+  const renderDashboard = () => {
+    const chartData = financials.yearlyData;
+    const spendingByCat = Object.entries(financials.byCategory)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
     const totalCreditBalance = accountList.reduce((sum, acc) => {
       // Exclude Bank Accounts from Total Debt Calculation
       if (acc.provider.toLowerCase().includes('fold') || acc.type === 'bank_account') return sum;
@@ -4016,6 +4020,7 @@ export default function App() {
             </div>
 
             <TransactionForm
+              accountList={accountList}
               initialData={editingItem}
               data={data}
               setPendingStatement={setPendingStatement}
@@ -4316,7 +4321,7 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
   );
 }
 
-function TransactionForm({ initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection }) {
+function TransactionForm({ accountList, initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
@@ -4560,7 +4565,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     {
       "metadata": {
         "type": "credit_card" OR "bank_account", 
-        "provider": "Chase",
+        "provider": "e.g., Chase, SoFi, or Unknown",
         "balance": "1240.50"
       },
       "transactions": [
@@ -4577,7 +4582,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
     - balance: Look for "New Balance", "Ending Balance" or just "Total" summary.
       Credit Cards: positive number. Bank Accounts: positive number.
       If NOT CLEARLY VISIBLE in the image, return null or omit.
-    - last4: The last 4 digits of the account number, if visible (usually near "Account Number" or "Ending in").
+    - last4: The last 4 digits of the account number, if visible. This is OFTEN found in the text of the transaction rows (e.g. repeated numbers like '*1234' or '... 1234' on every line). Please look closely at ALL row text!
     `;
 
         const result = await model.generateContent([prompt, ...imageParts]);
@@ -4657,8 +4662,8 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           let resolvedLast4 = (metadata?.last4 || '').trim(); // Use extracted last4 if available
           let possibleLast4s = [];
 
-          if (resolvedLast4 && data.statements) {
-            const matchesByLast4 = data.statements.filter(s => s.last4 && s.last4.endsWith(resolvedLast4));
+          if (resolvedLast4 && accountList) {
+            const matchesByLast4 = accountList.filter(s => s.last4 && s.last4.endsWith(resolvedLast4));
 
             if (matchesByLast4.length > 0) {
               // Prioritize known account number over the logo/provider.
@@ -4676,7 +4681,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           }
 
           // Find existing accounts for this provider
-          const existingStatements = data.statements.filter(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
+          const existingStatements = accountList.filter(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
           const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
 
           if (!resolvedLast4) {
@@ -4851,6 +4856,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   if (bulkItems.length > 0) {
     return (
       <BulkReviewView
+        accountList={accountList}
         data={data}
         items={bulkItems}
         pendingStatement={pendingStatement}
@@ -5087,7 +5093,7 @@ const ReviewAmountInput = ({ value, onChange, className }) => {
 };
 
 // HELPER: Bulk Review UI
-const BulkReviewView = ({ data, items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
+const BulkReviewView = ({ accountList, data, items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
   // Ensure we have a defined object to edit
   const stmt = pendingStatement || { provider: '', last4: '', date: new Date().toISOString().split('T')[0] };
 
@@ -5118,7 +5124,7 @@ const BulkReviewView = ({ data, items, pendingStatement, setPendingStatement, on
               value={stmt.provider || ''}
               onChange={(e) => {
                 const newProvider = e.target.value;
-                const existingStatements = (data?.statements || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
+                const existingStatements = (accountList || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
                 const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
 
                 let newLast4 = stmt.last4;
@@ -5139,7 +5145,7 @@ const BulkReviewView = ({ data, items, pendingStatement, setPendingStatement, on
               }}
             />
             <datalist id="provider-options">
-              {[...new Set((data?.statements || []).map(s => s.provider).filter(Boolean))].map(p => (
+              {[...new Set((accountList || []).map(s => s.provider).filter(Boolean))].map(p => (
                 <option key={p} value={p} />
               ))}
             </datalist>
