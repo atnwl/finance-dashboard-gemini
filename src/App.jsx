@@ -4851,6 +4851,7 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
   if (bulkItems.length > 0) {
     return (
       <BulkReviewView
+        data={data}
         items={bulkItems}
         pendingStatement={pendingStatement}
         setPendingStatement={setPendingStatement}
@@ -5086,7 +5087,7 @@ const ReviewAmountInput = ({ value, onChange, className }) => {
 };
 
 // HELPER: Bulk Review UI
-const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
+const BulkReviewView = ({ data, items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
   // Ensure we have a defined object to edit
   const stmt = pendingStatement || { provider: '', last4: '', date: new Date().toISOString().split('T')[0] };
 
@@ -5111,11 +5112,37 @@ const BulkReviewView = ({ items, pendingStatement, setPendingStatement, onUpdate
             <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
             <input
               type="text"
+              list="provider-options"
               className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
               placeholder="Bank Name"
               value={stmt.provider || ''}
-              onChange={(e) => updateStmt('provider', e.target.value)}
+              onChange={(e) => {
+                const newProvider = e.target.value;
+                const existingStatements = (data?.statements || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
+                const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
+
+                let newLast4 = stmt.last4;
+                let newPossibleLast4s = distinctLast4s.length > 0 ? distinctLast4s : null;
+
+                if (distinctLast4s.length === 1) {
+                  newLast4 = distinctLast4s[0];
+                } else if (!distinctLast4s.includes(newLast4)) {
+                  newLast4 = '';
+                }
+
+                setPendingStatement({
+                  ...stmt,
+                  provider: newProvider,
+                  last4: newLast4,
+                  possibleLast4s: newPossibleLast4s
+                });
+              }}
             />
+            <datalist id="provider-options">
+              {[...new Set((data?.statements || []).map(s => s.provider).filter(Boolean))].map(p => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
           </div>
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
