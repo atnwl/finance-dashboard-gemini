@@ -3636,10 +3636,10 @@ export default function App() {
                         {/* Amount */}
                         <div className={cn(
                           "text-right font-bold text-base shrink-0 min-w-[70px]",
-                          isIncome ? "text-[#34D399]" : "text-[#F87171]",
+                          isIncome || parseFloat(item.amount) < 0 ? "text-[#34D399]" : "text-[#F87171]",
                           isProjected && "opacity-60 italic"
                         )}>
-                          {isIncome ? '+' : '-'}${parseFloat(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {isIncome || parseFloat(item.amount) < 0 ? '+' : '-'}${Math.abs(parseFloat(item.amount)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </div>
                     </React.Fragment>
@@ -4541,11 +4541,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
       - Normal charges/purchases = EXPENSES (isIncome: false)
-      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = INCOME (isIncome: true)
+      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
       - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
     - If this is a BANK STATEMENT:
-      - Deposits/Refunds = INCOME (isIncome: true)
+      - Deposits = INCOME (isIncome: true)
+      - Refunds/Reversals = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
       - Withdrawals/debits = EXPENSES (isIncome: false)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false
       - NOTE: "Fold" is always a BANK ACCOUNT.
@@ -4553,7 +4554,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Amount (amount) - number only (absolute value)
+    - Amount (amount) - number only. Use a NEGATIVE number (-X.XX) only for refunds/returns on credit card or bank statements, otherwise positive.
     - Is Income (isIncome) - boolean. See rules above for proper classification.
     - Category (category) - best guess from: ${categories.income.join(', ')}, ${categories.expenses.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
@@ -5067,7 +5068,7 @@ const ReviewAmountInput = ({ value, onChange, className }) => {
   }, [value]);
 
   const handleInputChange = (e) => {
-    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const raw = e.target.value.replace(/,/g, '').replace(/[^0-9.-]/g, '');
     setLocalValue(e.target.value); // Keep typing feel
     onChange(raw);
   };
