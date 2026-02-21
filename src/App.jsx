@@ -4657,6 +4657,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           // 1. Resolve Statement ID / Last 4
 
           let provider = (metadata?.provider || 'Unknown').trim();
+          if (provider.toLowerCase() === 'unknown') provider = '';
           const stmtDate = fileDate; // Use file date as source of truth
 
           let resolvedLast4 = (metadata?.last4 || '').trim(); // Use extracted last4 if available
@@ -4697,13 +4698,17 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
             if (match) resolvedLast4 = match;
           }
 
+          const existingProvidersForCheck = [...new Set((accountList || []).map(s => s.provider).filter(Boolean))];
+          const isNewProvider = provider !== '' && !existingProvidersForCheck.some(p => p.toLowerCase() === provider.toLowerCase());
+
           setPendingStatement({
             provider,
             last4: resolvedLast4 ? resolvedLast4.slice(-4) : '', // Ensure only rightmost 4 digits
             date: stmtDate,
             type: metadata?.type || 'credit_card',
             balance: metadata?.balance || null, // Use extracted balance if found, else null (---)
-            possibleLast4s: possibleLast4s.map(l => l.slice(-4)) // Sanitize all options
+            possibleLast4s: possibleLast4s.map(l => l.slice(-4)), // Sanitize all options
+            _isNewProvider: isNewProvider || provider === ''
           });
 
           // Detect potential duplicates within the scanned items
@@ -5096,6 +5101,7 @@ const ReviewAmountInput = ({ value, onChange, className }) => {
 const BulkReviewView = ({ accountList, data, items, pendingStatement, setPendingStatement, onUpdate, onRemove, onCancel, onImport }) => {
   // Ensure we have a defined object to edit
   const stmt = pendingStatement || { provider: '', last4: '', date: new Date().toISOString().split('T')[0] };
+  const existingProviders = [...new Set((accountList || []).map(s => s.provider).filter(Boolean))];
 
   const updateStmt = (field, val) => {
     setPendingStatement({ ...stmt, [field]: val });
@@ -5116,39 +5122,81 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
         <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-4 gap-2">
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
-            <input
-              type="text"
-              list="provider-options"
-              className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
-              placeholder="Bank Name"
-              value={stmt.provider || ''}
-              onChange={(e) => {
-                const newProvider = e.target.value;
-                const existingStatements = (accountList || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
-                const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
+            {existingProviders.length > 0 && !stmt._isNewProvider ? (
+              <select
+                className="w-full bg-[#161B21] border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-white"
+                value={stmt.provider || ''}
+                onChange={(e) => {
+                  if (e.target.value === 'NEW') {
+                    setPendingStatement({ ...stmt, provider: '', _isNewProvider: true, possibleLast4s: null, last4: '' });
+                  } else {
+                    const newProvider = e.target.value;
+                    const existingStatements = (accountList || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
+                    const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
 
-                let newLast4 = stmt.last4;
-                let newPossibleLast4s = distinctLast4s.length > 0 ? distinctLast4s : null;
+                    let newLast4 = stmt.last4;
+                    let newPossibleLast4s = distinctLast4s.length > 0 ? distinctLast4s : null;
 
-                if (distinctLast4s.length === 1) {
-                  newLast4 = distinctLast4s[0];
-                } else if (!distinctLast4s.includes(newLast4)) {
-                  newLast4 = '';
-                }
+                    if (distinctLast4s.length === 1) {
+                      newLast4 = distinctLast4s[0];
+                    } else if (!distinctLast4s.includes(newLast4)) {
+                      newLast4 = '';
+                    }
 
-                setPendingStatement({
-                  ...stmt,
-                  provider: newProvider,
-                  last4: newLast4,
-                  possibleLast4s: newPossibleLast4s
-                });
-              }}
-            />
-            <datalist id="provider-options">
-              {[...new Set((accountList || []).map(s => s.provider).filter(Boolean))].map(p => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
+                    setPendingStatement({
+                      ...stmt,
+                      provider: newProvider,
+                      last4: newLast4,
+                      possibleLast4s: newPossibleLast4s,
+                      _isNewProvider: false
+                    });
+                  }
+                }}
+              >
+                <option value="" disabled>Select...</option>
+                {existingProviders.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+                <option value="NEW">+ New Provider</option>
+              </select>
+            ) : (
+              <div className="flex gap-1 items-center bg-transparent border-b border-white/10">
+                <input
+                  type="text"
+                  className="w-full bg-transparent text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+                  placeholder="Bank Name"
+                  value={stmt.provider || ''}
+                  onChange={(e) => {
+                    const newProvider = e.target.value;
+                    const existingStatements = (accountList || []).filter(s => s.provider && s.provider.toLowerCase() === newProvider.toLowerCase());
+                    const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
+
+                    let newLast4 = stmt.last4;
+                    let newPossibleLast4s = distinctLast4s.length > 0 ? distinctLast4s : null;
+
+                    if (distinctLast4s.length === 1) {
+                      newLast4 = distinctLast4s[0];
+                    } else if (!distinctLast4s.includes(newLast4)) {
+                      newLast4 = '';
+                    }
+
+                    setPendingStatement({
+                      ...stmt,
+                      provider: newProvider,
+                      last4: newLast4,
+                      possibleLast4s: newPossibleLast4s,
+                      _isNewProvider: true
+                    });
+                  }}
+                  autoFocus
+                />
+                {existingProviders.length > 0 && (
+                  <button type="button" onClick={() => setPendingStatement({ ...stmt, _isNewProvider: false, provider: '' })} className="text-muted hover:text-white px-1" title="Select from list">
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="col-span-1">
             <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
