@@ -4651,15 +4651,33 @@ function TransactionForm({ initialData, data, setPendingStatement, pendingStatem
           // Bulk Mode
           // 1. Resolve Statement ID / Last 4
 
-          const provider = (metadata?.provider || 'Unknown').trim();
+          let provider = (metadata?.provider || 'Unknown').trim();
           const stmtDate = fileDate; // Use file date as source of truth
+
+          let resolvedLast4 = (metadata?.last4 || '').trim(); // Use extracted last4 if available
+          let possibleLast4s = [];
+
+          if (resolvedLast4 && data.statements) {
+            const matchesByLast4 = data.statements.filter(s => s.last4 && s.last4.endsWith(resolvedLast4));
+
+            if (matchesByLast4.length > 0) {
+              // Prioritize known account number over the logo/provider.
+              // If multiple providers have this last 4, see if AI guessed one of them.
+              const aiProviderMatch = matchesByLast4.find(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
+              if (aiProviderMatch) {
+                provider = aiProviderMatch.provider;
+                resolvedLast4 = aiProviderMatch.last4;
+              } else {
+                // Override provider strictly based on the known last 4
+                provider = matchesByLast4[0].provider;
+                resolvedLast4 = matchesByLast4[0].last4;
+              }
+            }
+          }
 
           // Find existing accounts for this provider
           const existingStatements = data.statements.filter(s => s.provider && s.provider.toLowerCase() === provider.toLowerCase());
           const distinctLast4s = [...new Set(existingStatements.map(s => s.last4))].filter(Boolean);
-
-          let resolvedLast4 = metadata?.last4 || ''; // Use extracted last4 if available
-          let possibleLast4s = [];
 
           if (!resolvedLast4) {
             // Fallback to existing logic if extraction failed
