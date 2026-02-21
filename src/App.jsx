@@ -1313,6 +1313,19 @@ export default function App() {
 
     // Helpers
     const isRecurring = (item) => item.frequency !== 'one-time';
+
+    const isDueThisMonth = (item, monthVal) => {
+      const freq = (item.frequency || 'monthly').toLowerCase();
+      if (!item.date || typeof item.date !== 'string') return true;
+      const parts = item.date.split('-');
+      if (parts.length >= 2) {
+        const itemM = parseInt(parts[1], 10) - 1; // 0-indexed month
+        if (freq === 'annual' || freq === 'yearly') return itemM === monthVal;
+        if (freq === 'quarterly') return (monthVal % 3) === (itemM % 3);
+      }
+      return true;
+    };
+
     // isSpecial and notSpecial are hoisted
 
     // Calculate totals - Now we sum ACTUAL amounts for the month, or logic for recurring?
@@ -1464,8 +1477,8 @@ export default function App() {
     activeRecurringIncomeItems.forEach(item => {
       const name = item.name.toLowerCase().trim();
       const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
-      if (!actualIncomeNames.has(name) && !isSkipped) {
-        projectedIncomeSmart += normalizeToMonthly(item.amount, item.frequency);
+      if (!actualIncomeNames.has(name) && !isSkipped && isDueThisMonth(item, selectedMonth)) {
+        projectedIncomeSmart += parseFloat(item.amount) || 0;
       }
     });
 
@@ -1475,8 +1488,8 @@ export default function App() {
     activeRecurringItems.forEach(item => {
       const name = item.name.toLowerCase().trim();
       const isSkipped = skipped.some(s => s.sourceId === item.id && s.month === selectedMonth && s.year === selectedYear);
-      if (!actualExpenseNames.has(name) && !isSkipped) {
-        projectedExpensesSmart += normalizeToMonthly(item.amount, item.frequency);
+      if (!actualExpenseNames.has(name) && !isSkipped && isDueThisMonth(item, selectedMonth)) {
+        projectedExpensesSmart += parseFloat(item.amount) || 0;
       }
     });
 
@@ -1562,8 +1575,8 @@ export default function App() {
         activeRecurringIncomeItems.forEach(item => {
           const name = item.name.toLowerCase().trim();
           const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
-          if (!monthIncomeNames.has(name) && !isSkipped) {
-            missingInc += normalizeToMonthly(item.amount, item.frequency);
+          if (!monthIncomeNames.has(name) && !isSkipped && isDueThisMonth(item, index)) {
+            missingInc += parseFloat(item.amount) || 0;
           }
         });
         finalInc += missingInc;
@@ -1574,8 +1587,8 @@ export default function App() {
         activeRecurringItems.forEach(item => {
           const name = item.name.toLowerCase().trim();
           const isSkipped = (data.skippedProjections || []).some(s => s.sourceId === item.id && s.month === index && s.year === selectedYear);
-          if (!monthExpenseNames.has(name) && !isSkipped) {
-            missingExp += normalizeToMonthly(item.amount, item.frequency);
+          if (!monthExpenseNames.has(name) && !isSkipped && isDueThisMonth(item, index)) {
+            missingExp += parseFloat(item.amount) || 0;
           }
         });
         finalExp += missingExp;
@@ -1614,9 +1627,11 @@ export default function App() {
       // 2. Recurring expenses (apply to every month)
       const recurringExpenses = data.expenses.filter(e => isRecurring(e) && notSpecial(e));
       recurringExpenses.forEach(item => {
-        const amt = normalizeToMonthly(item.amount, item.frequency);
-        const cat = item.category || 'Uncategorized';
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+        if (isDueThisMonth(item, index)) {
+          const amt = parseFloat(item.amount) || 0;
+          const cat = item.category || 'Uncategorized';
+          categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+        }
       });
 
       return {
@@ -3195,7 +3210,7 @@ export default function App() {
       const addProjected = (sourceList, type) => {
         (sourceList || []).forEach(item => {
           // Only add if this recurring item hasn't posted this month yet AND isn't skipped
-          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim()) && !isSkipped(item.id)) {
+          if (!allMonthlyActualNames.has(item.name.toLowerCase().trim()) && !isSkipped(item.id) && isDueThisMonth(item, selectedMonth)) {
             // Only add if it matches current transaction filter (if any)
             if (transactionFilter) {
               if (transactionFilter === 'income' && type !== 'income') return;
