@@ -1249,6 +1249,11 @@ export default function App() {
       normalized = paypalMatch[1];
     }
 
+    normalized = normalized.replace(/^WWW\./i, '');
+    normalized = normalized.replace(/(?:\.|\s+)(COM|AI|NET|ORG|CO|IO|SUB|MEMBE(?:RSHIP|R)?)$/i, '');
+    normalized = normalized.replace(/^PP\*/i, '');
+    normalized = normalized.replace(/^PAYPAL\s*\*?/i, '');
+
     // PayPal with space pattern: PAYPAL *MERCHANT 402-xxx-xxxx
     normalized = normalized.replace(/(PAYPAL\s*\*[^\s]+)\s+[\d\-]+$/i, '$1');
 
@@ -1258,26 +1263,75 @@ export default function App() {
     // Strip trailing phone numbers: "MERCHANT 800-123-4567"
     normalized = normalized.replace(/\s+\d{3}[\-\s]?\d{3}[\-\s]?\d{4}$/i, '');
 
-    return normalized;
+    return normalized.trim();
   };
 
   const subscriptionItems = useMemo(() => {
     // Always calculate subscriptions (needed for dashboard card)
     const raw = demoFinancials ? demoFinancials.demoSubscriptions : data.expenses.filter(e => e.type === 'subscription');
-    const uniqueSubs = new Map();
-    raw.forEach(item => {
-      // Use normalized name for grouping to avoid duplicates from transaction IDs
+
+    // Process backwards (newest to oldest or oldest to newest)
+    // We want to sort raw oldest to newest, so replacing duplicates keeps the latest date.
+    const sortedRaw = [...raw].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const mergedSubs = [];
+
+    sortedRaw.forEach(item => {
       const normalizedName = normalizeSubscriptionName(item.name);
-      const key = normalizedName.toLowerCase().trim();
-      const existing = uniqueSubs.get(key);
-      if (!existing || new Date(item.date) > new Date(existing.date)) {
-        // Store with a display name (normalized) and original item data
-        uniqueSubs.set(key, { ...item, displayName: normalizedName || item.name });
+      const lowerName = normalizedName.toLowerCase().trim();
+      const amount = parseFloat(item.amount || 0);
+
+      let matchIdx = -1;
+      for (let i = 0; i < mergedSubs.length; i++) {
+        const u = mergedSubs[i];
+
+        // Exact normalized name match
+        if (u.matchKey === lowerName) {
+          matchIdx = i;
+          break;
+        }
+
+        // Substring match + same amount (+/- margin for variations like taxes or slight price hikes)
+        // Ensure the string is > 3 chars to prevent "app" matching "apple" with unrelated charges
+        if (lowerName.length > 3 && u.matchKey.length > 3) {
+          if (lowerName.includes(u.matchKey) || u.matchKey.includes(lowerName)) {
+            // Check if amounts are within $1.00
+            if (Math.abs(amount - u.amount) <= 1.0) {
+              matchIdx = i;
+              break;
+            }
+          }
+        }
+      }
+
+      const display = normalizedName || item.name;
+
+      if (matchIdx >= 0) {
+        const existing = mergedSubs[matchIdx];
+        // Merge: take newer date (already sorted), and prefer the MORE SPECIFIC (longer) name
+        // e.g. "GOOGLE *Primal" (length 14) vs "Google" (length 6) -> keeps "GOOGLE *Primal"
+        // Force capitalization if one is fully lower/upper and the other is Title Case? 
+        // We'll trust the longer original name.
+        const useNewString = display.length > existing.displayName.length;
+
+        mergedSubs[matchIdx] = {
+          ...item,
+          displayName: useNewString ? display : existing.displayName,
+          matchKey: useNewString ? lowerName : existing.matchKey,
+          amount: parseFloat(item.amount || 0) // Track newest amount
+        };
+      } else {
+        mergedSubs.push({
+          ...item,
+          displayName: display,
+          matchKey: lowerName,
+          amount
+        });
       }
     });
-    return Array.from(uniqueSubs.values())
+
+    return mergedSubs
       .map(x => ({ ...x, _type: 'expenses' }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
+      .sort((a, b) => new Date(a.date) - new Date(b.date)); // Maintain standard Teddy flow
   }, [data.expenses, demoFinancials]);
 
   const availableFrequencies = useMemo(() => {
