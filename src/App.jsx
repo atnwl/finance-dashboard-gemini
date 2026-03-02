@@ -4878,24 +4878,28 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     - Ignore headers, footers, account summaries, or balances.
     - If it's a statement, handle various layouts (tables, lists, blocks).
     
-    IMPORTANT - DETECTING DOCUMENT TYPE:
-    - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
-      - Normal charges/purchases = EXPENSES (isIncome: false)
-      - Merchant Refunds/Returns (often shown as negative amounts or credits for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
-      - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
-        Why: These are just the receiving end of payments that originated from a bank account.
-    - If this is a BANK STATEMENT:
-      - Deposits = INCOME (isIncome: true), amount POSITIVE
-      - Refunds/Reversals = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
-      - Withdrawals/debits = EXPENSES (isIncome: false), amount POSITIVE (e.g. 194.25, NOT -194.25)
-      - Payments TO credit cards = category "Credit Card Payment", isIncome: false, amount POSITIVE
-      - NOTE: "Fold" is always a BANK ACCOUNT.
-      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive EXCEPT for refunds/returns (use negative to signal a refund).
+    IMPORTANT - DETECTING DOCUMENT TYPE AND SIGN CONVENTION:
+    - CRITICAL: Different statements use different sign conventions! 
+      - Some providers (like Fold) use negative numbers or parentheses for DEBITS/EXPENSES and positive for CREDITS/INCOME.
+      - Other providers (like Credit Cards) use positive for expenses and negative for payments/credits.
+    - FIRST, deduce the sign convention for the statement you are reading!
+    - THEN, NORMALIZE the amounts in your JSON output using these STRICT rules:
+    
+    1. Normal Expenses / Purchases / Withdrawals / Debits:
+       -> isIncome: false, amount MUST BE POSITIVE (e.g. 50.00, NEVER -50.00). 
+       -> DO NOT use negative numbers for regular expenses, even if the statement shows them with a minus sign or in parentheses!
+    2. Income / Deposits / Paychecks:
+       -> isIncome: true, amount MUST BE POSITIVE.
+    3. Merchant Refunds / Returns:
+       -> isIncome: false, amount MUST BE NEGATIVE (e.g. -50.00) to preserve the refund signal. Category should be "Refund".
+    4. Payments TO credit cards:
+       -> If parsing a BANK STATEMENT: isIncome: false, amount MUST BE POSITIVE. Category: "Credit Card Payment".
+       -> If parsing a CREDIT CARD STATEMENT: SKIP THESE ENTIRELY (do not include in output).
     
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Amount (amount) - number only. Use NEGATIVE for refunds/returns/credits (e.g. -50.00), positive for everything else.
+    - Amount (amount) - number only. MUST BE POSITIVE for both regular income and regular expenses. Use NEGATIVE ONLY for Merchant Refunds/Returns.
     - Is Income (isIncome) - boolean. See rules above for proper classification.
     - Category (category) - best guess from: ${categories.income.join(', ')}, ${categories.expenses.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
@@ -5516,12 +5520,21 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
         </div>
 
         {/* Statement Metadata Editor */}
-        <div className="bg-white/5 p-3 rounded-xl border border-white/10 grid grid-cols-4 gap-2">
+        <div className={cn(
+          "p-3 rounded-xl border grid grid-cols-4 gap-2 transition-all",
+          (!stmt.provider || !stmt.last4) ? "bg-danger/5 border-danger/50 shadow-[0_0_15px_rgba(214,124,124,0.1)]" : "bg-white/5 border-white/10"
+        )}>
           <div className="col-span-1">
-            <label className="text-[10px] text-muted uppercase font-bold px-1">Provider</label>
+            <label className={cn("text-[10px] uppercase font-bold px-1 flex items-center justify-between", !stmt.provider ? "text-danger" : "text-muted")}>
+              <span>Provider</span>
+              {!stmt.provider && <span className="bg-danger text-black px-1.5 py-0.5 rounded-sm text-[8px] tracking-wider animate-pulse">MISSING</span>}
+            </label>
             {existingProviders.length > 0 && !stmt._isNewProvider ? (
               <select
-                className="w-full bg-[#161B21] border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-white"
+                className={cn(
+                  "w-full border-b text-xs py-1 focus:outline-none focus:border-primary transition-colors",
+                  !stmt.provider ? "bg-danger/10 border-danger/50 text-danger font-bold" : "bg-[#161B21] border-white/10 text-white"
+                )}
                 value={stmt.provider || ''}
                 onChange={(e) => {
                   if (e.target.value === 'NEW') {
@@ -5557,10 +5570,10 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
                 <option value="NEW">+ New Provider</option>
               </select>
             ) : (
-              <div className="flex gap-1 items-center bg-transparent border-b border-white/10">
+              <div className={cn("flex gap-1 items-center border-b transition-colors", !stmt.provider ? "bg-danger/10 border-danger/50" : "bg-transparent border-white/10")}>
                 <input
                   type="text"
-                  className="w-full bg-transparent text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+                  className={cn("w-full bg-transparent text-xs py-1 focus:outline-none focus:border-primary", !stmt.provider ? "placeholder:text-danger/50 text-danger font-bold px-1" : "placeholder:text-muted/30 text-white")}
                   placeholder="Bank Name"
                   value={stmt.provider || ''}
                   onChange={(e) => {
@@ -5596,10 +5609,16 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
             )}
           </div>
           <div className="col-span-1">
-            <label className="text-[10px] text-muted uppercase font-bold px-1">Last 4</label>
+            <label className={cn("text-[10px] uppercase font-bold px-1 flex items-center justify-between", !stmt.last4 ? "text-danger" : "text-muted")}>
+              <span>Last 4</span>
+              {!stmt.last4 && <span className="bg-danger text-black px-1.5 py-0.5 rounded-sm text-[8px] tracking-wider animate-pulse">MISSING</span>}
+            </label>
             {stmt.possibleLast4s && stmt.possibleLast4s.length > 0 ? (
               <select
-                className="w-full bg-[#161B21] border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary text-white"
+                className={cn(
+                  "w-full border-b text-xs py-1 focus:outline-none focus:border-primary transition-colors",
+                  !stmt.last4 ? "bg-danger/10 border-danger/50 text-danger font-bold" : "bg-[#161B21] border-white/10 text-white"
+                )}
                 value={stmt.last4 || ''}
                 onChange={(e) => {
                   if (e.target.value === 'NEW') {
@@ -5618,7 +5637,10 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
             ) : (
               <input
                 type="text"
-                className="w-full bg-transparent border-b border-white/10 text-xs py-1 focus:outline-none focus:border-primary placeholder:text-muted/30"
+                className={cn(
+                  "w-full bg-transparent border-b text-xs py-1 focus:outline-none focus:border-primary transition-colors",
+                  !stmt.last4 ? "bg-danger/10 border-danger/50 placeholder:text-danger/50 text-danger font-bold px-1" : "border-white/10 placeholder:text-muted/30 text-white"
+                )}
                 placeholder="1234"
                 maxLength="4"
                 value={stmt.last4 || ''}
