@@ -864,7 +864,7 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
 };
 
 // --- Data Migration & Versioning ---
-const CURRENT_DATA_VERSION = 1;
+const CURRENT_DATA_VERSION = 2;
 
 const migrateData = (oldData) => {
   let data = { ...oldData };
@@ -889,7 +889,31 @@ const migrateData = (oldData) => {
   }
 
   // Future migrations can go here:
-  // if (version < 2) { ... }
+  if (version < 2) {
+    // Fix negative expense amounts from bank statement imports.
+    // Gemini sometimes returned negative amounts for bank debits;
+    // the isIncome flag already handles sign semantics, so amounts should be positive.
+    data.expenses = (data.expenses || []).map(e => {
+      const amount = parseFloat(e.amount);
+      if (amount < 0) {
+        const name = (e.name || '').toLowerCase();
+        const cat = (e.category || '').toLowerCase();
+        const isRefund = cat === 'refund' || name.includes('refund') || name.includes('return') || name.includes('reversal');
+        if (!isRefund) {
+          return { ...e, amount: Math.abs(amount) };
+        }
+      }
+      return e;
+    });
+    // Also fix any negative income amounts (should never be negative)
+    data.income = (data.income || []).map(i => {
+      const amount = parseFloat(i.amount);
+      if (amount < 0) {
+        return { ...i, amount: Math.abs(amount) };
+      }
+      return i;
+    });
+  }
 
   data.version = CURRENT_DATA_VERSION;
   return data;
@@ -3628,7 +3652,7 @@ export default function App() {
                   const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
                   const sourceText = sourceStatement
                     ? `${sourceStatement.provider} ****${sourceStatement.last4}`
-                    : (isIncome ? 'Income' : 'Expense');
+                    : (item.category || (isIncome ? 'Income' : 'Expense'));
 
                   // Projected Indicator (Includes explicit projections OR future actuals)
                   const dLocal = new Date();
@@ -4632,11 +4656,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
     - If this is a BANK STATEMENT:
-      - Deposits = INCOME (isIncome: true)
+      - Deposits = INCOME (isIncome: true), amount POSITIVE
       - Refunds/Reversals = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
-      - Withdrawals/debits = EXPENSES (isIncome: false)
-      - Payments TO credit cards = category "Credit Card Payment", isIncome: false
+      - Withdrawals/debits = EXPENSES (isIncome: false), amount POSITIVE (e.g. 194.25, NOT -194.25)
+      - Payments TO credit cards = category "Credit Card Payment", isIncome: false, amount POSITIVE
       - NOTE: "Fold" is always a BANK ACCOUNT.
+      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive EXCEPT for refunds/returns.
     
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
@@ -4800,13 +4825,37 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           });
 
           // Detect potential duplicates within the scanned items
-          const itemsWithIds = items.map(i => ({
-            ...i,
-            id: Math.random().toString(36).substr(2, 9),
-            isIncome: i.isIncome ?? false,
-            type: i.type || 'variable',
-            frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
-          }));
+          const itemsWithIds = items.map(i => {
+            // Normalize amounts: the isIncome flag determines income vs expense,
+            // so amounts should always be positive. Negative amounts are only valid
+            // for refunds (isIncome: false with negative = credit/return on a card).
+            // Bank statement debits sometimes come back as negative from Gemini;
+            // since they're already marked isIncome: false, we take Math.abs.
+            let normalizedAmount = parseFloat(i.amount) || 0;
+            if (normalizedAmount < 0 && !i.isIncome) {
+              // Negative expense = could be a refund (keep negative) or a mis-signed debit.
+              // If category suggests it's NOT a refund, normalize to positive.
+              const isRefund = (i.category || '').toLowerCase() === 'refund' ||
+                (i.name || '').toLowerCase().includes('refund') ||
+                (i.name || '').toLowerCase().includes('return') ||
+                (i.name || '').toLowerCase().includes('reversal');
+              if (!isRefund) {
+                normalizedAmount = Math.abs(normalizedAmount);
+              }
+            } else if (normalizedAmount < 0 && i.isIncome) {
+              // Negative income doesn't make sense — normalize to positive
+              normalizedAmount = Math.abs(normalizedAmount);
+            }
+
+            return {
+              ...i,
+              amount: normalizedAmount,
+              id: Math.random().toString(36).substr(2, 9),
+              isIncome: i.isIncome ?? false,
+              type: i.type || 'variable',
+              frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
+            };
+          });
 
           // Mark potential duplicates (same name + date + amount within set)
           const seenKeys = new Map();
