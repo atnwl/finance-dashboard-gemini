@@ -1853,7 +1853,6 @@ export default function App() {
     const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
-    console.log('[handleSave] Saving item:', cleanItem.name, 'type:', type, 'statementId:', cleanItem.statementId);
 
     // Ensure ID
     if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
@@ -4912,7 +4911,6 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
   const handleBulkImport = () => {
     // 1. Resolve Statement ID
     let finalStmtId = null;
-    console.log('[BulkImport] pendingStatement:', JSON.stringify(pendingStatement));
 
     if (pendingStatement) {
       const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || pendingStatement.date || new Date().toISOString().split('T')[0];
@@ -4940,10 +4938,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           transactionCount: bulkItems.length
         };
         onSaveStatement(newStmt);
-        console.log('[BulkImport] Created new statement:', JSON.stringify(newStmt));
       }
 
-      console.log('[BulkImport] finalStmtId:', finalStmtId);
 
       // 1.5 Save Balance Transfer if Detected
       if (pendingStatement.balanceTransferOffer && pendingStatement.balanceTransferOffer.amount) {
@@ -4962,6 +4958,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     // 2. Save Transactions linked to that ID (or update orphaned ones)
     let savedCount = 0;
     let updatedCount = 0;
+    const existingStatements = data?.statements || [];
     bulkItems.forEach(item => {
       // Check if this transaction already exists
       const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
@@ -4971,30 +4968,33 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       if (!existingItem) {
         // New transaction - save it
         const itemToSave = { ...item, statementId: finalStmtId };
-        console.log('[BulkImport] Saving NEW item:', item.name, 'with statementId:', itemToSave.statementId);
         onSave(itemToSave);
         savedCount++;
-      } else if (!existingItem.statementId && finalStmtId) {
-        // Existing transaction WITHOUT statementId - UPDATE it.
-        // CRITICAL: We must apply the USER'S EDITS (category, frequency, etc.) from 'item' 
-        // effectively overwriting the stale existing data, while preserving the ID.
-        const updatedItem = {
-          ...existingItem,
-          // Apply edits from Bulk Review
-          category: item.category,
-          frequency: item.frequency,
-          type: item.type,
-          isIncome: item.isIncome,
-          name: item.name,
-          // Link statement
-          statementId: finalStmtId
-        };
-        onSave(updatedItem);
-        updatedCount++;
+      } else if (finalStmtId) {
+        // Existing transaction found — check if it needs (re-)linking
+        const hasValidStatement = existingItem.statementId &&
+          existingStatements.some(s => s.id === existingItem.statementId);
+
+        if (!hasValidStatement) {
+          // No statementId, OR statementId points to a missing/deleted statement — re-link
+          const updatedItem = {
+            ...existingItem,
+            // Apply edits from Bulk Review
+            category: item.category,
+            frequency: item.frequency,
+            type: item.type,
+            isIncome: item.isIncome,
+            name: item.name,
+            // Link (or re-link) statement
+            statementId: finalStmtId
+          };
+          onSave(updatedItem);
+          updatedCount++;
+        }
+        // If existingItem already has a VALID statementId, skip it
       }
-      // If existingItem already has a statementId, we truly skip it
     });
-    console.log(`Import complete: ${savedCount} new, ${updatedCount} updated with statementId`);
+    console.log(`Import complete: ${savedCount} new, ${updatedCount} re-linked with statementId`);
 
     setBulkItems([]);
     setPendingStatement(null);
