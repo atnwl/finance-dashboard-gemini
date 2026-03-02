@@ -4866,12 +4866,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
       - Normal charges/purchases = EXPENSES (isIncome: false)
-      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
+      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), amount MUST be NEGATIVE (e.g. -50.00), AND category MUST be "Refund"
       - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
     - If this is a BANK STATEMENT:
       - Deposits = INCOME (isIncome: true), amount POSITIVE
-      - Refunds/Reversals = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
+      - Refunds/Reversals = EXPENSES (isIncome: false), amount MUST be NEGATIVE (e.g. -50.00), AND category MUST be "Refund"
       - Withdrawals/debits = EXPENSES (isIncome: false), amount POSITIVE (e.g. 194.25, NOT -194.25)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false, amount POSITIVE
       - NOTE: "Fold" is always a BANK ACCOUNT.
@@ -4933,7 +4933,9 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         // Apply local cache as a secondary "Guarantee" layer
         const items = rawItems.map(item => {
           const lowerName = item.name.toLowerCase().trim();
-          if (cache[lowerName]) {
+          // Don't override refund transactions — negative amount is a strong signal from Gemini
+          const isNegativeAmount = parseFloat(item.amount) < 0;
+          if (cache[lowerName] && !isNegativeAmount) {
             return {
               ...item,
               category: cache[lowerName].category,
@@ -5052,7 +5054,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
               const isRefund = (i.category || '').toLowerCase() === 'refund' ||
                 (i.name || '').toLowerCase().includes('refund') ||
                 (i.name || '').toLowerCase().includes('return') ||
-                (i.name || '').toLowerCase().includes('reversal');
+                (i.name || '').toLowerCase().includes('reversal') ||
+                (metadata?.type === 'credit_card'); // On credit cards, negative amounts are ALWAYS refunds/credits
               if (!isRefund) {
                 normalizedAmount = Math.abs(normalizedAmount);
               }
