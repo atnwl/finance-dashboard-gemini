@@ -1860,10 +1860,25 @@ export default function App() {
   // Handlers
   const handleDelete = (type, id, skipConfirm = false) => {
     if (!skipConfirm && !window.confirm("Are you sure you want to delete this item?")) return;
-    setData(prev => ({
-      ...prev,
-      [type]: prev[type].filter(item => item.id !== id)
-    }));
+    // Remove from BOTH arrays — guards against duplicate records created with the same or different IDs
+    // that may have landed in the wrong array due to prior import bugs.
+    setData(prev => {
+      // Find the item so we can also match by name+date+amount as a fallback for ID-mismatched dupes
+      const target = [...(prev.income || []), ...(prev.expenses || [])].find(i => i.id === id);
+      const isDupe = (item) => {
+        if (item.id === id) return true;
+        if (!target) return false;
+        // Also wipe orphaned copies with same name+date+amount (id may differ due to old bug)
+        return fuzzyNameMatch(item.name, target.name) &&
+          item.date === target.date &&
+          Math.abs(parseFloat(item.amount) - parseFloat(target.amount)) < 0.01;
+      };
+      return {
+        ...prev,
+        income: prev.income.filter(item => !isDupe(item)),
+        expenses: prev.expenses.filter(item => !isDupe(item))
+      };
+    });
   };
 
   const handleSkipProjection = (item) => {
