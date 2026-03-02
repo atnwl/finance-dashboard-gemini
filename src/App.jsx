@@ -1912,19 +1912,27 @@ export default function App() {
     setData(prev => {
       const newData = { ...prev };
 
-      if (editingItem) {
-        const originalType = editingItem.isIncome ? 'income' : 'expenses';
+      // Determine if there's an original type if this was an existing item that flipped income/expense
+      let originalType = null;
+      if (editingItem && editingItem.id === cleanItem.id) {
+        originalType = editingItem.isIncome ? 'income' : 'expenses';
+      } else {
+        // Even if not editing via form, check if ID exists in either array to handle direct onSave updates
+        if (prev.income.some(i => i.id === cleanItem.id)) originalType = 'income';
+        else if (prev.expenses.some(e => e.id === cleanItem.id)) originalType = 'expenses';
+      }
 
+      if (originalType) {
         if (originalType === type) {
           // Same list update
           newData[type] = prev[type].map(x => x.id === cleanItem.id ? cleanItem : x);
         } else {
-          // Move logic: remove from old, add to new
+          // Move logic: remove from old list, add to new list
           newData[originalType] = prev[originalType].filter(x => x.id !== cleanItem.id);
           newData[type] = [...prev[type], cleanItem];
         }
       } else {
-        // Add new
+        // Totally new item
         newData[type] = [...prev[type], cleanItem];
       }
       return newData;
