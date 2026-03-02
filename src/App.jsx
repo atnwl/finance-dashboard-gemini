@@ -3262,6 +3262,7 @@ export default function App() {
                 <AccountCard
                   key={`${account.provider}-${account.last4}`}
                   account={account}
+                  data={data}
                   onDelete={handleDeleteStatement}
                   onUpdate={handleUpdateStatement}
                 />
@@ -4271,11 +4272,13 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
   );
 }
 
-function AccountCard({ account, onDelete, onUpdate }) {
+function AccountCard({ account, data, onDelete, onUpdate }) {
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
   const [isEditing, setIsEditing] = useState(false);
   const [editBalance, setEditBalance] = useState('');
+  const [selectedStmtId, setSelectedStmtId] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -4295,6 +4298,15 @@ function AccountCard({ account, onDelete, onUpdate }) {
     onUpdate(latest.id, { balance: editBalance });
     setIsEditing(false);
   };
+
+  // Get transactions for the selected statement
+  const linkedTransactions = useMemo(() => {
+    if (!selectedStmtId || !data) return [];
+    const allTxns = [...(data.expenses || []), ...(data.income || [])];
+    return allTxns
+      .filter(t => t.statementId === selectedStmtId)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [selectedStmtId, data]);
 
   return (
     <Card className="p-4 border-border/50">
@@ -4388,9 +4400,91 @@ function AccountCard({ account, onDelete, onUpdate }) {
           </div>
         </div>
       </div>
+
+      {/* View Transactions Toggle */}
+      <button
+        onClick={() => {
+          if (!isExpanded) {
+            setSelectedStmtId(latest.id);
+          }
+          setIsExpanded(!isExpanded);
+        }}
+        className="w-full mt-3 py-2 text-xs text-muted hover:text-white flex items-center justify-center gap-1.5 transition-colors rounded-lg hover:bg-white/5"
+      >
+        <ChevronDown size={14} className={cn("transition-transform duration-200", isExpanded && "rotate-180")} />
+        {isExpanded ? 'Hide Transactions' : 'View Transactions'}
+      </button>
+
+      {/* Expanded: Statement Selector + Transaction List */}
+      {isExpanded && (
+        <div className="mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* Statement Selector (only if multiple statements) */}
+          {sortedStmts.length > 1 && (
+            <div className="mb-3">
+              <label className="text-[10px] text-muted uppercase tracking-wider font-bold block mb-1 px-1">Select Statement</label>
+              <select
+                className="w-full bg-white/5 border border-white/10 rounded-lg text-sm px-3 py-2 text-gray-300 focus:outline-none focus:border-primary/50 transition-colors"
+                value={selectedStmtId || ''}
+                onChange={(e) => setSelectedStmtId(e.target.value)}
+              >
+                {sortedStmts.map(s => (
+                  <option key={s.id} value={s.id} className="bg-[#0D1117]">
+                    {formatDate(s.date)} — {s.transactionCount || 0} transactions
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Transaction List */}
+          <div className="border border-white/5 rounded-xl overflow-hidden">
+            <div className="px-3 py-2 bg-white/5 flex justify-between items-center">
+              <span className="text-[10px] text-muted uppercase tracking-wider font-bold">
+                {linkedTransactions.length} Linked Transaction{linkedTransactions.length !== 1 ? 's' : ''}
+              </span>
+              {selectedStmtId && (
+                <span className="text-[10px] text-muted">
+                  {formatDate(sortedStmts.find(s => s.id === selectedStmtId)?.date)}
+                </span>
+              )}
+            </div>
+            {linkedTransactions.length === 0 ? (
+              <div className="px-3 py-6 text-center text-muted text-sm">
+                No transactions linked to this statement
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-y-auto divide-y divide-white/5">
+                {linkedTransactions.map(txn => {
+                  const isIncome = (data.income || []).some(i => i.id === txn.id);
+                  return (
+                    <div key={txn.id} className="px-3 py-2 flex items-center justify-between hover:bg-white/5 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{txn.name}</div>
+                        <div className="text-[11px] text-muted flex items-center gap-2">
+                          <span>{formatDate(txn.date)}</span>
+                          {txn.category && <span className="text-muted/50">• {txn.category}</span>}
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "text-sm font-mono font-medium ml-3 shrink-0",
+                        isIncome ? "text-primary" : "text-[#F87171]"
+                      )}>
+                        {isIncome ? '+' : '-'}${parseFloat(txn.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
+
+
+
 
 function BalanceTransferForm({ initialData, onSave, onCancel }) {
   const [formData, setFormData] = useState(
