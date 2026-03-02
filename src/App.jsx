@@ -4188,13 +4188,15 @@ export default function App() {
               onSkipProjection={handleSkipProjection}
               onCancel={() => setIsFormOpen(false)}
               onOpenSettings={() => {
-                setIsFormOpen(false); // Close form to show settings... or maybe keep form open?
-                // Actually, ChatWindow settings is inside the Chat. We might need a global way to open settings.
-                // For now, let's just use the existing state in ChatWindow if it were lifted, ALAS it is not.
-                // We'll instruct user to open AI Chat > Settings.
-                // BETTER: Lift 'showSettings' or pass a handler if possible. 
-                // Since ChatWindow handles its own state, let's just open the AI Chat window so they see it.
+                setIsFormOpen(false);
                 setIsChatOpen(true);
+              }}
+              onRemoveItems={(ids) => {
+                setData(prev => ({
+                  ...prev,
+                  expenses: prev.expenses.filter(e => !ids.has(e.id)),
+                  income: prev.income.filter(i => !ids.has(i.id))
+                }));
               }}
             />
           </div>
@@ -4570,7 +4572,7 @@ function BalanceTransferForm({ initialData, onSave, onCancel }) {
   );
 }
 
-function TransactionForm({ accountList, initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection }) {
+function TransactionForm({ accountList, initialData, data, setPendingStatement, pendingStatement, onSaveStatement, onSaveBalanceTransfer, onSave, onCancel, onOpenSettings, onDelete, onSkipProjection, onRemoveItems }) {
   const [formData, setFormData] = useState(
     initialData ? {
       frequency: (initialData?.type === 'subscription' || initialData?.type === 'bill') ? 'monthly' : 'one-time',
@@ -5096,43 +5098,73 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     // 2. Save Transactions linked to that ID (or update orphaned ones)
     let savedCount = 0;
     let updatedCount = 0;
+    let cleanedCount = 0;
     const existingStatements = data?.statements || [];
-    bulkItems.forEach(item => {
-      // Check if this transaction already exists
-      const matchingExpense = (data?.expenses || []).find(e => fuzzyNameMatch(e.name, item.name) && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
-      const matchingIncome = (data?.income || []).find(i => fuzzyNameMatch(i.name, item.name) && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
-      const existingItem = matchingExpense || matchingIncome;
 
-      if (!existingItem) {
+    // Track IDs we've already matched to avoid matching the same existing item twice
+    const matchedIds = new Set();
+
+    // Collect IDs of orphaned duplicates to remove in a batch
+    const orphanIdsToRemove = new Set();
+
+    bulkItems.forEach(item => {
+      // Find ALL matching transactions (not just the first)
+      const matchFn = (e) => fuzzyNameMatch(e.name, item.name) && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01 && !matchedIds.has(e.id);
+      const allMatchingExpenses = (data?.expenses || []).filter(matchFn);
+      const allMatchingIncome = (data?.income || []).filter(matchFn);
+      const allMatches = [...allMatchingExpenses, ...allMatchingIncome];
+
+      if (allMatches.length === 0) {
         // New transaction - save it
         const itemToSave = { ...item, statementId: finalStmtId };
         onSave(itemToSave);
         savedCount++;
-      } else if (finalStmtId) {
-        // Existing transaction found — check if it needs (re-)linking
-        const hasValidStatement = existingItem.statementId &&
-          existingStatements.some(s => s.id === existingItem.statementId);
+      } else {
+        // Pick the best match: prefer one with a valid statementId, else take the first
+        const bestMatch = allMatches.find(m => m.statementId && existingStatements.some(s => s.id === m.statementId)) || allMatches[0];
+        matchedIds.add(bestMatch.id);
 
-        if (!hasValidStatement) {
-          // No statementId, OR statementId points to a missing/deleted statement — re-link
-          const updatedItem = {
-            ...existingItem,
-            // Apply edits from Bulk Review
-            category: item.category,
-            frequency: item.frequency,
-            type: item.type,
-            isIncome: item.isIncome,
-            name: item.name,
-            // Link (or re-link) statement
-            statementId: finalStmtId
-          };
-          onSave(updatedItem);
-          updatedCount++;
+        if (finalStmtId) {
+          const hasValidStatement = bestMatch.statementId &&
+            existingStatements.some(s => s.id === bestMatch.statementId);
+
+          if (!hasValidStatement) {
+            // Re-link the best match to the current import's statement
+            const updatedItem = {
+              ...bestMatch,
+              category: item.category,
+              frequency: item.frequency,
+              type: item.type,
+              isIncome: item.isIncome,
+              name: item.name,
+              statementId: finalStmtId
+            };
+            onSave(updatedItem);
+            updatedCount++;
+          }
         }
-        // If existingItem already has a VALID statementId, skip it
+
+        // Any ADDITIONAL matches beyond the first are orphaned duplicates — mark for removal
+        for (let i = 0; i < allMatches.length; i++) {
+          if (allMatches[i].id !== bestMatch.id) {
+            const extraMatch = allMatches[i];
+            const extraHasValidStmt = extraMatch.statementId &&
+              existingStatements.some(s => s.id === extraMatch.statementId);
+            if (!extraHasValidStmt) {
+              orphanIdsToRemove.add(extraMatch.id);
+              cleanedCount++;
+            }
+          }
+        }
       }
     });
-    console.log(`Import complete: ${savedCount} new, ${updatedCount} re-linked with statementId`);
+
+    // Batch-remove orphaned duplicates
+    if (orphanIdsToRemove.size > 0 && onRemoveItems) {
+      onRemoveItems(orphanIdsToRemove);
+    }
+
+    console.log(`Import complete: ${savedCount} new, ${updatedCount} re-linked, ${cleanedCount} orphaned duplicates removed`);
 
     setBulkItems([]);
     setPendingStatement(null);
