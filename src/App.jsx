@@ -209,7 +209,7 @@ const Select = ({ label, options, value, onChange, name, className, ...props }) 
 };
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false, categories }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false, categories, selectedMonth, selectedYear }) => {
   const userCategories = categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES };
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
@@ -266,9 +266,9 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
         - Transaction Count: ${data.income.length + data.expenses.length}
         - Subscriptions: ${data.expenses.filter(e => e.type === 'subscription').length}
         
-        Raw Data (Sample):
-        Income: ${JSON.stringify(data.income.slice(0, 5))}...
-        Expenses: ${JSON.stringify(data.expenses.slice(0, 5))}...
+        Raw Data (All transactions for ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}):
+        Income: ${JSON.stringify(data.income.filter(i => { if (!i.date) return false; const [y, m] = i.date.split('-').map(Number); return (m - 1) === selectedMonth && y === selectedYear; }).map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
+        Expenses: ${JSON.stringify(data.expenses.filter(e => { if (!e.date) return false; const [y, m] = e.date.split('-').map(Number); return (m - 1) === selectedMonth && y === selectedYear; }).map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
 
         Answer the user's question concisely based on this data. formatting: use markdown.
 
@@ -4114,6 +4114,8 @@ export default function App() {
           onRestore={handleRestore}
           syncStatus={syncStatus}
           categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
         />
       </div>
 
@@ -4133,6 +4135,8 @@ export default function App() {
           syncStatus={syncStatus}
           isDesktopPanel={true}
           categories={data.categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES }}
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
         />
       </div>
 
