@@ -209,7 +209,7 @@ const Select = ({ label, options, value, onChange, name, className, ...props }) 
 };
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false, categories, selectedMonth, selectedYear }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, onDeleteItems, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false, categories, selectedMonth, selectedYear }) => {
   const userCategories = categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES };
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
@@ -320,6 +320,18 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
           }
         }
         \`\`\`
+
+        You can also DELETE transactions. If a user asks you to delete or remove transactions (e.g. "delete all Feb transactions", "remove duplicate Amazon Kids+ entries", "wipe all transactions from March"), identify the matching transactions from the data above and include this EXACT JSON block:
+        \`\`\`json
+        {
+          "action": "delete_transactions",
+          "data": [
+            { "name": "Exact Transaction Name", "date": "YYYY-MM-DD", "amount": 0.00 }
+          ],
+          "summary": "Brief description of what you are deleting and why"
+        }
+        \`\`\`
+        IMPORTANT for deletes: Include ALL matching transactions in the array. You will ask for user confirmation before deleting. Be conservative — only delete what the user explicitly asked for.
       `;
 
       // Filter history to ensure it starts with role 'user' (Gemini requirement)
@@ -362,6 +374,17 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
             };
             localStorage.setItem('intelligenceCache', JSON.stringify(cache));
             console.log("AI updated rule:", actionData.data);
+          }
+          if (actionData.action === 'delete_transactions' && onDeleteItems && actionData.data?.length > 0) {
+            const summary = actionData.summary || `Delete ${actionData.data.length} transaction(s)`;
+            const listPreview = actionData.data.slice(0, 10).map(t => `• ${t.name} — $${t.amount} on ${t.date}`).join('\n');
+            const confirmed = window.confirm(
+              `${summary}\n\nTransactions to delete:\n${listPreview}${actionData.data.length > 10 ? `\n...and ${actionData.data.length - 10} more` : ''}\n\nAre you sure?`
+            );
+            if (confirmed) {
+              onDeleteItems(actionData.data);
+              console.log("AI deleted transactions:", actionData.data);
+            }
           }
         } catch (e) {
           console.error("AI Action JSON parse failed", e);
@@ -4147,6 +4170,20 @@ export default function App() {
           data={data}
           financials={financials}
           onAddItem={handleSave}
+          onDeleteItems={(targets) => {
+            setData(prev => {
+              const match = (item) => targets.some(t =>
+                fuzzyNameMatch(item.name, t.name) &&
+                item.date === t.date &&
+                Math.abs(parseFloat(item.amount) - parseFloat(t.amount)) < 0.01
+              );
+              return {
+                ...prev,
+                income: prev.income.filter(i => !match(i)),
+                expenses: prev.expenses.filter(e => !match(e))
+              };
+            });
+          }}
           user={user}
           onLogin={handleLogin}
           onLogout={handleLogout}
@@ -4167,6 +4204,20 @@ export default function App() {
           data={data}
           financials={financials}
           onAddItem={handleSave}
+          onDeleteItems={(targets) => {
+            setData(prev => {
+              const match = (item) => targets.some(t =>
+                fuzzyNameMatch(item.name, t.name) &&
+                item.date === t.date &&
+                Math.abs(parseFloat(item.amount) - parseFloat(t.amount)) < 0.01
+              );
+              return {
+                ...prev,
+                income: prev.income.filter(i => !match(i)),
+                expenses: prev.expenses.filter(e => !match(e))
+              };
+            });
+          }}
           user={user}
           onLogin={handleLogin}
           onLogout={handleLogout}
