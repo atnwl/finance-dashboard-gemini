@@ -266,9 +266,11 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
         - Transaction Count: ${data.income.length + data.expenses.length}
         - Subscriptions: ${data.expenses.filter(e => e.type === 'subscription').length}
         
-        Raw Data (All transactions for ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}):
-        Income: ${JSON.stringify(data.income.filter(i => { if (!i.date) return false; const [y, m] = i.date.split('-').map(Number); return (m - 1) === selectedMonth && y === selectedYear; }).map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
-        Expenses: ${JSON.stringify(data.expenses.filter(e => { if (!e.date) return false; const [y, m] = e.date.split('-').map(Number); return (m - 1) === selectedMonth && y === selectedYear; }).map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
+        Currently viewing: ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+        The summary above reflects the currently selected month. However, you have access to ALL transaction data below and can answer questions about any month.
+        
+        ALL Income Transactions: ${JSON.stringify(data.income.map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
+        ALL Expense Transactions: ${JSON.stringify(data.expenses.map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
 
         Answer the user's question concisely based on this data. formatting: use markdown.
 
