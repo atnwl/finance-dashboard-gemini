@@ -1853,6 +1853,7 @@ export default function App() {
     const type = cleanItem.isIncome ? 'income' : 'expenses';
     delete cleanItem.isIncome;
     delete cleanItem.originalIndex;
+    console.log('[handleSave] Saving item:', cleanItem.name, 'type:', type, 'statementId:', cleanItem.statementId);
 
     // Ensure ID
     if (!cleanItem.id) cleanItem.id = crypto.randomUUID();
@@ -4911,6 +4912,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
   const handleBulkImport = () => {
     // 1. Resolve Statement ID
     let finalStmtId = null;
+    console.log('[BulkImport] pendingStatement:', JSON.stringify(pendingStatement));
 
     if (pendingStatement) {
       const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || pendingStatement.date || new Date().toISOString().split('T')[0];
@@ -4938,7 +4940,10 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           transactionCount: bulkItems.length
         };
         onSaveStatement(newStmt);
+        console.log('[BulkImport] Created new statement:', JSON.stringify(newStmt));
       }
+
+      console.log('[BulkImport] finalStmtId:', finalStmtId);
 
       // 1.5 Save Balance Transfer if Detected
       if (pendingStatement.balanceTransferOffer && pendingStatement.balanceTransferOffer.amount) {
@@ -4966,6 +4971,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       if (!existingItem) {
         // New transaction - save it
         const itemToSave = { ...item, statementId: finalStmtId };
+        console.log('[BulkImport] Saving NEW item:', item.name, 'with statementId:', itemToSave.statementId);
         onSave(itemToSave);
         savedCount++;
       } else if (!existingItem.statementId && finalStmtId) {
