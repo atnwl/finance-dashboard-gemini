@@ -269,10 +269,24 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
         Currently viewing: ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
         The summary above reflects the currently selected month. However, you have access to ALL transaction data below and can answer questions about any month.
         
-        ALL Income Transactions: ${JSON.stringify(data.income.map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
-        ALL Expense Transactions: ${JSON.stringify(data.expenses.map(({ name, amount, date, category }) => ({ name, amount, date, category })))}
+        ${(() => {
+          const stmts = data.statements || [];
+          const resolveAccount = (item) => {
+            const stmt = stmts.find(s => s.id === item.statementId);
+            return stmt ? `${stmt.provider} ****${stmt.last4}` : null;
+          };
+          const slim = (item) => {
+            const obj = { name: item.name, amount: item.amount, date: item.date, category: item.category };
+            const acct = resolveAccount(item);
+            if (acct) obj.account = acct;
+            return obj;
+          };
+          return `ALL Income Transactions: ${JSON.stringify(data.income.map(slim))}
+        ALL Expense Transactions: ${JSON.stringify(data.expenses.map(slim))}`;
+        })()}
 
         Answer the user's question concisely based on this data. formatting: use markdown.
+        IMPORTANT: When checking for duplicates, be PRECISE about dates. Two transactions are only duplicates if they have the EXACT same date, name, and amount. Do NOT group transactions with different dates. Also note the "account" field — transactions from different accounts with the same name/date/amount are more likely to be cross-source duplicates.
 
         AVAILABLE CATEGORIES:
         - Income: ${userCategories.income.join(', ')}
