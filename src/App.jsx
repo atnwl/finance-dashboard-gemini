@@ -36,6 +36,9 @@ const INCOME_CATEGORIES = [
   'Freelance', 'Gift', 'Interest', 'Investments', 'Other', 'Refund', 'Salary', 'Transfer'
 ];
 
+// Only these income categories are eligible for projection (future month estimates)
+const PROJECTABLE_INCOME_CATEGORIES = new Set(['Salary', 'Other']);
+
 const EXPENSE_CATEGORIES = [
   'Alcohol', 'Amazon', 'BNPL', 'Credit Card Payment', 'Entertainment', 'Fees', 'Furnishings', 'Gas', 'Gifts', 'Groceries', 'Health', 'Housing', 'Insurance', 'Investments',
   'Kids: Activities', 'Kids: Clothes', 'Kids: Health', 'Kids: Toys', 'Other', 'Personal', 'Restaurants', 'Shopping', 'Software', 'Student Loans', 'Taxes', 'Transfer', 'Travel', 'Utilities'
@@ -1444,6 +1447,8 @@ export default function App() {
       // For implicit recurring (no frequency set), use 90-day window
       const maxDays = item.frequency === 'monthly' ? 60 : 90;
       if (daysSince > maxDays) return false;
+      // Only project income from eligible categories (e.g. Salary, Other — NOT Refund)
+      if (!PROJECTABLE_INCOME_CATEGORIES.has(item.category)) return false;
       return true;
     });
 
