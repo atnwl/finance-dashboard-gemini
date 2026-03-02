@@ -209,7 +209,8 @@ const Select = ({ label, options, value, onChange, name, className, ...props }) 
 };
 
 // --- Chat Component ---
-const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false }) => {
+const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogin, onLogout, onSync, onRestore, syncStatus, isDesktopPanel = false, categories }) => {
+  const userCategories = categories || { income: DEFAULT_INCOME_CATEGORIES, expenses: DEFAULT_EXPENSE_CATEGORIES };
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('chatHistory');
     return saved ? JSON.parse(saved) : [{ role: 'model', text: "Hi! I'm your finance assistant. Ask me anything about your dashboard data." }];
@@ -272,8 +273,8 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, user, onLogi
         Answer the user's question concisely based on this data. formatting: use markdown.
 
         AVAILABLE CATEGORIES:
-        - Income: ${INCOME_CATEGORIES.join(', ')}
-        - Expenses: ${EXPENSE_CATEGORIES.join(', ')}
+        - Income: ${userCategories.income.join(', ')}
+        - Expenses: ${userCategories.expenses.join(', ')}
 
         ACTIONABLE POWER: 
         You can ADD transactions for the user. If they ask you to record something, explain that you've done it and include this EXACT JSON block at the bottom of your response:
@@ -5511,7 +5512,7 @@ const BulkReviewView = ({ accountList, data, items, pendingStatement, setPending
                 value={item.category}
                 onChange={(e) => onUpdate(idx, 'category', e.target.value)}
               >
-                {(item.isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(c => (
+                {((item.isIncome ? (data.categories?.income || INCOME_CATEGORIES) : (data.categories?.expenses || EXPENSE_CATEGORIES))).map(c => (
                   <option key={c} value={c} className="bg-[#0D1117]">{c}</option>
                 ))}
               </select>
