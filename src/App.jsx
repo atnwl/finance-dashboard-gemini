@@ -4881,21 +4881,21 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
       - Normal charges/purchases = EXPENSES (isIncome: false)
-      - Merchant Refunds/Returns (often shown as negative amounts or credits for stores/merchants e.g., -$50 at Target) = INCOME (isIncome: true), amount POSITIVE (e.g. 50.00), category MUST be "Refund"
+      - Merchant Refunds/Returns (often shown as negative amounts or credits for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
       - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
     - If this is a BANK STATEMENT:
       - Deposits = INCOME (isIncome: true), amount POSITIVE
-      - Refunds/Reversals = INCOME (isIncome: true), amount POSITIVE (e.g. 50.00), category MUST be "Refund"
+      - Refunds/Reversals = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
       - Withdrawals/debits = EXPENSES (isIncome: false), amount POSITIVE (e.g. 194.25, NOT -194.25)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false, amount POSITIVE
       - NOTE: "Fold" is always a BANK ACCOUNT.
-      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive.
+      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive EXCEPT for refunds/returns (use negative to signal a refund).
     
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Amount (amount) - number only. ALWAYS positive (including refunds — use isIncome: true for refunds instead of negative amounts).
+    - Amount (amount) - number only. Use NEGATIVE for refunds/returns/credits (e.g. -50.00), positive for everything else.
     - Is Income (isIncome) - boolean. See rules above for proper classification.
     - Category (category) - best guess from: ${categories.income.join(', ')}, ${categories.expenses.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
@@ -4948,9 +4948,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         // Apply local cache as a secondary "Guarantee" layer
         const items = rawItems.map(item => {
           const lowerName = item.name.toLowerCase().trim();
-          // Don't override refund transactions — Gemini's refund classification takes priority over cache
-          const isGeminiRefund = (item.category || '').toLowerCase() === 'refund' || item.isIncome === true && parseFloat(item.amount) < 0;
-          if (cache[lowerName] && !isGeminiRefund) {
+          // Don't override refund transactions — negative amount from Gemini means it's a refund/credit
+          if (cache[lowerName] && parseFloat(item.amount) >= 0) {
             return {
               ...item,
               category: cache[lowerName].category,
