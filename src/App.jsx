@@ -917,7 +917,7 @@ const NotesView = ({ notes, onNoteClick, onNewNote, onClose }) => {
 };
 
 // --- Data Migration & Versioning ---
-const CURRENT_DATA_VERSION = 2;
+const CURRENT_DATA_VERSION = 3;
 
 const migrateData = (oldData) => {
   let data = { ...oldData };
@@ -966,6 +966,21 @@ const migrateData = (oldData) => {
       }
       return i;
     });
+  }
+
+  if (version < 3) {
+    // Move negative-amount expenses (refunds) into income array.
+    // Refunds are now classified as income with category "Refund" and positive amounts.
+    const refunds = [];
+    data.expenses = (data.expenses || []).filter(e => {
+      const amount = parseFloat(e.amount);
+      if (amount < 0) {
+        refunds.push({ ...e, amount: Math.abs(amount), category: 'Refund', isIncome: undefined });
+        return false; // Remove from expenses
+      }
+      return true;
+    });
+    data.income = [...(data.income || []), ...refunds];
   }
 
   data.version = CURRENT_DATA_VERSION;
@@ -4866,21 +4881,21 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     IMPORTANT - DETECTING DOCUMENT TYPE:
     - If this is a CREDIT CARD STATEMENT (you see card numbers, APR, minimum payment due, etc.):
       - Normal charges/purchases = EXPENSES (isIncome: false)
-      - Merchant Refunds/Returns (often shown as negative amounts for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
+      - Merchant Refunds/Returns (often shown as negative amounts or credits for stores/merchants e.g., -$50 at Target) = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
       - Payments TO the credit card (e.g., "Payment Made By Account...", "Thank You For Your Payment") = SKIP THESE ENTIRELY (do NOT include in transactions array)
         Why: These are just the receiving end of payments that originated from a bank account.
     - If this is a BANK STATEMENT:
       - Deposits = INCOME (isIncome: true), amount POSITIVE
-      - Refunds/Reversals = EXPENSES (isIncome: false), BUT the amount MUST be NEGATIVE (e.g. -50.00)
+      - Refunds/Reversals = EXPENSES (isIncome: false), amount MUST be NEGATIVE to preserve the refund signal (e.g. -50.00). Category should be "Refund".
       - Withdrawals/debits = EXPENSES (isIncome: false), amount POSITIVE (e.g. 194.25, NOT -194.25)
       - Payments TO credit cards = category "Credit Card Payment", isIncome: false, amount POSITIVE
       - NOTE: "Fold" is always a BANK ACCOUNT.
-      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive EXCEPT for refunds/returns.
+      - IMPORTANT: The isIncome flag determines if it's income or expense. Amounts should ALWAYS be positive EXCEPT for refunds/returns (use negative to signal a refund).
     
     For EACH transaction, extract:
     - Merchant Name (name) - Clean up (remove dates/IDs from name if possible)
     - Date (date) in YYYY-MM-DD format
-    - Amount (amount) - number only. Use a NEGATIVE number (-X.XX) only for refunds/returns on credit card or bank statements, otherwise positive.
+    - Amount (amount) - number only. Use NEGATIVE for refunds/returns/credits (e.g. -50.00), positive for everything else.
     - Is Income (isIncome) - boolean. See rules above for proper classification.
     - Category (category) - best guess from: ${categories.income.join(', ')}, ${categories.expenses.join(', ')}
     - Type (type) - FOR EXPENSES ONLY: "variable" (one-time purchases), "bill" (regular recurring utilities/services), or "subscription" (auto-renewing memberships/software)
@@ -4933,7 +4948,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         // Apply local cache as a secondary "Guarantee" layer
         const items = rawItems.map(item => {
           const lowerName = item.name.toLowerCase().trim();
-          if (cache[lowerName]) {
+          // Don't override refund transactions — negative amount from Gemini means it's a refund/credit
+          if (cache[lowerName] && parseFloat(item.amount) >= 0) {
             return {
               ...item,
               category: cache[lowerName].category,
@@ -5040,32 +5056,26 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
 
           // Detect potential duplicates within the scanned items
           const itemsWithIds = items.map(i => {
-            // Normalize amounts: the isIncome flag determines income vs expense,
-            // so amounts should always be positive. Negative amounts are only valid
-            // for refunds (isIncome: false with negative = credit/return on a card).
-            // Bank statement debits sometimes come back as negative from Gemini;
-            // since they're already marked isIncome: false, we take Math.abs.
+            // Normalize amounts: all amounts should be positive.
+            // The isIncome flag determines income vs expense.
+            // Refunds are now classified as income (isIncome: true, category: "Refund").
+            // If Gemini still returns a negative amount, convert to positive and ensure it's marked as a refund.
             let normalizedAmount = parseFloat(i.amount) || 0;
-            if (normalizedAmount < 0 && !i.isIncome) {
-              // Negative expense = could be a refund (keep negative) or a mis-signed debit.
-              // If category suggests it's NOT a refund, normalize to positive.
-              const isRefund = (i.category || '').toLowerCase() === 'refund' ||
-                (i.name || '').toLowerCase().includes('refund') ||
-                (i.name || '').toLowerCase().includes('return') ||
-                (i.name || '').toLowerCase().includes('reversal');
-              if (!isRefund) {
-                normalizedAmount = Math.abs(normalizedAmount);
-              }
-            } else if (normalizedAmount < 0 && i.isIncome) {
-              // Negative income doesn't make sense — normalize to positive
+            let normalizedIsIncome = i.isIncome ?? false;
+            let normalizedCategory = i.category;
+            if (normalizedAmount < 0) {
+              // Negative amount = refund/credit. Convert to positive income with category "Refund".
               normalizedAmount = Math.abs(normalizedAmount);
+              normalizedIsIncome = true;
+              normalizedCategory = 'Refund';
             }
 
             return {
               ...i,
               amount: normalizedAmount,
+              category: normalizedCategory,
               id: Math.random().toString(36).substr(2, 9),
-              isIncome: i.isIncome ?? false,
+              isIncome: normalizedIsIncome,
               type: i.type || 'variable',
               frequency: i.frequency || ((i.type === 'bill' || i.type === 'subscription') ? 'monthly' : 'one-time')
             };
