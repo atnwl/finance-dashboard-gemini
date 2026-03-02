@@ -4940,6 +4940,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         onSaveStatement(newStmt);
       }
 
+
       // 1.5 Save Balance Transfer if Detected
       if (pendingStatement.balanceTransferOffer && pendingStatement.balanceTransferOffer.amount) {
         // Basic validation
@@ -4957,6 +4958,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     // 2. Save Transactions linked to that ID (or update orphaned ones)
     let savedCount = 0;
     let updatedCount = 0;
+    const existingStatements = data?.statements || [];
     bulkItems.forEach(item => {
       // Check if this transaction already exists
       const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
@@ -4968,27 +4970,31 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         const itemToSave = { ...item, statementId: finalStmtId };
         onSave(itemToSave);
         savedCount++;
-      } else if (!existingItem.statementId && finalStmtId) {
-        // Existing transaction WITHOUT statementId - UPDATE it.
-        // CRITICAL: We must apply the USER'S EDITS (category, frequency, etc.) from 'item' 
-        // effectively overwriting the stale existing data, while preserving the ID.
-        const updatedItem = {
-          ...existingItem,
-          // Apply edits from Bulk Review
-          category: item.category,
-          frequency: item.frequency,
-          type: item.type,
-          isIncome: item.isIncome,
-          name: item.name,
-          // Link statement
-          statementId: finalStmtId
-        };
-        onSave(updatedItem);
-        updatedCount++;
+      } else if (finalStmtId) {
+        // Existing transaction found — check if it needs (re-)linking
+        const hasValidStatement = existingItem.statementId &&
+          existingStatements.some(s => s.id === existingItem.statementId);
+
+        if (!hasValidStatement) {
+          // No statementId, OR statementId points to a missing/deleted statement — re-link
+          const updatedItem = {
+            ...existingItem,
+            // Apply edits from Bulk Review
+            category: item.category,
+            frequency: item.frequency,
+            type: item.type,
+            isIncome: item.isIncome,
+            name: item.name,
+            // Link (or re-link) statement
+            statementId: finalStmtId
+          };
+          onSave(updatedItem);
+          updatedCount++;
+        }
+        // If existingItem already has a VALID statementId, skip it
       }
-      // If existingItem already has a statementId, we truly skip it
     });
-    console.log(`Import complete: ${savedCount} new, ${updatedCount} updated with statementId`);
+    console.log(`Import complete: ${savedCount} new, ${updatedCount} re-linked with statementId`);
 
     setBulkItems([]);
     setPendingStatement(null);
