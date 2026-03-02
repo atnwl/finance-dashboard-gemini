@@ -52,6 +52,19 @@ const COLORS = ['#8DAA7F', '#88A0AF', '#D67C7C', '#D4A373', '#6B705C', '#A5A58D'
 
 const isRecurring = (item) => item.frequency !== 'one-time';
 
+// Normalize merchant names for fuzzy duplicate matching across sources
+// Strips to alphanumeric-only, lowercased: "APPLE.COM/BILL 800-275-2273" → "applecombill8002752273"
+const normalizeName = (name) => (name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Fuzzy name match: checks if normalized names are equal or one contains the other
+// Handles: casing, punctuation, appended phone numbers, truncation
+const fuzzyNameMatch = (a, b) => {
+  const na = normalizeName(a);
+  const nb = normalizeName(b);
+  if (!na || !nb) return a === b; // Fall back to exact match if either is empty
+  return na === nb || na.includes(nb) || nb.includes(na);
+};
+
 const getCategoryIcon = (category) => {
   const map = {
     'Amazon': '📦', 'Alcohol': '🍺', 'Software': '💻', 'Fees': '💸', 'Furnishings': '🛋️', 'Gifts': '🎁', 'Insurance': '🛡️', 'Taxes': '🏛️', 'Travel': '✈️',
@@ -4857,10 +4870,10 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
             };
           });
 
-          // Mark potential duplicates (same name + date + amount within set)
+          // Mark potential duplicates (same normalized name + date + amount within set)
           const seenKeys = new Map();
           const itemsWithDupeFlag = itemsWithIds.map(item => {
-            const key = `${item.name.toLowerCase().trim()}|${item.date}|${parseFloat(item.amount).toFixed(2)}`;
+            const key = `${normalizeName(item.name)}|${item.date}|${parseFloat(item.amount).toFixed(2)}`;
             if (seenKeys.has(key)) {
               // This is a duplicate of an earlier item
               return { ...item, isPotentialDuplicate: true, duplicateOf: seenKeys.get(key) };
@@ -4961,8 +4974,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     const existingStatements = data?.statements || [];
     bulkItems.forEach(item => {
       // Check if this transaction already exists
-      const matchingExpense = (data?.expenses || []).find(e => e.name === item.name && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
-      const matchingIncome = (data?.income || []).find(i => i.name === item.name && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
+      const matchingExpense = (data?.expenses || []).find(e => fuzzyNameMatch(e.name, item.name) && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01);
+      const matchingIncome = (data?.income || []).find(i => fuzzyNameMatch(i.name, item.name) && i.date === item.date && Math.abs(i.amount - item.amount) < 0.01);
       const existingItem = matchingExpense || matchingIncome;
 
       if (!existingItem) {
