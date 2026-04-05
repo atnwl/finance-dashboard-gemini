@@ -2149,7 +2149,7 @@ export default function App() {
         .from('sync_store')
         .select('encrypted_blob, updated_at')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       if (!rows) throw new Error("No backup found");
