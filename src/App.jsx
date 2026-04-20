@@ -11,10 +11,10 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from 'react-markdown';
 import { supabase } from './utils/supabase';
 import { encryptData, decryptData } from './utils/crypto';
+import { withGeminiRetry, getGeminiModel } from './utils/gemini';
 
 // --- Utils ---
 function cn(...inputs) {
@@ -252,8 +252,7 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, onDeleteItem
     setIsLoading(true);
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const model = getGeminiModel(apiKey);
 
       const context = `
         You are Lume, a helpful financial assistant analyzing the user's Lume dashboard.
@@ -351,7 +350,9 @@ const ChatWindow = ({ isOpen, onClose, data, financials, onAddItem, onDeleteItem
         history: historyItems.slice(-10), // keep limited context
       });
 
-      const result = await chat.sendMessage(context + "\n\nUser Question: " + input);
+      const result = await withGeminiRetry(() => 
+        chat.sendMessage(context + "\n\nUser Question: " + input)
+      );
       const response = await result.response;
       const text = response.text();
 
@@ -4729,8 +4730,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
 
       setIsAiLoading(true);
       try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = getGeminiModel(apiKey);
 
         const prompt = `
     Classify transaction: "${formData.name}"
@@ -4748,7 +4748,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           }
     `;
 
-        const result = await model.generateContent(prompt);
+        const result = await withGeminiRetry(() => model.generateContent(prompt));
         const text = result.response.text();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
 
@@ -4861,8 +4861,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         // Convert all files to parts
         const imageParts = await Promise.all(files.map(fileToPart));
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = getGeminiModel(apiKey);
 
         // Fetch Intelligence Cache to teach Gemini user's preferences
         const cache = JSON.parse(localStorage.getItem('intelligenceCache') || '{}');
@@ -4931,7 +4930,9 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     - last4: The last 4 digits of the account number, if visible. This is OFTEN found in the text of the transaction rows (e.g. repeated numbers like '*1234' or '... 1234' on every line). Please look closely at ALL row text!
     `;
 
-        const result = await model.generateContent([prompt, ...imageParts]);
+        const result = await withGeminiRetry(() => 
+          model.generateContent([prompt, ...imageParts])
+        );
 
         const responseText = result.response.text().replace(/```json|```/g, '').trim();
         const parsed = JSON.parse(responseText);
@@ -5105,14 +5106,15 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         console.error("Receipt scanning failed:", err);
         // ... error handling ...
         let errorMessage = "Failed to scan receipt. ";
-        if (err.message?.includes("API key")) {
+        const errorText = err.message || "";
+        if (errorText.includes("API key")) {
           errorMessage += "API key issue - check your Gemini API key.";
-        } else if (err.message?.includes("JSON") || err.name === "SyntaxError") {
+        } else if (errorText.includes("JSON") || err.name === "SyntaxError") {
           errorMessage += "Could not parse AI response. The image might be unclear.";
-        } else if (err.message?.includes("quota") || err.message?.includes("rate")) {
-          errorMessage += "API rate limit reached. Try again in a minute.";
+        } else if (errorText.includes("quota") || errorText.includes("rate")) {
+          errorMessage += "API rate limit reached (Free Tier). Please wait a minute before trying again.";
         } else {
-          errorMessage += err.message || "Unknown error occurred.";
+          errorMessage += errorText || "Unknown error occurred.";
         }
         alert(errorMessage);
       } finally {
