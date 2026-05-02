@@ -44,12 +44,18 @@ export async function encryptData(dataObject, password) {
             encodedData
         );
 
+        const bytes = new Uint8Array(encryptedBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+
         // Pack into JSON structure
         // Convert buffers to Base64 for storage
         return {
             salt: btoa(String.fromCharCode(...salt)),
             iv: btoa(String.fromCharCode(...iv)),
-            ciphertext: btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer))),
+            ciphertext: btoa(binary),
             version: 1, // Schema version
             timestamp: Date.now()
         };
@@ -63,9 +69,18 @@ export async function encryptData(dataObject, password) {
 export async function decryptData(packedData, password) {
     try {
         // Decode Base64 components
-        const salt = new Uint8Array(atob(packedData.salt).split("").map(c => c.charCodeAt(0)));
-        const iv = new Uint8Array(atob(packedData.iv).split("").map(c => c.charCodeAt(0)));
-        const ciphertext = new Uint8Array(atob(packedData.ciphertext).split("").map(c => c.charCodeAt(0)));
+        const decodeBase64ToUint8Array = (base64) => {
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        };
+
+        const salt = decodeBase64ToUint8Array(packedData.salt);
+        const iv = decodeBase64ToUint8Array(packedData.iv);
+        const ciphertext = decodeBase64ToUint8Array(packedData.ciphertext);
 
         const key = await deriveKey(password, salt);
 
