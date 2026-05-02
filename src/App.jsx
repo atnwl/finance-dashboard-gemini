@@ -1446,7 +1446,23 @@ export default function App() {
       }
     });
 
+    const now = new Date();
+
     return mergedSubs
+      .filter(x => {
+        const paidDate = new Date(x.date);
+        const freq = (x.frequency || 'monthly').toLowerCase();
+        if (freq === 'annual' || freq === 'yearly') {
+          const oneYearAgo = new Date(now);
+          oneYearAgo.setFullYear(now.getFullYear() - 1);
+          oneYearAgo.setDate(now.getDate() - 35); // 1 year + grace period
+          return paidDate >= oneYearAgo;
+        } else {
+          const oneMonthAgo = new Date(now);
+          oneMonthAgo.setDate(now.getDate() - 35); // 1 month + 5 days grace period
+          return paidDate >= oneMonthAgo;
+        }
+      })
       .map(x => ({ ...x, _type: 'expenses' }))
       .sort((a, b) => new Date(a.date) - new Date(b.date)); // Maintain standard Teddy flow
   }, [data.expenses, demoFinancials]);
