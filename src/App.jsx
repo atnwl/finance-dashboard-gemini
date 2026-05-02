@@ -4437,6 +4437,120 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
   );
 }
 
+function MonthlySpendChart({ data, statementIds }) {
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+
+  const isSpecialTxn = (item) => {
+    const cat = (item.category || '').toLowerCase().trim();
+    return cat === 'transfer' || cat === 'credit card payment';
+  };
+
+  // Build last 6 months (oldest → newest)
+  const months = useMemo(() => {
+    const result = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      result.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) });
+    }
+    return result;
+  }, []);
+
+  const monthlyTotals = useMemo(() => {
+    const stmtIdSet = new Set(statementIds);
+    const expenses = (data.expenses || []).filter(e =>
+      stmtIdSet.has(e.statementId) && !isSpecialTxn(e)
+    );
+    return months.map(({ year, month }) => {
+      const total = expenses
+        .filter(e => {
+          const [ey, em] = e.date.split('-').map(Number);
+          return ey === year && (em - 1) === month;
+        })
+        .reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
+      return total;
+    });
+  }, [data.expenses, statementIds, months]);
+
+  const maxSpend = Math.max(...monthlyTotals, 1);
+  const hasData = monthlyTotals.some(t => t > 0);
+
+  if (!hasData) return null;
+
+  const BAR_W = 28;
+  const GAP = 6;
+  const H = 44;
+  const totalW = months.length * (BAR_W + GAP) - GAP;
+
+  return (
+    <div className="mt-4">
+      <div className="text-[10px] text-muted uppercase tracking-wider font-bold px-1 mb-2">Monthly Spend</div>
+      <div className="relative flex items-end gap-0" style={{ height: H + 20 }}>
+        <svg width={totalW} height={H} className="overflow-visible">
+          {monthlyTotals.map((total, i) => {
+            const barH = Math.max(total > 0 ? Math.round((total / maxSpend) * H) : 0, total > 0 ? 3 : 0);
+            const x = i * (BAR_W + GAP);
+            const isHovered = hoveredIdx === i;
+            return (
+              <g key={i}>
+                {/* Background track */}
+                <rect
+                  x={x} y={0} width={BAR_W} height={H}
+                  rx={4}
+                  fill="rgba(255,255,255,0.03)"
+                />
+                {/* Spend bar */}
+                <rect
+                  x={x} y={H - barH} width={BAR_W} height={barH}
+                  rx={4}
+                  fill={isHovered ? 'rgba(139,92,246,0.8)' : 'rgba(139,92,246,0.4)'}
+                  className="transition-all duration-150"
+                />
+                {/* Hover target */}
+                <rect
+                  x={x} y={0} width={BAR_W} height={H}
+                  rx={4}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoveredIdx(i)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                />
+                {/* Month label */}
+                <text
+                  x={x + BAR_W / 2} y={H + 14}
+                  textAnchor="middle"
+                  fontSize={8}
+                  fill={isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)'}
+                  fontWeight={isHovered ? '700' : '500'}
+                  className="select-none transition-all duration-150"
+                >
+                  {months[i].label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Hover Tooltip */}
+        {hoveredIdx !== null && (
+          <div
+            className="absolute bottom-full mb-2 bg-[#1a1f2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl text-xs pointer-events-none animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap z-10"
+            style={{
+              left: hoveredIdx * (BAR_W + GAP) + BAR_W / 2,
+              transform: 'translateX(-50%)',
+            }}
+          >
+            <div className="text-[10px] text-muted font-bold uppercase tracking-wider mb-0.5">{months[hoveredIdx].label}</div>
+            <div className="font-bold text-white">
+              ${monthlyTotals[hoveredIdx].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AccountCard({ account, data, onDelete, onUpdate }) {
   const sortedStmts = account.statements.sort((a, b) => new Date(b.date) - new Date(a.date));
   const latest = sortedStmts[0];
@@ -4444,6 +4558,9 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
   const [editBalance, setEditBalance] = useState('');
   const [selectedStmtId, setSelectedStmtId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // All statement IDs for this account (used for spend chart)
+  const statementIds = useMemo(() => sortedStmts.map(s => s.id), [sortedStmts]);
 
   // Helper to avoid timezone shifts (parse YYYY-MM-DD as local date)
   const formatDate = (dateStr) => {
@@ -4531,6 +4648,9 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
           )}
         </div>
       </div>
+
+      {/* Monthly Spend Chart */}
+      <MonthlySpendChart data={data} statementIds={statementIds} />
 
       {/* Last Statement Uploaded */}
       <div className="mt-4">
