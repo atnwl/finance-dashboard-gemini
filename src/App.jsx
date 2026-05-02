@@ -5369,7 +5369,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
             <input
               type="file"
               multiple
-              accept="image/*,application/pdf"
+              accept="image/*,application/pdf,text/html,.html"
               className="hidden"
               id="file-upload"
               onChange={handleFileUpload}
