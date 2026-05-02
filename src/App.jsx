@@ -3818,7 +3818,7 @@ export default function App() {
                   const sourceStatement = (data.statements || []).find(s => s.id === item.statementId);
                   const sourceText = sourceStatement
                     ? `${sourceStatement.provider} ****${sourceStatement.last4}`
-                    : (item.category || (isIncome ? 'Income' : 'Expense'));
+                    : null;
 
                   // Projected Indicator (Includes explicit projections OR future actuals)
                   const dLocal = new Date();
@@ -3901,10 +3901,20 @@ export default function App() {
                             ) : (
                               <p className="text-xs text-muted font-medium mt-0.5 flex flex-wrap items-center gap-1.5">
                                 <span>{dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}</span>
-                                <span>•</span>
-                                <span className="capitalize truncate max-w-[120px]">
-                                  {isProjected ? <span className="text-[#60A5FA] italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
-                                </span>
+                                {item.category && (
+                                  <>
+                                    <span className="opacity-50">•</span>
+                                    <span className="capitalize text-white/70">{item.category}</span>
+                                  </>
+                                )}
+                                {(sourceText || isProjected) && (
+                                  <>
+                                    <span className="opacity-50">•</span>
+                                    <span className="capitalize truncate max-w-[120px]">
+                                      {isProjected ? <span className="text-[#60A5FA] italic flex items-center gap-1"><Sparkles size={10} /> Projected</span> : sourceText}
+                                    </span>
+                                  </>
+                                )}
                               </p>
                             )}
                           </div>
