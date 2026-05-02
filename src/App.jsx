@@ -3752,10 +3752,28 @@ export default function App() {
                     }
 
                     if (currentMonthKey !== prevMonthKey) {
+                      // Calculate subtotal for this month group
+                      const monthItems = items.filter(i => {
+                        const [iy, im] = i.date.split('-').map(Number);
+                        return iy === y && im === m;
+                      });
+                      const monthSubtotal = monthItems.reduce((acc, i) => {
+                        const amt = parseFloat(i.amount) || 0;
+                        return i._type === 'income' ? acc + amt : acc - amt;
+                      }, 0);
+
                       monthHeader = (
-                        <div className="px-4 py-2 bg-white/5 text-xs font-bold text-muted uppercase tracking-widest border-b border-white/5 flex items-center gap-2">
-                          <Calendar size={12} className="opacity-50" />
-                          {MONTHS[m - 1]} {y}
+                        <div className="px-4 py-2 bg-white/5 text-xs font-bold text-muted uppercase tracking-widest border-b border-white/5 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar size={12} className="opacity-50" />
+                            {MONTHS[m - 1]} {y}
+                          </div>
+                          <div className={cn(
+                            "opacity-70",
+                            monthSubtotal >= 0 ? "text-[#34D399]" : "text-[#F87171]"
+                          )}>
+                            {formatAccounting(monthSubtotal)}
+                          </div>
                         </div>
                       );
                     }
