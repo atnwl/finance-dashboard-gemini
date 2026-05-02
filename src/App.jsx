@@ -5163,8 +5163,8 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           errorMessage += "API key issue - check your Gemini API key.";
         } else if (errorText.includes("JSON") || err.name === "SyntaxError") {
           errorMessage += "Could not parse AI response. The image might be unclear.";
-        } else if (errorText.includes("quota") || errorText.includes("rate")) {
-          errorMessage += "API rate limit reached (Free Tier). Please wait a minute before trying again.";
+        } else if (errorText.includes("quota") || errorText.includes("rate") || errorText.includes("429") || errorText.includes("RESOURCE_EXHAUSTED")) {
+          errorMessage += "API rate limit hit. Please wait a moment and try again. (" + errorText.slice(0, 120) + ")";
         } else {
           errorMessage += errorText || "Unknown error occurred.";
         }
