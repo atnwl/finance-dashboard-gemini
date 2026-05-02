@@ -1,4 +1,4 @@
-# Market Research: Building & Property Management Platforms
+# Markets Research: Building & Property Management Platforms
 
 ## Executive Summary
 The "Building Management" software market is split into two distinct categories that often overlap in conversation but serve different needs:
