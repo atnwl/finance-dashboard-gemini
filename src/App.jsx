@@ -1248,9 +1248,15 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session && window.opener) {
+        window.close();
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session && window.opener) {
+        window.close();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -2094,15 +2100,23 @@ export default function App() {
 
   // --- Auth & Sync Handlers ---
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    // Open popup synchronously to bypass popup blockers on mobile
+    const popup = window.open('about:blank', '_blank');
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
         redirectTo: window.location.origin,
+        skipBrowserRedirect: true,
         queryParams: {
           prompt: 'consent'  // Force GitHub to show auth screen (allows switching accounts)
         }
       }
     });
+    if (data?.url && popup) {
+      popup.location.href = data.url;
+    } else if (popup) {
+      popup.close();
+    }
   };
 
   const handleLogout = async () => {
