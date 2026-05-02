@@ -36,7 +36,7 @@ export async function withGeminiRetry(fn, maxRetries = 3, baseDelay = 2000) {
  * Helper to get a GoogleGenerativeAI instance.
  * Centralizing this allows easier model version updates.
  */
-export const getGeminiModel = (apiKey, modelName = "gemini-1.5-flash") => {
+export const getGeminiModel = (apiKey, modelName = "gemini-2.5-flash") => {
   const genAI = new GoogleGenerativeAI(apiKey);
   return genAI.getGenerativeModel({ model: modelName });
 };
