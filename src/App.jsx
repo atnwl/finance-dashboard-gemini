@@ -4437,7 +4437,7 @@ function MobileNavItem({ icon: Icon, label, active, onClick, disabled }) {
   );
 }
 
-function MonthlySpendChart({ data, statementIds }) {
+function MonthlySpendChart({ data, statementIds, onBarClick, selectedIdx }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
   const isSpecialTxn = (item) => {
@@ -4445,13 +4445,12 @@ function MonthlySpendChart({ data, statementIds }) {
     return cat === 'transfer' || cat === 'credit card payment';
   };
 
-  // Build last 6 months (oldest → newest)
   const months = useMemo(() => {
     const result = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      result.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) });
+      result.push({ year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-US', { month: 'short' }) });
     }
     return result;
   }, []);
@@ -4461,92 +4460,58 @@ function MonthlySpendChart({ data, statementIds }) {
     const expenses = (data.expenses || []).filter(e =>
       stmtIdSet.has(e.statementId) && !isSpecialTxn(e)
     );
-    return months.map(({ year, month }) => {
-      const total = expenses
-        .filter(e => {
-          const [ey, em] = e.date.split('-').map(Number);
-          return ey === year && (em - 1) === month;
-        })
-        .reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0);
-      return total;
-    });
+    return months.map(({ year, month }) =>
+      expenses
+        .filter(e => { const [ey, em] = e.date.split('-').map(Number); return ey === year && (em - 1) === month; })
+        .reduce((acc, e) => acc + (parseFloat(e.amount) || 0), 0)
+    );
   }, [data.expenses, statementIds, months]);
 
   const maxSpend = Math.max(...monthlyTotals, 1);
-  const hasData = monthlyTotals.some(t => t > 0);
+  if (!monthlyTotals.some(t => t > 0)) return null;
 
-  if (!hasData) return null;
-
-  const BAR_W = 28;
-  const GAP = 6;
-  const H = 44;
+  const BAR_W = 18;
+  const GAP = 4;
+  const H = 32;
   const totalW = months.length * (BAR_W + GAP) - GAP;
 
   return (
-    <div className="mt-4">
-      <div className="text-[10px] text-muted uppercase tracking-wider font-bold px-1 mb-2">Monthly Spend</div>
-      <div className="relative flex items-end gap-0" style={{ height: H + 20 }}>
-        <svg width={totalW} height={H} className="overflow-visible">
-          {monthlyTotals.map((total, i) => {
-            const barH = Math.max(total > 0 ? Math.round((total / maxSpend) * H) : 0, total > 0 ? 3 : 0);
-            const x = i * (BAR_W + GAP);
-            const isHovered = hoveredIdx === i;
-            return (
-              <g key={i}>
-                {/* Background track */}
-                <rect
-                  x={x} y={0} width={BAR_W} height={H}
-                  rx={4}
-                  fill="rgba(255,255,255,0.03)"
-                />
-                {/* Spend bar */}
-                <rect
-                  x={x} y={H - barH} width={BAR_W} height={barH}
-                  rx={4}
-                  fill={isHovered ? 'rgba(139,92,246,0.8)' : 'rgba(139,92,246,0.4)'}
-                  className="transition-all duration-150"
-                />
-                {/* Hover target */}
-                <rect
-                  x={x} y={0} width={BAR_W} height={H}
-                  rx={4}
-                  fill="transparent"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredIdx(i)}
-                  onMouseLeave={() => setHoveredIdx(null)}
-                />
-                {/* Month label */}
-                <text
-                  x={x + BAR_W / 2} y={H + 14}
-                  textAnchor="middle"
-                  fontSize={8}
-                  fill={isHovered ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)'}
-                  fontWeight={isHovered ? '700' : '500'}
-                  className="select-none transition-all duration-150"
-                >
-                  {months[i].label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Hover Tooltip */}
-        {hoveredIdx !== null && (
-          <div
-            className="absolute bottom-full mb-2 bg-[#1a1f2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl text-xs pointer-events-none animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap z-10"
-            style={{
-              left: hoveredIdx * (BAR_W + GAP) + BAR_W / 2,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            <div className="text-[10px] text-muted font-bold uppercase tracking-wider mb-0.5">{months[hoveredIdx].label}</div>
-            <div className="font-bold text-white">
-              ${monthlyTotals[hoveredIdx].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="relative" style={{ height: H }}>
+      <svg width={totalW} height={H} className="overflow-visible">
+        {monthlyTotals.map((total, i) => {
+          const barH = Math.max(total > 0 ? Math.round((total / maxSpend) * H) : 0, total > 0 ? 3 : 0);
+          const x = i * (BAR_W + GAP);
+          const isHov = hoveredIdx === i;
+          const isSel = selectedIdx === i;
+          return (
+            <g key={i}>
+              <rect x={x} y={0} width={BAR_W} height={H} rx={3} fill="rgba(255,255,255,0.04)" />
+              <rect
+                x={x} y={H - barH} width={BAR_W} height={barH} rx={3}
+                fill={isSel ? 'rgba(139,92,246,1)' : isHov ? 'rgba(139,92,246,0.75)' : 'rgba(139,92,246,0.35)'}
+                className="transition-all duration-150"
+              />
+              <rect
+                x={x} y={0} width={BAR_W} height={H} rx={3}
+                fill="transparent" className="cursor-pointer"
+                onMouseEnter={() => setHoveredIdx(i)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                onClick={() => onBarClick && onBarClick(i, months[i])}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      {/* Hover tooltip */}
+      {hoveredIdx !== null && (
+        <div
+          className="absolute bg-[#1a1f2e] border border-white/10 rounded-lg px-2 py-1 shadow-xl text-xs pointer-events-none animate-in fade-in zoom-in-95 duration-100 whitespace-nowrap z-20"
+          style={{ bottom: H + 6, left: hoveredIdx * (BAR_W + GAP) + BAR_W / 2, transform: 'translateX(-50%)' }}
+        >
+          <div className="text-[9px] text-muted font-bold uppercase tracking-wider">{months[hoveredIdx].label}</div>
+          <div className="font-bold text-white text-xs">${monthlyTotals[hoveredIdx].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4558,6 +4523,8 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
   const [editBalance, setEditBalance] = useState('');
   const [selectedStmtId, setSelectedStmtId] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(null); // { year, month, label } from chart click
+  const [selectedChartIdx, setSelectedChartIdx] = useState(null);
 
   // All statement IDs for this account (used for spend chart)
   const statementIds = useMemo(() => sortedStmts.map(s => s.id), [sortedStmts]);
@@ -4581,32 +4548,73 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
     setIsEditing(false);
   };
 
-  // Get transactions for the selected statement
+  const isSpecialTxn = (item) => {
+    const cat = (item.category || '').toLowerCase().trim();
+    return cat === 'transfer' || cat === 'credit card payment';
+  };
+
+  // Get transactions: filtered by month (chart click) or by selected statement
   const linkedTransactions = useMemo(() => {
-    if (!selectedStmtId || !data) return [];
+    if (!data) return [];
+    const stmtIdSet = new Set(statementIds);
     const allTxns = [...(data.expenses || []), ...(data.income || [])];
+    if (selectedMonth) {
+      // Show all txns for this account in the selected month (excl. specials)
+      return allTxns
+        .filter(t => {
+          if (!stmtIdSet.has(t.statementId)) return false;
+          if (isSpecialTxn(t)) return false;
+          const [ty, tm] = t.date.split('-').map(Number);
+          return ty === selectedMonth.year && (tm - 1) === selectedMonth.month;
+        })
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+    if (!selectedStmtId) return [];
     return allTxns
       .filter(t => t.statementId === selectedStmtId)
       .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [selectedStmtId, data]);
+  }, [selectedStmtId, selectedMonth, data, statementIds]);
+
+  const handleBarClick = (idx, monthObj) => {
+    if (selectedChartIdx === idx) {
+      // Toggle off
+      setSelectedMonth(null);
+      setSelectedChartIdx(null);
+      setIsExpanded(false);
+    } else {
+      setSelectedMonth(monthObj);
+      setSelectedChartIdx(idx);
+      setSelectedStmtId(null);
+      setIsExpanded(true);
+    }
+  };
 
   return (
     <Card className="p-4 border-border/50">
-      {/* Header: Hero Balance & Name */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <CreditCard size={24} />
+      {/* Header: icon + name + inline chart + balance */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <CreditCard size={20} />
           </div>
-          <div>
-            <h3 className="font-bold text-lg">{account.provider}</h3>
-            <p className="text-sm text-muted">Ending in ••••{account.last4 || '????'}</p>
+          <div className="min-w-0">
+            <h3 className="font-bold text-base leading-tight">{account.provider}</h3>
+            <p className="text-xs text-muted">••••{account.last4 || '????'}</p>
+          </div>
+          {/* Inline spend chart */}
+          <div className="ml-3 shrink-0">
+            <MonthlySpendChart
+              data={data}
+              statementIds={statementIds}
+              onBarClick={handleBarClick}
+              selectedIdx={selectedChartIdx}
+            />
           </div>
         </div>
 
         {/* Balance Display / Edit */}
-        <div className="text-right">
-          <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Statement Balance</span>
+        <div className="text-right shrink-0">
+          <span className="text-[10px] text-muted font-bold tracking-wider uppercase block mb-0.5">Balance</span>
 
           {isEditing ? (
             <div className="flex items-center gap-2 justify-end animate-in fade-in zoom-in-95">
@@ -4648,9 +4656,6 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
           )}
         </div>
       </div>
-
-      {/* Monthly Spend Chart */}
-      <MonthlySpendChart data={data} statementIds={statementIds} />
 
       {/* Last Statement Uploaded */}
       <div className="mt-4">
@@ -4725,13 +4730,24 @@ function AccountCard({ account, data, onDelete, onUpdate }) {
           <div className="border border-white/5 rounded-xl overflow-hidden">
             <div className="px-3 py-2 bg-white/5 flex justify-between items-center">
               <span className="text-[10px] text-muted uppercase tracking-wider font-bold">
-                {linkedTransactions.length} Linked Transaction{linkedTransactions.length !== 1 ? 's' : ''}
+                {linkedTransactions.length} Transaction{linkedTransactions.length !== 1 ? 's' : ''}
               </span>
-              {selectedStmtId && (
-                <span className="text-[10px] text-muted">
-                  {formatDate(sortedStmts.find(s => s.id === selectedStmtId)?.date)}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedMonth && (
+                  <button
+                    onClick={() => { setSelectedMonth(null); setSelectedChartIdx(null); setIsExpanded(false); }}
+                    className="flex items-center gap-1 text-[10px] bg-primary/20 text-primary border border-primary/30 rounded-full px-2 py-0.5 hover:bg-primary/30 transition-colors"
+                  >
+                    <span>{selectedMonth.label}</span>
+                    <X size={9} strokeWidth={3} />
+                  </button>
+                )}
+                {!selectedMonth && selectedStmtId && (
+                  <span className="text-[10px] text-muted">
+                    {formatDate(sortedStmts.find(s => s.id === selectedStmtId)?.date)}
+                  </span>
+                )}
+              </div>
             </div>
             {linkedTransactions.length === 0 ? (
               <div className="px-3 py-6 text-center text-muted text-sm">
