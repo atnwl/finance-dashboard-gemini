@@ -1246,19 +1246,34 @@ export default function App() {
 
   // Auth State Listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session && window.opener) {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      setUser(data?.session?.user ?? null);
+      if (data?.session && (window.opener || window.location.search.includes('popup=true'))) {
         window.close();
       }
-    });
+    };
+    checkSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session && window.opener) {
+      if (session && (window.opener || window.location.search.includes('popup=true'))) {
         window.close();
       }
     });
-    return () => subscription.unsubscribe();
+
+    // PWA on Android can miss storage events while backgrounded
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // One-time Legacy Data Wipe (Per User Request)
@@ -2105,7 +2120,7 @@ export default function App() {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: window.location.origin + '?popup=true',
         skipBrowserRedirect: true,
         queryParams: {
           prompt: 'consent'  // Force GitHub to show auth screen (allows switching accounts)
