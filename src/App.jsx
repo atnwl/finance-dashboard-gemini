@@ -4874,17 +4874,40 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         const [month, day, year] = estDate.split('/');
         const fileDate = `${year}-${month}-${day}`;
 
-        // Helper: Convert File to Gemini InlineData Part
+        // Helper: Convert File to Gemini-compatible Part
         const fileToPart = (file) => new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve({
-            inlineData: {
-              data: reader.result.split(',')[1],
-              mimeType: file.type
-            }
-          });
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+          const isHtml = file.type === 'text/html' || file.name.endsWith('.html') || file.name.endsWith('.htm');
+          if (isHtml) {
+            // HTML files: extract text content instead of sending as binary
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(reader.result, 'text/html');
+                // Remove scripts and styles to reduce noise
+                doc.querySelectorAll('script, style, link, meta, noscript').forEach(el => el.remove());
+                // Extract clean table/text content
+                const textContent = doc.body?.innerText || doc.body?.textContent || reader.result;
+                resolve({ text: `[Uploaded HTML Document: ${file.name}]\n${textContent}` });
+              } catch {
+                // Fallback: send raw text
+                resolve({ text: `[Uploaded HTML Document: ${file.name}]\n${reader.result}` });
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsText(file);
+          } else {
+            // Images, PDFs: send as binary inlineData
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({
+              inlineData: {
+                data: reader.result.split(',')[1],
+                mimeType: file.type
+              }
+            });
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          }
         });
 
         // Convert all files to parts
