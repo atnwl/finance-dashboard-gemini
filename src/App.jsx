@@ -16,7 +16,7 @@ import { supabase } from './utils/supabase';
 import { encryptData, decryptData } from './utils/crypto';
 import { withGeminiRetry, getGeminiModel } from './utils/gemini';
 
-const APP_VERSION = 'v1.4.0';
+const APP_VERSION = 'v1.5.0';
 
 // --- Utils ---
 function cn(...inputs) {
@@ -5465,7 +5465,6 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     let savedCount = 0;
     let updatedCount = 0;
     let cleanedCount = 0;
-    let skippedCount = 0;
     const existingStatements = data?.statements || [];
 
     // Track IDs we've already matched to avoid matching the same existing item twice
@@ -5492,29 +5491,22 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
         const bestMatch = allMatches.find(m => m.statementId && existingStatements.some(s => s.id === m.statementId)) || allMatches[0];
         matchedIds.add(bestMatch.id);
 
-        if (finalStmtId) {
-          const hasValidStatement = bestMatch.statementId &&
-            existingStatements.some(s => s.id === bestMatch.statementId);
-
-          if (!hasValidStatement) {
-            // Re-link the best match to the current import's statement
-            const updatedItem = {
-              ...bestMatch,
-              category: item.category,
-              frequency: item.frequency,
-              type: item.type,
-              isIncome: item.isIncome,
-              name: item.name,
-              statementId: finalStmtId
-            };
-            if (idx < 5) console.log(`[BulkImport] RE-LINK #${idx}: "${item.name}" -> stmt ${finalStmtId}`);
-            onSave(updatedItem);
-            updatedCount++;
-          } else {
-            if (idx < 5) console.log(`[BulkImport] SKIP #${idx}: "${item.name}" already linked to valid stmt ${bestMatch.statementId}`);
-            skippedCount++;
-          }
-        }
+        // ALWAYS update the matched item with the latest import data.
+        // This repairs stale dates, categories, and provider links from previous broken imports.
+        const updatedItem = {
+          ...bestMatch,
+          category: item.category,
+          frequency: item.frequency,
+          type: item.type,
+          isIncome: item.isIncome,
+          name: item.name,
+          date: item.date,
+          amount: item.amount,
+          statementId: finalStmtId || bestMatch.statementId // Use new stmt ID, or keep existing valid one
+        };
+        if (idx < 5) console.log(`[BulkImport] UPDATE #${idx}: "${item.name}" (matched id=${bestMatch.id}, oldStmt=${bestMatch.statementId}) -> stmt ${updatedItem.statementId}`);
+        onSave(updatedItem);
+        updatedCount++;
 
         // Any ADDITIONAL matches beyond the first are orphaned duplicates — mark for removal
         for (let i = 0; i < allMatches.length; i++) {
@@ -5536,7 +5528,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       onRemoveItems(orphanIdsToRemove);
     }
 
-    console.log(`[BulkImport] RESULT: ${savedCount} new, ${updatedCount} re-linked, ${skippedCount} skipped (already valid), ${cleanedCount} orphaned duplicates removed`);
+    console.log(`[BulkImport] RESULT: ${savedCount} new, ${updatedCount} updated, ${cleanedCount} orphaned duplicates removed`);
 
     setBulkItems([]);
     setPendingStatement(null);
