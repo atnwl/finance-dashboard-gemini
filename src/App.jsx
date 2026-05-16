@@ -4353,13 +4353,6 @@ export default function App() {
                 setIsFormOpen(false); 
                 setEditingItem(null); 
                 setPendingStatement(null); 
-                setSelectedAccountId('ALL');
-              }}
-              onImportSuccess={() => {
-                setIsFormOpen(false);
-                setEditingItem(null);
-                setPendingStatement(null);
-                setSelectedAccountId('ALL');
               }}
               onOpenSettings={() => {
                 setIsFormOpen(false);
@@ -5306,19 +5299,22 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           const itemsWithIds = items.map(i => {
             // Robust Date Parsing
             let normalizedDate = i.date || stmtDate;
-            if (normalizedDate && normalizedDate.includes('/')) {
-              const parts = normalizedDate.split('/');
+            if (normalizedDate && (normalizedDate.includes('/') || normalizedDate.includes('-'))) {
+              const separator = normalizedDate.includes('/') ? '/' : '-';
+              const parts = normalizedDate.split(separator);
               if (parts.length === 3) {
                  if (parts[2].length === 4) {
+                   // MM-DD-YYYY or DD-MM-YYYY
                    normalizedDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
                  } else if (parts[0].length === 4) {
+                   // YYYY-MM-DD
                    normalizedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                 } else {
+                   normalizedDate = stmtDate;
                  }
+              } else {
+                normalizedDate = stmtDate;
               }
-            } else if (normalizedDate && !normalizedDate.includes('-')) {
-               normalizedDate = stmtDate;
-            } else if (normalizedDate && normalizedDate.length === 10 && normalizedDate.includes('-')) {
-               // Already YYYY-MM-DD
             } else {
                normalizedDate = stmtDate;
             }
