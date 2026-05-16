@@ -16,7 +16,7 @@ import { supabase } from './utils/supabase';
 import { encryptData, decryptData } from './utils/crypto';
 import { withGeminiRetry, getGeminiModel } from './utils/gemini';
 
-const APP_VERSION = 'v1.5.0';
+const APP_VERSION = 'v1.5.1';
 
 // --- Utils ---
 function cn(...inputs) {
@@ -5309,19 +5309,24 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           const itemsWithIds = items.map(i => {
             // Robust Date Parsing
             let normalizedDate = i.date || stmtDate;
+            const targetYear = stmtDate ? stmtDate.split('-')[0] : new Date().getFullYear().toString();
+
             if (normalizedDate && (normalizedDate.includes('/') || normalizedDate.includes('-'))) {
               const separator = normalizedDate.includes('/') ? '/' : '-';
               const parts = normalizedDate.split(separator);
               if (parts.length === 3) {
-                 if (parts[2].length === 4) {
+                 if (parts[2].length === 4 || parts[2].length === 2) { // 2 for YY
                    // MM-DD-YYYY or DD-MM-YYYY
-                   normalizedDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                   normalizedDate = `${targetYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
                  } else if (parts[0].length === 4) {
                    // YYYY-MM-DD
-                   normalizedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                   normalizedDate = `${targetYear}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
                  } else {
                    normalizedDate = stmtDate;
                  }
+              } else if (parts.length === 2) {
+                 // MM-DD or MM/DD
+                 normalizedDate = `${targetYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
               } else {
                 normalizedDate = stmtDate;
               }
