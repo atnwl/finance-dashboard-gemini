@@ -16,6 +16,8 @@ import { supabase } from './utils/supabase';
 import { encryptData, decryptData } from './utils/crypto';
 import { withGeminiRetry, getGeminiModel } from './utils/gemini';
 
+const APP_VERSION = 'v1.4.0';
+
 // --- Utils ---
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -1311,6 +1313,7 @@ export default function App() {
   useEffect(() => {
     if (isLoaded && localStorage.getItem('hasWipedLegacyData_v2')) {
       localStorage.setItem('financeData', JSON.stringify(data));
+      console.log(`[Persist] Saved: income=${data.income.length}, expenses=${data.expenses.length}, statements=${(data.statements||[]).length}`);
     }
   }, [data, isLoaded]);
 
@@ -2017,14 +2020,17 @@ export default function App() {
         if (originalType === type) {
           // Same list update
           newData[type] = prev[type].map(x => x.id === cleanItem.id ? cleanItem : x);
+          console.log(`[handleSave] UPDATE in ${type}: "${cleanItem.name}" (${cleanItem.id})`);
         } else {
           // Move logic: remove from old list, add to new list
           newData[originalType] = prev[originalType].filter(x => x.id !== cleanItem.id);
           newData[type] = [...prev[type], cleanItem];
+          console.log(`[handleSave] MOVE ${originalType}->${type}: "${cleanItem.name}" (${cleanItem.id})`);
         }
       } else {
         // Totally new item
         newData[type] = [...prev[type], cleanItem];
+        console.log(`[handleSave] ADD to ${type}: "${cleanItem.name}" id=${cleanItem.id} date=${cleanItem.date} | prev.${type}.length=${prev[type].length} -> ${newData[type].length}`);
       }
       return newData;
     });
@@ -4195,6 +4201,10 @@ export default function App() {
                       </button>
                     </div>
                   )}
+                  {/* Version Badge */}
+                  <div className="border-t border-border/50 px-4 py-1.5 text-center">
+                    <span className="text-[10px] text-muted/50 font-mono">{APP_VERSION}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -5398,6 +5408,10 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
   };
 
   const handleBulkImport = () => {
+    console.log(`[BulkImport ${APP_VERSION}] Starting import of ${bulkItems.length} items`);
+    console.log(`[BulkImport] Sample items:`, bulkItems.slice(0, 3).map(i => ({ name: i.name, date: i.date, amount: i.amount, isIncome: i.isIncome, category: i.category })));
+    console.log(`[BulkImport] Existing data counts: income=${data?.income?.length}, expenses=${data?.expenses?.length}, statements=${data?.statements?.length}`);
+
     // 1. Resolve Statement ID
     let finalStmtId = null;
 
@@ -5405,6 +5419,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       const stmtDate = pendingStatement.statementEndDate || pendingStatement.statementDate || pendingStatement.date || new Date().toISOString().split('T')[0];
       const stmtLast4 = pendingStatement.last4 || '????';
       const stmtProvider = pendingStatement.provider || 'Unknown Provider';
+      console.log(`[BulkImport] Statement: provider=${stmtProvider}, last4=${stmtLast4}, date=${stmtDate}`);
 
       // Check if this statement already exists
       const existingStmt = (data?.statements || []).find(
@@ -5413,6 +5428,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
 
       if (existingStmt) {
         finalStmtId = existingStmt.id;
+        console.log(`[BulkImport] Matched existing statement: ${finalStmtId}`);
       } else {
         // Create new statement
         finalStmtId = Math.random().toString(36).substr(2, 9);
@@ -5426,6 +5442,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
           uploadDate: new Date().toISOString(),
           transactionCount: bulkItems.length
         };
+        console.log(`[BulkImport] Creating new statement: ${finalStmtId}`);
         onSaveStatement(newStmt);
       }
 
@@ -5448,6 +5465,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     let savedCount = 0;
     let updatedCount = 0;
     let cleanedCount = 0;
+    let skippedCount = 0;
     const existingStatements = data?.statements || [];
 
     // Track IDs we've already matched to avoid matching the same existing item twice
@@ -5456,7 +5474,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
     // Collect IDs of orphaned duplicates to remove in a batch
     const orphanIdsToRemove = new Set();
 
-    bulkItems.forEach(item => {
+    bulkItems.forEach((item, idx) => {
       // Find ALL matching transactions (not just the first)
       const matchFn = (e) => fuzzyNameMatch(e.name, item.name) && e.date === item.date && Math.abs(e.amount - item.amount) < 0.01 && !matchedIds.has(e.id);
       const allMatchingExpenses = (data?.expenses || []).filter(matchFn);
@@ -5466,6 +5484,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       if (allMatches.length === 0) {
         // New transaction - save it
         const itemToSave = { ...item, statementId: finalStmtId };
+        if (idx < 5) console.log(`[BulkImport] NEW #${idx}: "${item.name}" $${item.amount} date=${item.date} isIncome=${item.isIncome}`);
         onSave(itemToSave);
         savedCount++;
       } else {
@@ -5488,8 +5507,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
               name: item.name,
               statementId: finalStmtId
             };
+            if (idx < 5) console.log(`[BulkImport] RE-LINK #${idx}: "${item.name}" -> stmt ${finalStmtId}`);
             onSave(updatedItem);
             updatedCount++;
+          } else {
+            if (idx < 5) console.log(`[BulkImport] SKIP #${idx}: "${item.name}" already linked to valid stmt ${bestMatch.statementId}`);
+            skippedCount++;
           }
         }
 
@@ -5513,7 +5536,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
       onRemoveItems(orphanIdsToRemove);
     }
 
-    console.log(`Import complete: ${savedCount} new, ${updatedCount} re-linked, ${cleanedCount} orphaned duplicates removed`);
+    console.log(`[BulkImport] RESULT: ${savedCount} new, ${updatedCount} re-linked, ${skippedCount} skipped (already valid), ${cleanedCount} orphaned duplicates removed`);
 
     setBulkItems([]);
     setPendingStatement(null);
