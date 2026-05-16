@@ -16,7 +16,7 @@ import { supabase } from './utils/supabase';
 import { encryptData, decryptData } from './utils/crypto';
 import { withGeminiRetry, getGeminiModel } from './utils/gemini';
 
-const APP_VERSION = 'v1.5.1';
+const APP_VERSION = 'v1.5.2';
 
 // --- Utils ---
 function cn(...inputs) {
@@ -5315,12 +5315,12 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
               const separator = normalizedDate.includes('/') ? '/' : '-';
               const parts = normalizedDate.split(separator);
               if (parts.length === 3) {
-                 if (parts[2].length === 4 || parts[2].length === 2) { // 2 for YY
-                   // MM-DD-YYYY or DD-MM-YYYY
-                   normalizedDate = `${targetYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                 } else if (parts[0].length === 4) {
+                 if (parts[0].length === 4) {
                    // YYYY-MM-DD
                    normalizedDate = `${targetYear}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                 } else if (parts[2].length === 4 || parts[2].length === 2) {
+                   // MM-DD-YYYY or MM-DD-YY
+                   normalizedDate = `${targetYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
                  } else {
                    normalizedDate = stmtDate;
                  }
