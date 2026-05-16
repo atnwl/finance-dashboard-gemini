@@ -4349,7 +4349,18 @@ export default function App() {
               onSave={handleSave}
               onDelete={handleDelete}
               onSkipProjection={handleSkipProjection}
-              onCancel={() => setIsFormOpen(false)}
+              onCancel={() => { 
+                setIsFormOpen(false); 
+                setEditingItem(null); 
+                setPendingStatement(null); 
+                setSelectedAccountId('ALL');
+              }}
+              onImportSuccess={() => {
+                setIsFormOpen(false);
+                setEditingItem(null);
+                setPendingStatement(null);
+                setSelectedAccountId('ALL');
+              }}
               onOpenSettings={() => {
                 setIsFormOpen(false);
                 setIsChatOpen(true);
@@ -5293,6 +5304,25 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
 
           // Detect potential duplicates within the scanned items
           const itemsWithIds = items.map(i => {
+            // Robust Date Parsing
+            let normalizedDate = i.date || stmtDate;
+            if (normalizedDate && normalizedDate.includes('/')) {
+              const parts = normalizedDate.split('/');
+              if (parts.length === 3) {
+                 if (parts[2].length === 4) {
+                   normalizedDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                 } else if (parts[0].length === 4) {
+                   normalizedDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                 }
+              }
+            } else if (normalizedDate && !normalizedDate.includes('-')) {
+               normalizedDate = stmtDate;
+            } else if (normalizedDate && normalizedDate.length === 10 && normalizedDate.includes('-')) {
+               // Already YYYY-MM-DD
+            } else {
+               normalizedDate = stmtDate;
+            }
+
             // Normalize amounts: all amounts should be positive.
             // The isIncome flag determines income vs expense.
             // Refunds are now classified as income (isIncome: true, category: "Refund").
@@ -5309,6 +5339,7 @@ function TransactionForm({ accountList, initialData, data, setPendingStatement, 
 
             return {
               ...i,
+              date: normalizedDate,
               amount: normalizedAmount,
               category: normalizedCategory,
               id: Math.random().toString(36).substr(2, 9),
